@@ -1,0 +1,17 @@
+* text=auto
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+*.sh text eol=lf
+*.command text eol=lf
+*.applescript text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.png binary

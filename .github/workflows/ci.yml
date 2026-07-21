@@ -1,0 +1,42 @@
+name: 检查
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: 验证 Windows 安装与卸载
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tests/windows-installer-smoke.ps1
+      - name: 验证 macOS 安装与卸载
+        if: runner.os == 'macOS'
+        run: zsh ./tests/macos-installer-smoke.sh
+      - name: 检查 PowerShell 语法
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            [void][scriptblock]::Create((Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8))
+          }
+      - name: 检查 macOS 脚本语法
+        if: runner.os == 'macOS'
+        run: |
+          zsh -n Install-Moonsea-macOS.command
+          zsh -n Uninstall-Moonsea-macOS.command
+          zsh -n scripts/macos/*.sh
+          zsh -n scripts/macos/*.command

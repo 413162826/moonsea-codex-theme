@@ -1,0 +1,75 @@
+:root {
+  --moonsea-pet-surface: oklch(96% 0.018 225 / 0.96);
+  --moonsea-pet-surface-strong: oklch(98% 0.012 225 / 0.98);
+  --moonsea-pet-ink: oklch(25% 0.045 240);
+  --moonsea-pet-muted: oklch(42% 0.04 235);
+  --moonsea-pet-faint: oklch(52% 0.035 232);
+  --moonsea-pet-border: oklch(48% 0.04 235 / 0.28);
+  --moonsea-pet-control: oklch(91% 0.025 225 / 0.98);
+}
+
+/*
+ * 宠物通知既可能渲染在 /avatar-overlay，也可能渲染在独立的原生合成页。
+ * 两条链路都以 data-avatar-overlay-* 作为官方稳定边界，不依赖构建哈希类名。
+ */
+[data-avatar-overlay-size="notification-tray"] {
+  --color-token-foreground: var(--moonsea-pet-ink) !important;
+  --color-token-text-primary: var(--moonsea-pet-ink) !important;
+  --color-token-text-secondary: var(--moonsea-pet-muted) !important;
+  --color-token-text-tertiary: var(--moonsea-pet-faint) !important;
+  --color-text-foreground-secondary: var(--moonsea-pet-muted) !important;
+  --color-text-foreground-tertiary: var(--moonsea-pet-faint) !important;
+  --color-text-button-secondary: var(--moonsea-pet-ink) !important;
+  --color-text-button-tertiary: var(--moonsea-pet-muted) !important;
+  --color-icon-primary: var(--moonsea-pet-ink) !important;
+  --color-icon-secondary: var(--moonsea-pet-muted) !important;
+  --color-icon-tertiary: var(--moonsea-pet-faint) !important;
+  --color-token-border: var(--moonsea-pet-border) !important;
+  --color-token-border-default: var(--moonsea-pet-border) !important;
+  --color-token-border-heavy: oklch(38% 0.045 238 / 0.40) !important;
+  --color-token-main-surface-primary: var(--moonsea-pet-control) !important;
+  color: var(--moonsea-pet-ink) !important;
+  color-scheme: light;
+  text-shadow: none !important;
+}
+
+[data-avatar-overlay-size="notification-tray"]
+  :where(.text-token-foreground, .text-token-text-primary) {
+  color: var(--moonsea-pet-ink) !important;
+}
+
+[data-avatar-overlay-size="notification-tray"]
+  .text-token-text-secondary {
+  color: var(--moonsea-pet-muted) !important;
+}
+
+[data-avatar-overlay-size="notification-tray"]
+  .text-token-text-tertiary {
+  color: var(--moonsea-pet-faint) !important;
+}
+
+[data-avatar-overlay-size="notification-tray"]
+  :where(
+    [data-avatar-overlay-native-surface-id^="activity-"],
+    [data-avatar-overlay-measure="notification-tray-row"] > :first-child
+  ),
+[data-avatar-overlay-size="notification-tray-caption"] > :first-child {
+  border-color: var(--moonsea-pet-border) !important;
+  background:
+    linear-gradient(135deg, oklch(100% 0 0 / 0.54), transparent 48%),
+    var(--moonsea-pet-surface) !important;
+  box-shadow:
+    inset 0 1px oklch(100% 0 0 / 0.72),
+    0 8px 24px oklch(10% 0.035 240 / 0.20) !important;
+}
+
+[data-avatar-overlay-native-surface-id="composer"] {
+  color: var(--moonsea-pet-ink) !important;
+  border-color: var(--moonsea-pet-border) !important;
+  background: var(--moonsea-pet-surface-strong) !important;
+}
+
+[data-avatar-overlay-size="notification-tray"]
+  :where(button, input, [role="button"]) {
+  text-shadow: none !important;
+}

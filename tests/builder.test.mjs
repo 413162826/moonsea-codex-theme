@@ -1,0 +1,85 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { createPackage, extractAll } from "@electron/asar";
+
+const projectRoot = path.resolve(path.dirname(process.argv[1]), "..");
+const builder = path.join(projectRoot, "tools", "moonsea-builder.mjs");
+
+async function createFixture(root, platform) {
+  const source =
+    platform === "mac"
+      ? path.join(root, "Official.app")
+      : path.join(root, "Official-Windows");
+  const asarPath =
+    platform === "mac"
+      ? path.join(source, "Contents", "Resources", "app.asar")
+      : path.join(source, "resources", "app.asar");
+  const unpacked = path.join(root, `${platform}-unpacked`);
+  fs.mkdirSync(path.join(unpacked, "webview"), { recursive: true });
+  fs.writeFileSync(
+    path.join(unpacked, "webview", "index.html"),
+    "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",
+  );
+  fs.writeFileSync(
+    path.join(unpacked, "webview", "avatar-overlay-composition-surface.html"),
+    "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",
+  );
+  fs.mkdirSync(path.dirname(asarPath), { recursive: true });
+  await createPackage(unpacked, asarPath);
+  if (platform === "mac") {
+    fs.mkdirSync(path.join(source, "Contents", "MacOS"), { recursive: true });
+    fs.writeFileSync(path.join(source, "Contents", "MacOS", "ChatGPT"), "fixture");
+  } else {
+    fs.writeFileSync(path.join(source, "ChatGPT.exe"), "fixture");
+  }
+  return source;
+}
+
+async function verifyLayout(platform) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `moonsea-${platform}-test-`));
+  try {
+    const source = await createFixture(root, platform);
+    const target = path.join(
+      root,
+      platform === "mac"
+        ? "Moonsea-Codex-test.app"
+        : "Moonsea-Codex-test-windows",
+    );
+    execFileSync(process.execPath, [builder, source, target], { stdio: "pipe" });
+    execFileSync(process.execPath, [builder, "--verify", target], {
+      stdio: "pipe",
+    });
+
+    const asarPath =
+      platform === "mac"
+        ? path.join(target, "Contents", "Resources", "app.asar")
+        : path.join(target, "resources", "app.asar");
+    const extracted = path.join(root, `${platform}-result`);
+    extractAll(asarPath, extracted);
+    const index = fs.readFileSync(
+      path.join(extracted, "webview", "index.html"),
+      "utf8",
+    );
+    const composition = fs.readFileSync(
+      path.join(
+        extracted,
+        "webview",
+        "avatar-overlay-composition-surface.html",
+      ),
+      "utf8",
+    );
+    assert.match(index, /codex-moonsea-static-theme/);
+    assert.match(index, /codex-moonsea-pet-overlay/);
+    assert.match(composition, /codex-moonsea-pet-overlay/);
+    assert.doesNotMatch(composition, /codex-moonsea-static-theme/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+test("构建 Windows 布局", () => verifyLayout("windows"));
+test("构建 macOS 应用包布局", () => verifyLayout("mac"));

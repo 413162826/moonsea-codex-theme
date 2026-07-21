@@ -1,0 +1,758 @@
+html.codex-moonsea {
+  --moonsea-main-alpha: 0.30;
+  --moonsea-sidebar-alpha: 0.46;
+  --moonsea-control-alpha: 0.80;
+  --moonsea-wallpaper-brightness: 0.94;
+  --moonsea-wallpaper-blur: 0px;
+  --moonsea-wallpaper-image: url("./dragon-girl.png");
+  --moonsea-ink: oklch(96% 0.018 230);
+  --moonsea-muted: oklch(82% 0.04 225);
+  --moonsea-faint: oklch(72% 0.035 225);
+  --moonsea-panel: oklch(18% 0.045 243 / var(--moonsea-main-alpha));
+  --moonsea-panel-strong: oklch(16% 0.045 244 / 0.94);
+  --moonsea-sidebar: oklch(14% 0.04 244 / var(--moonsea-sidebar-alpha));
+  --moonsea-control: oklch(15% 0.045 243 / var(--moonsea-control-alpha));
+  --moonsea-hover: oklch(72% 0.09 222 / 0.16);
+  --moonsea-border: oklch(82% 0.055 225 / 0.22);
+  --moonsea-accent: oklch(82% 0.12 155);
+  --moonsea-titlebar-button-ink: oklch(97% 0.016 225);
+  --moonsea-titlebar-button-surface: oklch(32% 0.055 236 / 0.92);
+  --moonsea-titlebar-button-surface-hover: oklch(44% 0.075 225 / 0.94);
+  --moonsea-titlebar-button-surface-active: oklch(38% 0.07 228 / 0.98);
+  --moonsea-titlebar-button-border: oklch(94% 0.035 225 / 0.42);
+  --moonsea-reading-surface: oklch(13% 0.035 244 / 0.72);
+  --moonsea-reading-surface-strong: oklch(11% 0.035 244 / 0.94);
+
+  --color-token-main-surface-primary: var(--moonsea-panel) !important;
+  --color-token-side-bar-background: var(--moonsea-sidebar) !important;
+  --color-token-bg-primary: oklch(17% 0.04 243 / var(--moonsea-main-alpha)) !important;
+  --color-background-elevated-primary-opaque: oklch(19% 0.045 243) !important;
+  --color-background-elevated-secondary: var(--moonsea-control) !important;
+  --color-background-accent: oklch(70% 0.08 220 / 0.16) !important;
+  --color-background-accent-hover: oklch(72% 0.09 220 / 0.21) !important;
+  --color-background-accent-active: oklch(68% 0.09 220 / 0.25) !important;
+  --color-token-list-active-selection-background: var(--moonsea-hover) !important;
+  --color-token-toolbar-hover-background: oklch(78% 0.055 225 / 0.10) !important;
+  --color-token-button-secondary-hover-background: oklch(78% 0.055 225 / 0.13) !important;
+  --color-token-badge-background: oklch(78% 0.055 225 / 0.12) !important;
+  --color-token-border-default: var(--moonsea-border) !important;
+  --color-token-input-border: oklch(82% 0.055 225 / 0.24) !important;
+  --color-border-heavy: oklch(82% 0.055 225 / 0.29) !important;
+
+  --color-token-text-primary: var(--moonsea-ink) !important;
+  --color-token-text-secondary: var(--moonsea-muted) !important;
+  --color-token-text-tertiary: var(--moonsea-faint) !important;
+  --color-text-foreground-secondary: var(--moonsea-muted) !important;
+  --color-text-foreground-tertiary: var(--moonsea-faint) !important;
+  --color-text-button-secondary: var(--moonsea-ink) !important;
+  --color-text-button-tertiary: var(--moonsea-faint) !important;
+  --color-icon-primary: var(--moonsea-ink) !important;
+  --color-icon-secondary: var(--moonsea-muted) !important;
+  --color-icon-tertiary: var(--moonsea-faint) !important;
+  --codex-base-accent: var(--moonsea-accent) !important;
+  --color-text-accent: var(--moonsea-accent) !important;
+  --color-icon-accent: var(--moonsea-accent) !important;
+  --color-token-link: var(--moonsea-accent) !important;
+  --color-token-foreground: var(--moonsea-ink) !important;
+  --color-token-description-foreground: var(--moonsea-muted) !important;
+  --color-token-bg-secondary: oklch(16% 0.04 243 / 0.90) !important;
+  --color-token-border-light: oklch(82% 0.055 225 / 0.17) !important;
+  --color-token-text-code-block-background: var(--moonsea-reading-surface-strong) !important;
+  --color-token-text-code-block-foreground: var(--moonsea-ink) !important;
+
+  --vscode-terminal-background: oklch(16% 0.04 243 / 0.94) !important;
+  --vscode-terminal-foreground: var(--moonsea-ink) !important;
+  --vscode-editor-background: oklch(17% 0.04 243 / 0.93) !important;
+  --vscode-editor-foreground: var(--moonsea-ink) !important;
+  --vscode-menu-background: oklch(19% 0.045 243 / 0.98) !important;
+  --vscode-menu-foreground: var(--moonsea-ink) !important;
+  --vscode-dropdown-background: oklch(19% 0.045 243 / 0.98) !important;
+  --vscode-dropdown-foreground: var(--moonsea-ink) !important;
+  --vscode-input-background: oklch(23% 0.045 240 / 0.95) !important;
+  --vscode-input-foreground: var(--moonsea-ink) !important;
+  --vscode-input-placeholderForeground: var(--moonsea-faint) !important;
+  --vscode-descriptionForeground: var(--moonsea-muted) !important;
+  --vscode-icon-foreground: var(--moonsea-ink) !important;
+  --vscode-titleBar-inactiveBackground: oklch(15% 0.04 244 / 0.92) !important;
+  --vscode-editorGroupHeader-tabsBackground: oklch(17% 0.04 243 / 0.94) !important;
+  --vscode-tab-unfocusedActiveBackground: oklch(24% 0.045 240 / 0.92) !important;
+  --vscode-tab-unfocusedActiveForeground: var(--moonsea-ink) !important;
+  --vscode-tab-inactiveForeground: var(--moonsea-faint) !important;
+  --vscode-list-hoverBackground: var(--moonsea-hover) !important;
+  --vscode-list-activeSelectionBackground: var(--moonsea-hover) !important;
+  --vscode-list-inactiveSelectionBackground: oklch(70% 0.07 220 / 0.12) !important;
+}
+
+html.codex-moonsea,
+html.codex-moonsea body {
+  color-scheme: dark;
+  background: transparent !important;
+}
+
+html.codex-moonsea body,
+html.codex-moonsea #root,
+html.codex-moonsea #root > div {
+  background-color: transparent !important;
+}
+
+html.codex-moonsea body::before {
+  content: "";
+  position: fixed;
+  inset: calc(var(--moonsea-wallpaper-blur) * -2);
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 0 0, oklch(8% 0.025 245 / 0.72), transparent 22%),
+    linear-gradient(90deg, oklch(10% 0.035 245 / 0.48), oklch(11% 0.03 245 / 0.09) 44%, oklch(10% 0.03 245 / 0.22)),
+    linear-gradient(0deg, oklch(9% 0.03 245 / 0.22), transparent 54%),
+    var(--moonsea-wallpaper-image) center / cover no-repeat;
+  image-rendering: auto;
+  filter:
+    brightness(var(--moonsea-wallpaper-brightness))
+    blur(var(--moonsea-wallpaper-blur));
+}
+
+html.codex-moonsea body::after {
+  content: "";
+  position: fixed;
+  inset: -24% -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(105deg, transparent 42%, oklch(93% 0.055 205 / 0.11) 48%, transparent 56%),
+    radial-gradient(circle at 76% 22%, oklch(92% 0.07 205 / 0.15), transparent 20%);
+  animation: moonsea-light 11s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+#codex-moonsea-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.moonsea-ambient__dust,
+.moonsea-ambient__glow {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.moonsea-ambient__dust {
+  inset: -18%;
+  background-image:
+    radial-gradient(circle, oklch(92% 0.06 205 / 0.48) 0 1px, transparent 1.8px),
+    radial-gradient(circle, oklch(86% 0.10 155 / 0.34) 0 1.2px, transparent 2px),
+    radial-gradient(circle, oklch(96% 0.035 225 / 0.30) 0 0.8px, transparent 1.7px);
+  background-position: 0 0, 42px 76px, 108px 28px;
+}
+
+.moonsea-ambient__dust--near {
+  background-size: 128px 118px, 176px 164px, 94px 152px;
+  opacity: 0.42;
+  animation: moonsea-dust-near 16s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+.moonsea-ambient__dust--far {
+  background-size: 214px 188px, 246px 226px, 172px 204px;
+  opacity: 0.25;
+  animation: moonsea-dust-far 24s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+.moonsea-ambient__glow {
+  width: 34vw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(28px);
+}
+
+.moonsea-ambient__glow--blue {
+  top: -12%;
+  right: 5%;
+  background: radial-gradient(circle, oklch(84% 0.09 215 / 0.18), transparent 68%);
+  animation: moonsea-glow-blue 13s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+.moonsea-ambient__glow--pearl {
+  right: 22%;
+  bottom: -18%;
+  background: radial-gradient(circle, oklch(94% 0.055 180 / 0.14), transparent 68%);
+  animation: moonsea-glow-pearl 17s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+html.codex-moonsea #root {
+  position: relative;
+  z-index: 1;
+  color: var(--moonsea-ink) !important;
+  text-shadow: 0 1px 12px oklch(7% 0.025 245 / 0.24);
+}
+
+html.codex-moonsea #root :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  a,
+  label,
+  button,
+  input,
+  textarea,
+  [contenteditable="true"]
+):not([class*="text-red"]):not([class*="text-green"]):not([class*="text-orange"]):not([class*="text-yellow"]) {
+  color: var(--moonsea-ink) !important;
+}
+
+html.codex-moonsea #root :where(
+  [class*="text-token-text-secondary"],
+  [class*="text-token-text-tertiary"],
+  [class*="text-token-foreground-secondary"],
+  [class*="text-token-foreground-tertiary"],
+  [class*="placeholder"]
+) {
+  color: var(--moonsea-muted) !important;
+}
+
+html.codex-moonsea main.main-surface {
+  background: var(--moonsea-panel) !important;
+  border-color: var(--moonsea-border) !important;
+  box-shadow:
+    0 0 0 1px oklch(84% 0.055 225 / 0.10),
+    -20px 0 70px oklch(8% 0.03 245 / 0.26) !important;
+  backdrop-filter: none;
+}
+
+/*
+ * 正文阅读层只覆盖 Codex 的 Markdown 内容，不压暗壁纸，也不改变侧栏、
+ * 标题栏和输入区。使用语义类名片段与 data 属性，避免依赖每次构建变化的哈希。
+ */
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where([class*="_markdownContent_"], .markdown, .prose) {
+  --text-primary: var(--moonsea-ink) !important;
+  --border-medium: oklch(84% 0.045 225 / 0.30) !important;
+  --border-light: oklch(82% 0.04 225 / 0.17) !important;
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  color: var(--moonsea-ink) !important;
+  text-shadow: 0 1px 7px oklch(5% 0.02 245 / 0.52);
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where([class*="_markdownContent_"], .markdown, .prose)::before {
+  content: "";
+  position: absolute;
+  inset: -12px -16px;
+  z-index: -1;
+  pointer-events: none;
+  border: 1px solid oklch(86% 0.04 225 / 0.15);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, oklch(20% 0.045 238 / 0.18), transparent 38%),
+    var(--moonsea-reading-surface);
+  box-shadow:
+    0 16px 42px oklch(5% 0.025 245 / 0.24),
+    inset 0 1px oklch(96% 0.02 225 / 0.06);
+  backdrop-filter: blur(8px) saturate(0.88);
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where([class*="_markdownContent_"], .markdown, .prose)
+  :where(h1, h2, h3, h4, h5, h6, strong) {
+  color: oklch(98% 0.012 225) !important;
+  text-shadow: 0 1px 8px oklch(4% 0.02 245 / 0.62);
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where([class*="_markdownContent_"], .markdown, .prose)
+  a {
+  color: oklch(88% 0.12 205) !important;
+  text-decoration-color: oklch(88% 0.12 205 / 0.55) !important;
+  text-underline-offset: 3px;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where([data-markdown-copy="code-block"], [class*="_codeBlockPlaceholder_"]) {
+  overflow: hidden;
+  border: 1px solid oklch(82% 0.055 225 / 0.22);
+  border-radius: 12px;
+  color: var(--moonsea-ink) !important;
+  background: var(--moonsea-reading-surface-strong) !important;
+  box-shadow: 0 10px 30px oklch(4% 0.025 245 / 0.26);
+  text-shadow: none;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  [data-markdown-copy="code-block"] > :first-child {
+  color: var(--moonsea-muted) !important;
+  background: oklch(20% 0.04 240 / 0.76) !important;
+  border-bottom: 1px solid oklch(82% 0.05 225 / 0.14);
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  [data-markdown-copy="code-block"] > :first-child :where(*) {
+  color: inherit !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where([data-markdown-copy="inline-code"], [class*="_inlineMarkdown_"]) {
+  border: 1px solid oklch(84% 0.05 225 / 0.16);
+  color: oklch(94% 0.07 198) !important;
+  background: oklch(11% 0.035 244 / 0.80) !important;
+  text-shadow: none;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where(blockquote, [class*="_blockquote_"]) {
+  border-radius: 0 10px 10px 0;
+  color: var(--moonsea-muted) !important;
+  background: oklch(24% 0.055 228 / 0.46) !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where([data-markdown-table], table) {
+  color: var(--moonsea-ink) !important;
+  background: oklch(12% 0.035 244 / 0.80) !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  [data-markdown-table] {
+  overflow: hidden;
+  border: 1px solid oklch(82% 0.055 225 / 0.20);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px oklch(4% 0.025 245 / 0.20);
+}
+
+html.codex-moonsea.moonsea-reading-enabled main.main-surface
+  :where(hr, [class*="_horizontalRule_"]) {
+  border-color: oklch(86% 0.045 225 / 0.26) !important;
+}
+
+html.codex-moonsea nav[aria-label] {
+  background: var(--moonsea-sidebar) !important;
+  backdrop-filter: blur(2px) saturate(1.02);
+}
+
+/*
+ * 官方顶栏图标按钮使用 ghost + tertiary，透明皮肤会让其与壁纸混在一起。
+ * 以顶栏拖拽区和 aria-label 作为稳定边界，避开官方构建生成的哈希类名。
+ */
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]),
+html.codex-moonsea button.text-token-text-tertiary[aria-label] {
+  min-width: 28px;
+  min-height: 28px;
+  color: var(--moonsea-titlebar-button-ink) !important;
+  background-color: var(--moonsea-titlebar-button-surface) !important;
+  border-color: var(--moonsea-titlebar-button-border) !important;
+  box-shadow:
+    inset 0 1px oklch(100% 0 0 / 0.14),
+    0 0 0 1px oklch(5% 0.025 245 / 0.22),
+    0 5px 16px oklch(5% 0.025 245 / 0.28);
+  text-shadow: none !important;
+  transition:
+    color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]) svg,
+html.codex-moonsea button.text-token-text-tertiary[aria-label] svg {
+  color: inherit !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 1px 3px oklch(4% 0.02 245 / 0.52));
+}
+
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]) svg [fill="currentColor"],
+html.codex-moonsea button.text-token-text-tertiary[aria-label]
+  svg [fill="currentColor"] {
+  fill: var(--moonsea-titlebar-button-ink) !important;
+}
+
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]) svg [stroke="currentColor"],
+html.codex-moonsea button.text-token-text-tertiary[aria-label]
+  svg [stroke="currentColor"] {
+  stroke: var(--moonsea-titlebar-button-ink) !important;
+}
+
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]):hover,
+html.codex-moonsea button.text-token-text-tertiary[aria-label]:hover {
+  color: var(--moonsea-titlebar-button-ink) !important;
+  background-color: var(--moonsea-titlebar-button-surface-hover) !important;
+  border-color: oklch(92% 0.035 225 / 0.38) !important;
+  box-shadow:
+    inset 0 1px oklch(100% 0 0 / 0.12),
+    0 5px 16px oklch(5% 0.025 245 / 0.24);
+}
+
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]):active,
+html.codex-moonsea button.text-token-text-tertiary[aria-label]:active {
+  background-color: var(--moonsea-titlebar-button-surface-active) !important;
+  box-shadow: inset 0 1px 4px oklch(4% 0.02 245 / 0.30);
+}
+
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]):focus-visible,
+html.codex-moonsea button.text-token-text-tertiary[aria-label]:focus-visible {
+  outline: 2px solid var(--moonsea-accent) !important;
+  outline-offset: 2px;
+}
+
+html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
+  :where(button[aria-label]):disabled,
+html.codex-moonsea button.text-token-text-tertiary[aria-label]:disabled {
+  opacity: 0.52;
+}
+
+html.codex-moonsea textarea,
+html.codex-moonsea [contenteditable="true"] {
+  caret-color: var(--moonsea-accent);
+}
+
+html.codex-moonsea [role="dialog"],
+html.codex-moonsea [role="menu"],
+html.codex-moonsea [data-radix-popper-content-wrapper] > * {
+  background-color: var(--moonsea-panel-strong) !important;
+  border-color: var(--moonsea-border) !important;
+  color: var(--moonsea-ink) !important;
+  backdrop-filter: blur(24px);
+}
+
+html.codex-moonsea [role="tooltip"] {
+  background-color: var(--moonsea-panel-strong) !important;
+  border-color: var(--moonsea-border) !important;
+  color: var(--moonsea-ink) !important;
+  text-shadow: none !important;
+  backdrop-filter: blur(18px);
+}
+
+html.codex-moonsea [role="tooltip"] :where(*) {
+  color: inherit !important;
+}
+
+html.codex-moonsea :where(
+  [class*="composer"],
+  [class*="Composer"],
+  [data-testid*="composer"]
+) {
+  --color-token-main-surface-primary: var(--moonsea-control) !important;
+}
+
+html.codex-moonsea ::selection {
+  color: var(--moonsea-ink);
+  background: oklch(73% 0.11 211 / 0.42);
+}
+
+#codex-moonsea-controls {
+  position: fixed;
+  right: 18px;
+  bottom: 74px;
+  z-index: 2147483000;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  color: var(--moonsea-ink);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  text-shadow: none;
+}
+
+#codex-moonsea-controls button,
+#codex-moonsea-controls input {
+  font: inherit;
+}
+
+.moonsea-controls__toggle {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--moonsea-border);
+  border-radius: 999px;
+  color: var(--moonsea-ink);
+  background: var(--moonsea-control);
+  box-shadow: 0 10px 28px oklch(6% 0.025 245 / 0.30);
+  backdrop-filter: blur(18px);
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.moonsea-controls__toggle > span:first-child {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.moonsea-controls__toggle:hover {
+  transform: translateY(-2px);
+}
+
+.moonsea-controls__panel {
+  width: 254px;
+  padding: 15px 16px;
+  border: 1px solid var(--moonsea-border);
+  border-radius: 15px;
+  background: oklch(14% 0.045 244 / 0.94);
+  box-shadow: 0 18px 48px oklch(5% 0.025 245 / 0.46);
+  backdrop-filter: blur(24px);
+}
+
+.moonsea-controls__panel[hidden] {
+  display: none;
+}
+
+.moonsea-controls__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.moonsea-controls__title span {
+  color: var(--moonsea-muted) !important;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.moonsea-control-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 36px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 11px;
+  font-size: 12px;
+}
+
+.moonsea-control-row output {
+  color: var(--moonsea-muted);
+  text-align: right;
+  font-size: 11px;
+}
+
+.moonsea-motion-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 70px 38px 1fr;
+  align-items: center;
+  gap: 9px;
+  margin-top: 13px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.moonsea-motion-row input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.moonsea-motion-switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: oklch(50% 0.035 230 / 0.58);
+  transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.moonsea-motion-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--moonsea-ink);
+  box-shadow: 0 1px 5px oklch(6% 0.025 245 / 0.34);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.moonsea-motion-row input:checked + .moonsea-motion-switch {
+  background: var(--moonsea-accent);
+}
+
+.moonsea-motion-row input:checked + .moonsea-motion-switch::after {
+  transform: translateX(16px);
+}
+
+.moonsea-motion-row output {
+  color: var(--moonsea-muted);
+  text-align: right;
+  font-size: 11px;
+}
+
+.moonsea-control-row input[type="range"] {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  accent-color: var(--moonsea-accent);
+  cursor: pointer;
+}
+
+.moonsea-wallpaper-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--moonsea-border);
+}
+
+.moonsea-wallpaper-row input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.moonsea-wallpaper-select {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--moonsea-border);
+  border-radius: 8px;
+  color: var(--moonsea-ink);
+  background: oklch(70% 0.08 220 / 0.13);
+  cursor: pointer;
+  font-size: 11px;
+  transition:
+    background-color 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.moonsea-wallpaper-select:hover {
+  background: oklch(74% 0.09 215 / 0.20);
+}
+
+.moonsea-wallpaper-select:active {
+  transform: translateY(1px);
+}
+
+.moonsea-wallpaper-select:focus-visible,
+.moonsea-controls__reset:focus-visible,
+.moonsea-controls__toggle:focus-visible {
+  outline: 2px solid var(--moonsea-accent);
+  outline-offset: 2px;
+}
+
+.moonsea-wallpaper-select:disabled {
+  cursor: wait;
+  opacity: 0.56;
+}
+
+.moonsea-wallpaper-row output {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--moonsea-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.moonsea-wallpaper-row output.is-error {
+  color: oklch(78% 0.13 25);
+}
+
+.moonsea-controls__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.moonsea-controls__reset {
+  border: 0;
+  padding: 5px 7px;
+  color: var(--moonsea-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.moonsea-controls__reset:hover {
+  color: var(--moonsea-ink);
+}
+
+@keyframes moonsea-light {
+  from { opacity: 0.42; transform: translate3d(-12%, -1%, 0) rotate(-1deg); }
+  to { opacity: 0.90; transform: translate3d(11%, 1%, 0) rotate(2deg); }
+}
+
+@keyframes moonsea-dust-near {
+  from { transform: translate3d(-1.4%, 2.8%, 0) rotate(-0.25deg); opacity: 0.28; }
+  to { transform: translate3d(1.2%, -2.2%, 0) rotate(0.25deg); opacity: 0.48; }
+}
+
+@keyframes moonsea-dust-far {
+  from { transform: translate3d(1%, -1.5%, 0); opacity: 0.17; }
+  to { transform: translate3d(-0.8%, 1.6%, 0); opacity: 0.31; }
+}
+
+@keyframes moonsea-glow-blue {
+  from { transform: translate3d(-4%, -3%, 0) scale(0.88); opacity: 0.42; }
+  to { transform: translate3d(7%, 5%, 0) scale(1.12); opacity: 0.88; }
+}
+
+@keyframes moonsea-glow-pearl {
+  from { transform: translate3d(6%, 4%, 0) scale(1.08); opacity: 0.72; }
+  to { transform: translate3d(-6%, -5%, 0) scale(0.90); opacity: 0.34; }
+}
+
+html.codex-moonsea.moonsea-motion-disabled body::before,
+html.codex-moonsea.moonsea-motion-disabled body::after,
+html.codex-moonsea.moonsea-motion-disabled .moonsea-ambient__dust,
+html.codex-moonsea.moonsea-motion-disabled .moonsea-ambient__glow {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.codex-moonsea:not(.moonsea-motion-enabled) body::before,
+  html.codex-moonsea:not(.moonsea-motion-enabled) body::after,
+  html.codex-moonsea:not(.moonsea-motion-enabled) .moonsea-ambient__dust,
+  html.codex-moonsea:not(.moonsea-motion-enabled) .moonsea-ambient__glow {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.codex-moonsea body::before,
+  html.codex-moonsea body::after {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  #codex-moonsea-controls {
+    right: 12px;
+    bottom: 64px;
+  }
+
+  .moonsea-controls__toggle {
+    width: 38px;
+    padding: 0;
+  }
+
+  .moonsea-controls__toggle > span:last-child {
+    display: none;
+  }
+}
