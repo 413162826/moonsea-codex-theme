@@ -11,9 +11,9 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: oven-sh/setup-bun@v2.2.0
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -32,7 +32,7 @@ jobs:
           $env:MOONSEA_PROJECT_ROOT = $stage
           & "$stage/tools/moonsea-builder.exe" --theme-version
           Compress-Archive -Path "$stage/*" -DestinationPath "$PWD/Moonsea-Codex-Windows-x64.zip"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         with:
           name: windows-package
           path: Moonsea-Codex-Windows-x64.zip
@@ -40,9 +40,9 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: oven-sh/setup-bun@v2.2.0
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -71,7 +71,7 @@ jobs:
           esac
           MOONSEA_PROJECT_ROOT="$PWD/.build/Moonsea-Codex-macOS-$TEST_ARCH" \
             "$PWD/.build/Moonsea-Codex-macOS-$TEST_ARCH/tools/moonsea-builder" --theme-version
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         with:
           name: macos-packages
           path: Moonsea-Codex-macOS-*.tar.gz
@@ -80,7 +80,7 @@ jobs:
     needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8.0.1
         with:
           path: artifacts
           merge-multiple: true
