@@ -8,6 +8,7 @@ const standardThemes = [
     edition: "standard",
     mode: "light",
     preview: ["#F7F9FA", "#E2EAED", "#176E83", "#17272F"],
+    previewGradient: "radial-gradient(circle at 22% 18%, #FFFFFF 0 16%, transparent 46%), linear-gradient(145deg, #F7FAFB 0%, #D7E6E9 58%, #8AB5BE 100%)",
     patch: {
       accent: "#176E83",
       surface: "#F7F9FA",
@@ -32,6 +33,7 @@ const standardThemes = [
     edition: "standard",
     mode: "light",
     preview: ["#E3EDF2", "#CADAE2", "#2A678B", "#132934"],
+    previewGradient: "radial-gradient(circle at 78% 18%, #F4FBFD 0 12%, transparent 44%), linear-gradient(145deg, #E7F2F6 0%, #B6D1DB 55%, #568AA1 100%)",
     patch: {
       accent: "#2A678B",
       surface: "#E3EDF2",
@@ -56,6 +58,7 @@ const standardThemes = [
     edition: "standard",
     mode: "dark",
     preview: ["#0D1A21", "#19303A", "#60B2C1", "#E5EEF1"],
+    previewGradient: "radial-gradient(circle at 78% 20%, #397687 0 8%, transparent 42%), linear-gradient(145deg, #122A34 0%, #0A1820 58%, #040B10 100%)",
     patch: {
       accent: "#60B2C1",
       surface: "#0D1A21",
@@ -80,6 +83,7 @@ const standardThemes = [
     edition: "standard",
     mode: "dark",
     preview: ["#171D24", "#282F39", "#8BA9D6", "#E9EEF2"],
+    previewGradient: "radial-gradient(circle at 20% 20%, #405A7B 0 10%, transparent 40%), linear-gradient(145deg, #28313E 0%, #151B23 60%, #090D12 100%)",
     patch: {
       accent: "#8BA9D6",
       surface: "#171D24",
@@ -130,6 +134,9 @@ export function validateStandardTheme(theme) {
   if (!Array.isArray(theme.preview) || theme.preview.length !== 4 || theme.preview.some((color) => !HEX_COLOR.test(color))) {
     throw new Error("主题预览色无效");
   }
+  if (typeof theme.previewGradient !== "string" || !theme.previewGradient.includes("gradient(") || /url\(|;/i.test(theme.previewGradient)) {
+    throw new Error("主题预览渐变无效");
+  }
   if (theme.patch.opaqueWindows !== true) {
     throw new Error("普通主题必须保持窗口不透明");
   }
@@ -156,5 +163,6 @@ export function toPublicTheme(theme) {
     edition: theme.edition,
     mode: theme.mode,
     preview: theme.preview,
+    previewGradient: theme.previewGradient,
   };
 }

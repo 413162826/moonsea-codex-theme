@@ -146,6 +146,8 @@ export async function getCodexStatus(profilePath) {
             bridgeReady: bridgeStatus?.ready === true,
             proCapable: typeof window.moonseaThemeBridge?.applyProTheme === "function",
             proRuntimeActive: bridgeStatus?.proActive === true,
+            themeId: bridgeStatus?.themeId ?? null,
+            restoreError: bridgeStatus?.restoreError ?? null,
             transparencyControlPresent: Array.from(document.querySelectorAll("button")).some((button) => button.textContent?.trim() === "透明度")
           };
         })()`,
@@ -160,8 +162,11 @@ export async function getCodexStatus(profilePath) {
           edition: value.proRuntimeActive ? "pro" : "standard",
           proCapable: value.proCapable,
           proRuntimeActive: value.proRuntimeActive,
+          themeId: value.themeId,
           transparencyControlPresent: value.transparencyControlPresent,
-          message: "Codex 已连接",
+          message: value.restoreError
+            ? `Codex 已连接，外观恢复失败：${value.restoreError}`
+            : "Codex 已连接",
         }
       : {
           connected: false,
@@ -258,12 +263,13 @@ export function createRequestHandler({ profilePath, siteRoot, status = getCodexS
     const url = new URL(request.url, `http://${host}`);
     try {
       if (request.method === "GET" && url.pathname === "/api/status") {
-        sendJson(response, 200, { ok: true, ...(await status(profilePath)) }, origin);
+        sendJson(response, 200, { ok: true, catalogVersion: 2, ...(await status(profilePath)) }, origin);
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/themes") {
         sendJson(response, 200, {
           ok: true,
+          catalogVersion: 2,
           themes: [
             ...STANDARD_THEMES.map(toPublicTheme),
             ...PRO_THEMES.map(toPublicProTheme),

@@ -62,16 +62,35 @@ async function inspectAndCapture(name) {
   await new Promise((resolve) => setTimeout(resolve, 450));
   return withPage(async (client) => {
     const evaluation = await client.call("Runtime.evaluate", {
-      expression: `({
+      expression: `(async () => ({
         proClass: document.documentElement.classList.contains("codex-moonsea"),
         controls: Boolean(document.querySelector("#codex-moonsea-controls")),
         ambient: Boolean(document.querySelector("#codex-moonsea-ambient")),
         runtimeStylesheet: Boolean(document.querySelector("#codex-moonsea-static-theme")),
         titlebarButtons: document.querySelectorAll(".draggable button[aria-label], [class*=\\"electron:h-toolbar\\"] button[aria-label]").length,
-        bodyBackground: getComputedStyle(document.body).backgroundColor
-      })`,
+        bodyBackground: getComputedStyle(document.body).backgroundColor,
+        wallpaperImage: document.documentElement.style.getPropertyValue("--moonsea-wallpaper-image"),
+        wallpaperGradient: document.documentElement.style.getPropertyValue("--moonsea-wallpaper-gradient"),
+        wallpaperPosition: document.documentElement.style.getPropertyValue("--moonsea-wallpaper-position"),
+        wallpaperBackground: getComputedStyle(document.body, "::before").backgroundImage,
+        wallpaperResource: document.documentElement.classList.contains("codex-moonsea")
+          ? await fetch("./moonsea/wallpapers/tide-dragon-realm.png").then(async (response) => ({
+              ok: response.ok,
+              status: response.status,
+              size: (await response.blob()).size
+            })).catch((error) => ({ ok: false, error: error.message }))
+          : null
+      }))()`,
+      awaitPromise: true,
       returnByValue: true,
     });
+    if (evaluation.exceptionDetails) {
+      throw new Error(
+        evaluation.exceptionDetails.exception?.description
+          ?? evaluation.exceptionDetails.text
+          ?? "Codex 页面检查失败",
+      );
+    }
     const screenshot = await client.call("Page.captureScreenshot", {
       captureBeyondViewport: false,
       format: "png",
@@ -102,6 +121,20 @@ results.push({
 const status = await getCodexStatus(profilePath);
 if (!results[1].view.proClass || !results[1].view.controls || !results[1].view.ambient) {
   throw new Error("Pro 运行时没有完整启用");
+}
+if (!results[1].view.wallpaperImage.includes("wallpapers/tide-dragon-realm.png") || !results[1].view.wallpaperGradient.includes("gradient(")) {
+  throw new Error("Pro 壁纸目录或渐变层没有应用");
+}
+if (
+  !results[1].view.wallpaperResource?.ok
+  || results[1].view.wallpaperResource.size < 100_000
+  || !results[1].view.wallpaperBackground.includes("app://-/moonsea/wallpapers/tide-dragon-realm.png")
+  || results[1].view.wallpaperBackground.includes("/moonsea/moonsea/")
+) {
+  throw new Error(`Codex 没有成功读取 Pro 壁纸资源：${JSON.stringify({
+    background: results[1].view.wallpaperBackground,
+    resource: results[1].view.wallpaperResource,
+  })}`);
 }
 if (results[2].view.proClass || results[2].view.controls || results[2].view.ambient || results[2].view.runtimeStylesheet) {
   throw new Error("切回普通主题后仍残留 Pro 运行时");

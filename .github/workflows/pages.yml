@@ -5,6 +5,13 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "assets/wallpapers/**"
+      - "src/theme-catalog.mjs"
+      - "src/pro-theme-catalog.mjs"
+      - "src/wallpaper-catalog.mjs"
+      - "scripts/sync-wallpapers.mjs"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -25,6 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run wallpapers
       - uses: actions/configure-pages@v5
         with:
           enablement: true

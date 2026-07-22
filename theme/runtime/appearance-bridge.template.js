@@ -1,8 +1,12 @@
 const RPC_MODULE_PATH = "__MOONSEA_RPC_MODULE_PATH__";
 const APP_ACTION_EXPORT = "__MOONSEA_APP_ACTION_EXPORT__";
 const THEME_VERSION = "__MOONSEA_THEME_VERSION__";
+const APPEARANCE_STATE_KEY = "codex-moonsea-appearance-state-v1";
 
 let appActionServicePromise;
+let restoredAppearanceState = null;
+let restoreError = null;
+let restorationPromise = Promise.resolve();
 
 function getAppActionService() {
   appActionServicePromise ??= import(RPC_MODULE_PATH).then((module) => {
@@ -27,6 +31,34 @@ function assertProTheme(theme) {
   if (theme.patch?.opaqueWindows !== true) throw new Error("Pro 基底必须保持窗口不透明");
 }
 
+function readAppearanceState() {
+  const raw = localStorage.getItem(APPEARANCE_STATE_KEY);
+  if (!raw) return null;
+  const state = JSON.parse(raw);
+  if (
+    state?.schemaVersion !== 1
+    || (state.edition !== "standard" && state.edition !== "pro")
+    || typeof state.themeId !== "string"
+    || !/^[a-z0-9-]+$/.test(state.themeId)
+    || (state.edition === "pro" && (!state.runtime || typeof state.runtime !== "object"))
+  ) {
+    throw new Error("已保存的月海外观状态无效");
+  }
+  return state;
+}
+
+function saveAppearanceState(theme) {
+  const state = {
+    schemaVersion: 1,
+    edition: theme.edition,
+    themeId: theme.id,
+    ...(theme.edition === "pro" ? { runtime: theme.runtime } : {}),
+  };
+  localStorage.setItem(APPEARANCE_STATE_KEY, JSON.stringify(state));
+  restoredAppearanceState = state;
+  restoreError = null;
+}
+
 async function ensureProRuntime() {
   if (window.moonseaProRuntime) return window.moonseaProRuntime;
   await new Promise((resolve, reject) => {
@@ -47,6 +79,7 @@ function disableProRuntime() {
 
 async function applyStandardTheme(theme) {
   assertStandardTheme(theme);
+  await restorationPromise;
   const startedAt = performance.now();
   disableProRuntime();
   const appActions = await getAppActionService();
@@ -60,6 +93,7 @@ async function applyStandardTheme(theme) {
       variant: theme.mode,
     },
   });
+  saveAppearanceState(theme);
   return {
     themeId: theme.id,
     edition: "standard",
@@ -69,6 +103,7 @@ async function applyStandardTheme(theme) {
 
 async function applyProTheme(theme) {
   assertProTheme(theme);
+  await restorationPromise;
   const startedAt = performance.now();
   const appActions = await getAppActionService();
   await appActions.run({
@@ -83,6 +118,7 @@ async function applyProTheme(theme) {
   });
   const runtime = await ensureProRuntime();
   await runtime.enable(theme.runtime);
+  saveAppearanceState(theme);
   return {
     themeId: theme.id,
     edition: "pro",
@@ -91,11 +127,22 @@ async function applyProTheme(theme) {
 }
 
 async function getStatus() {
+  await restorationPromise;
   const appActions = await getAppActionService();
   return {
     ready: appActions.scope != null,
     proActive: window.moonseaProRuntime?.isActive() === true,
+    themeId: restoredAppearanceState?.themeId ?? null,
+    restoreError,
   };
+}
+
+async function restoreSavedAppearance() {
+  const state = readAppearanceState();
+  restoredAppearanceState = state;
+  if (state?.edition !== "pro") return;
+  const runtime = await ensureProRuntime();
+  await runtime.enable(state.runtime);
 }
 
 Object.defineProperty(window, "moonseaThemeBridge", {
@@ -103,4 +150,8 @@ Object.defineProperty(window, "moonseaThemeBridge", {
   enumerable: false,
   writable: false,
   value: Object.freeze({ applyProTheme, applyStandardTheme, getStatus }),
+});
+
+restorationPromise = restoreSavedAppearance().catch((error) => {
+  restoreError = error?.message || "月海外观恢复失败";
 });

@@ -1,16 +1,20 @@
 html.codex-moonsea {
   --moonsea-main-alpha: 0.30;
   --moonsea-sidebar-alpha: 0.46;
+  --moonsea-titlebar-alpha: 0.46;
   --moonsea-control-alpha: 0.80;
   --moonsea-wallpaper-brightness: 0.94;
   --moonsea-wallpaper-blur: 0px;
-  --moonsea-wallpaper-image: url("./dragon-girl.png");
+  --moonsea-wallpaper-image: url("./wallpapers/tide-dragon-realm.png");
+  --moonsea-wallpaper-position: 50% 48%;
+  --moonsea-wallpaper-gradient: radial-gradient(circle at 18% 16%, oklch(89% 0.08 200 / 0.22), transparent 36%), linear-gradient(90deg, oklch(8% 0.035 242 / 0.46), transparent 46%, oklch(7% 0.03 245 / 0.18));
   --moonsea-ink: oklch(96% 0.018 230);
   --moonsea-muted: oklch(82% 0.04 225);
   --moonsea-faint: oklch(72% 0.035 225);
   --moonsea-panel: oklch(18% 0.045 243 / var(--moonsea-main-alpha));
   --moonsea-panel-strong: oklch(16% 0.045 244 / 0.94);
   --moonsea-sidebar: oklch(14% 0.04 244 / var(--moonsea-sidebar-alpha));
+  --moonsea-titlebar: oklch(14% 0.04 244 / var(--moonsea-titlebar-alpha));
   --moonsea-control: oklch(15% 0.045 243 / var(--moonsea-control-alpha));
   --moonsea-hover: oklch(72% 0.09 222 / 0.16);
   --moonsea-border: oklch(82% 0.055 225 / 0.22);
@@ -61,6 +65,7 @@ html.codex-moonsea {
   --color-token-border-light: oklch(82% 0.055 225 / 0.17) !important;
   --color-token-text-code-block-background: var(--moonsea-reading-surface-strong) !important;
   --color-token-text-code-block-foreground: var(--moonsea-ink) !important;
+  --codex-titlebar-tint: var(--moonsea-titlebar) !important;
 
   --vscode-terminal-background: oklch(16% 0.04 243 / 0.94) !important;
   --vscode-terminal-foreground: var(--moonsea-ink) !important;
@@ -75,8 +80,9 @@ html.codex-moonsea {
   --vscode-input-placeholderForeground: var(--moonsea-faint) !important;
   --vscode-descriptionForeground: var(--moonsea-muted) !important;
   --vscode-icon-foreground: var(--moonsea-ink) !important;
-  --vscode-titleBar-inactiveBackground: oklch(15% 0.04 244 / 0.92) !important;
-  --vscode-editorGroupHeader-tabsBackground: oklch(17% 0.04 243 / 0.94) !important;
+  --vscode-titleBar-activeBackground: var(--moonsea-titlebar) !important;
+  --vscode-titleBar-inactiveBackground: var(--moonsea-titlebar) !important;
+  --vscode-editorGroupHeader-tabsBackground: var(--moonsea-titlebar) !important;
   --vscode-tab-unfocusedActiveBackground: oklch(24% 0.045 240 / 0.92) !important;
   --vscode-tab-unfocusedActiveForeground: var(--moonsea-ink) !important;
   --vscode-tab-inactiveForeground: var(--moonsea-faint) !important;
@@ -104,10 +110,11 @@ html.codex-moonsea body::before {
   z-index: 0;
   pointer-events: none;
   background:
+    var(--moonsea-wallpaper-gradient),
     radial-gradient(ellipse at 0 0, oklch(8% 0.025 245 / 0.72), transparent 22%),
     linear-gradient(90deg, oklch(10% 0.035 245 / 0.48), oklch(11% 0.03 245 / 0.09) 44%, oklch(10% 0.03 245 / 0.22)),
     linear-gradient(0deg, oklch(9% 0.03 245 / 0.22), transparent 54%),
-    var(--moonsea-wallpaper-image) center / cover no-repeat;
+    var(--moonsea-wallpaper-image) var(--moonsea-wallpaper-position) / cover no-repeat;
   image-rendering: auto;
   filter:
     brightness(var(--moonsea-wallpaper-brightness))

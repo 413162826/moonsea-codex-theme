@@ -30,6 +30,7 @@ test("普通主题形成完整且克制的官方外观系统", () => {
   for (const theme of STANDARD_THEMES) {
     const { patch } = theme;
 
+    assert.match(theme.previewGradient, /gradient\(/, `${theme.name} 官网预览必须使用渐变层次`);
     assert.equal(patch.opaqueWindows, true, `${theme.name} 必须保持窗口不透明`);
     assert.ok(patch.contrast >= 28 && patch.contrast <= 50, `${theme.name} 的面板层级不能泛白或过硬`);
     assert.equal(patch.fonts.ui, null, `${theme.name} 应保留 Codex 官方 UI 字体`);

@@ -1,10 +1,11 @@
 {
   "name": "moonsea-codex-theme",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "通过本地助手即时切换 Codex 普通主题与 Pro 运行时主题",
   "type": "module",
   "scripts": {
-    "build": "node ./scripts/build-tool.mjs",
+    "wallpapers": "node ./scripts/sync-wallpapers.mjs",
+    "build": "npm run wallpapers && node ./scripts/build-tool.mjs",
     "test": "npm run build && node --test ./tests/*.test.mjs"
   },
   "engines": {
@@ -12,7 +13,8 @@
   },
   "devDependencies": {
     "@electron/asar": "^4.2.0",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "sharp": "^0.35.3"
   },
   "license": "MIT"
 }

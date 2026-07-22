@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createPackage, extractAll } from "@electron/asar";
+import { WALLPAPERS } from "../src/wallpaper-catalog.mjs";
 
 const projectRoot = path.resolve(path.dirname(process.argv[1]), "..");
 const builder = path.join(projectRoot, "tools", "moonsea-builder.mjs");
@@ -85,6 +86,13 @@ async function verifyLayout(platform, edition = "standard") {
       "utf8",
     );
     assert.match(index, /codex-moonsea-appearance-bridge/);
+    for (const wallpaper of WALLPAPERS) {
+      assert.equal(
+        fs.existsSync(path.join(extracted, "webview", "moonsea", "wallpapers", wallpaper.file)),
+        true,
+        `${wallpaper.name} 应进入 Codex 安装包`,
+      );
+    }
     if (edition === "standard") {
       assert.doesNotMatch(index, /codex-moonsea-static-theme/);
       assert.doesNotMatch(index, /codex-moonsea-pet-overlay/);
@@ -114,4 +122,17 @@ test("设置页卡片使用月海深色表面令牌", () => {
     css,
     /--color-token-bg-fog:\s*var\(--moonsea-panel-strong\)\s*!important;/,
   );
+});
+
+test("顶部栏与主界面共用透明度状态", () => {
+  const css = fs.readFileSync(themeCss, "utf8");
+  const runtime = fs.readFileSync(
+    path.join(projectRoot, "theme", "static", "theme.js"),
+    "utf8",
+  );
+
+  assert.match(css, /--moonsea-titlebar:\s*oklch\([^;]*var\(--moonsea-titlebar-alpha\)\)/);
+  assert.match(css, /--codex-titlebar-tint:\s*var\(--moonsea-titlebar\)\s*!important;/);
+  assert.match(css, /--vscode-titleBar-activeBackground:\s*var\(--moonsea-titlebar\)\s*!important;/);
+  assert.match(runtime, /--moonsea-titlebar-alpha/);
 });

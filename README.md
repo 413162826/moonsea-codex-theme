@@ -20,3 +20,9 @@
 运行压缩包里的 `Uninstall.cmd` 或 `Uninstall.command`。官方 Codex 不受影响。
 
 > 官方 Codex 更新后，再运行一次安装脚本即可。
+
+## 添加 Pro 壁纸
+
+1. 把原图放进 [`assets/wallpapers`](./assets/wallpapers/)（建议 2560×1440 以上）。
+2. 在 [`src/wallpaper-catalog.mjs`](./src/wallpaper-catalog.mjs) 增加一条壁纸信息。
+3. 运行 `npm run wallpapers` 预览，提交后官网和安装包会自动收录。

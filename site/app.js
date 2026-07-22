@@ -3,7 +3,7 @@ const DOWNLOADS = Object.freeze({
   windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip",
   macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
 });
-const state = { connected: false, proCapable: false, selected: null, themes: [] };
+const state = { connected: false, proCapable: false, catalogVersion: 0, selected: null, themes: [] };
 
 const elements = {
   apply: document.querySelector("#apply-button"),
@@ -51,6 +51,12 @@ async function request(path, options) {
   return body;
 }
 
+async function readCatalog() {
+  const response = await fetch("./catalog.json", { cache: "no-store" });
+  if (!response.ok) throw new Error("主题目录没有准备好");
+  return response.json();
+}
+
 function setConnection(connected, message, proCapable = false) {
   state.connected = connected;
   state.proCapable = proCapable;
@@ -88,12 +94,22 @@ function createThemeCard(theme) {
   button.setAttribute("aria-label", `选择${theme.name}主题，${theme.description}`);
 
   const preview = document.createElement("span");
-  preview.className = "theme-preview";
+  preview.className = `theme-preview ${theme.edition === "pro" ? "pro-preview" : "standard-preview"}`;
   preview.setAttribute("aria-hidden", "true");
-  for (const color of theme.preview.slice(0, 4)) {
-    const swatch = document.createElement("span");
-    swatch.style.background = color;
-    preview.append(swatch);
+  preview.style.setProperty("--preview-gradient", theme.previewGradient);
+  if (theme.edition === "pro") {
+    const image = document.createElement("img");
+    image.src = theme.previewImage;
+    image.alt = "";
+    image.loading = "lazy";
+    image.decoding = "async";
+    preview.append(image);
+  } else {
+    for (const part of ["sidebar", "toolbar", "content", "composer"]) {
+      const element = document.createElement("span");
+      element.className = `preview-${part}`;
+      preview.append(element);
+    }
   }
 
   const copy = document.createElement("span");
@@ -124,10 +140,19 @@ async function connect() {
   try {
     const [status, catalog] = await Promise.all([
       request("/api/status"),
-      state.themes.length ? Promise.resolve(null) : request("/api/themes"),
+      state.themes.length ? Promise.resolve(null) : readCatalog(),
     ]);
-    if (catalog) renderThemes(catalog.themes);
-    setConnection(status.connected, status.message, status.proCapable === true);
+    if (catalog) {
+      state.catalogVersion = catalog.catalogVersion ?? 0;
+      renderThemes(catalog.themes);
+    }
+    setConnection(
+      status.connected,
+      status.message,
+      status.proCapable === true && status.catalogVersion >= 2,
+    );
+    const activeTheme = state.themes.find((theme) => theme.id === status.themeId);
+    if (activeTheme) selectTheme(activeTheme);
   } catch (error) {
     setConnection(false, "请先下载并打开“Codex 月海版”，月海助手会自动启动。");
   }
@@ -156,7 +181,9 @@ async function applySelectedTheme() {
     await connect();
   } finally {
     elements.apply.classList.remove("loading");
-    elements.apply.disabled = !state.connected || !state.selected;
+    elements.apply.disabled = !state.connected
+      || !state.selected
+      || (state.selected.edition === "pro" && !state.proCapable);
   }
 }
 

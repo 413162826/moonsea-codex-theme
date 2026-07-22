@@ -1,25 +1,26 @@
-const proThemes = [
-  {
-    id: "tide-dragon-realm",
-    name: "潮汐龙境",
-    description: "月海壁纸、动态光尘与沉浸式布局",
-    edition: "pro",
-    mode: "light",
-    preview: ["#E9F1F4", "#88AFC0", "#31566B", "#172C3B"],
-    patch: {
-      accent: "#527F91",
-      surface: "#F5F7F8",
-      ink: "#1B2A32",
-      contrast: 8,
-      opaqueWindows: true,
-    },
-    runtime: {
-      wallpaper: "dragon-girl.png",
-      motion: true,
-      layout: "immersive",
-    },
+import { WALLPAPERS } from "./wallpaper-catalog.mjs";
+
+const proThemes = WALLPAPERS.map((wallpaper) => ({
+  id: wallpaper.id,
+  name: wallpaper.name,
+  description: wallpaper.description,
+  edition: "pro",
+  mode: "light",
+  previewImage: `./wallpapers/${wallpaper.previewFile}`,
+  previewGradient: wallpaper.previewGradient,
+  patch: {
+    ...wallpaper.patch,
+    opaqueWindows: true,
   },
-];
+  runtime: {
+    wallpaper: wallpaper.file,
+    wallpaperName: wallpaper.name,
+    wallpaperPosition: wallpaper.wallpaperPosition,
+    wallpaperGradient: wallpaper.wallpaperGradient,
+    motion: true,
+    layout: "immersive",
+  },
+}));
 
 export const PRO_THEMES = Object.freeze(
   proThemes.map((theme) => Object.freeze(theme)),
@@ -38,6 +39,7 @@ export function toPublicProTheme(theme) {
     description: theme.description,
     edition: theme.edition,
     mode: theme.mode,
-    preview: theme.preview,
+    previewImage: theme.previewImage,
+    previewGradient: theme.previewGradient,
   };
 }

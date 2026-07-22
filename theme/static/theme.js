@@ -37,10 +37,12 @@
   const settings = readSettings();
   let wallpaperObjectUrl = "";
   let wallpaperLoadPromise;
+  let savedWallpaperRecord = null;
   let titlebarProbeScheduled = false;
   let titlebarObserver;
   let titlebarProbeTimer;
   let active = false;
+  let activeRuntime = null;
   const wallpaperState = {
     name: "默认壁纸",
     error: false,
@@ -119,6 +121,55 @@
     }
   };
 
+  const applyPackagedWallpaper = (runtime) => {
+    if (wallpaperObjectUrl) {
+      URL.revokeObjectURL(wallpaperObjectUrl);
+      wallpaperObjectUrl = "";
+    }
+
+    if (!runtime?.wallpaper) {
+      for (const property of [
+        "--moonsea-wallpaper-image",
+        "--moonsea-wallpaper-position",
+        "--moonsea-wallpaper-gradient",
+      ]) {
+        document.documentElement.style.removeProperty(property);
+      }
+      wallpaperState.name = "默认壁纸";
+      wallpaperState.error = false;
+      updateWallpaperStatus();
+      return;
+    }
+    if (!/^[a-z0-9-]+\.(?:avif|jpe?g|png|webp)$/.test(runtime.wallpaper)) {
+      throw new Error("Pro 壁纸文件无效");
+    }
+    if (!/^\d+% \d+%$/.test(runtime.wallpaperPosition ?? "")) {
+      throw new Error("Pro 壁纸位置无效");
+    }
+    if (
+      typeof runtime.wallpaperGradient !== "string"
+      || !runtime.wallpaperGradient.includes("gradient(")
+      || /url\(|;/i.test(runtime.wallpaperGradient)
+    ) {
+      throw new Error("Pro 壁纸渐变无效");
+    }
+    document.documentElement.style.setProperty(
+      "--moonsea-wallpaper-image",
+      `url("./wallpapers/${runtime.wallpaper}")`,
+    );
+    document.documentElement.style.setProperty(
+      "--moonsea-wallpaper-position",
+      runtime.wallpaperPosition,
+    );
+    document.documentElement.style.setProperty(
+      "--moonsea-wallpaper-gradient",
+      runtime.wallpaperGradient,
+    );
+    wallpaperState.name = runtime.wallpaperName || "月海壁纸";
+    wallpaperState.error = false;
+    updateWallpaperStatus();
+  };
+
   const applyWallpaper = (record) => {
     if (wallpaperObjectUrl) {
       URL.revokeObjectURL(wallpaperObjectUrl);
@@ -133,26 +184,29 @@
       );
       wallpaperState.name = record.name || "自定义壁纸";
     } else {
-      document.documentElement.style.removeProperty(
-        "--moonsea-wallpaper-image",
-      );
-      wallpaperState.name = "默认壁纸";
+      applyPackagedWallpaper(activeRuntime);
+      return;
     }
     wallpaperState.error = false;
     updateWallpaperStatus();
   };
 
-  const loadSavedWallpaper = () => {
+  const loadSavedWallpaper = async () => {
     if (!wallpaperLoadPromise) {
       wallpaperLoadPromise = readSavedWallpaper()
-        .then(applyWallpaper)
-        .catch(() => {
-          wallpaperState.name = "壁纸读取失败";
-          wallpaperState.error = true;
-          updateWallpaperStatus();
+        .then((record) => {
+          savedWallpaperRecord = record;
+          return record;
         });
     }
-    return wallpaperLoadPromise;
+    try {
+      await wallpaperLoadPromise;
+      applyWallpaper(savedWallpaperRecord);
+    } catch {
+      wallpaperState.name = "壁纸读取失败";
+      wallpaperState.error = true;
+      updateWallpaperStatus();
+    }
   };
 
   const validateWallpaper = async (file) => {
@@ -182,10 +236,15 @@
       0.12,
       Math.min(0.78, 1 - settings.transparency / 100),
     );
+    const chromeAlpha = Math.min(0.86, mainAlpha + 0.16);
     root.style.setProperty("--moonsea-main-alpha", mainAlpha.toFixed(2));
     root.style.setProperty(
       "--moonsea-sidebar-alpha",
-      Math.min(0.86, mainAlpha + 0.16).toFixed(2),
+      chromeAlpha.toFixed(2),
+    );
+    root.style.setProperty(
+      "--moonsea-titlebar-alpha",
+      chromeAlpha.toFixed(2),
     );
     root.style.setProperty(
       "--moonsea-control-alpha",
@@ -352,6 +411,8 @@
           updatedAt: Date.now(),
         };
         await writeSavedWallpaper(record);
+        savedWallpaperRecord = record;
+        wallpaperLoadPromise = Promise.resolve(record);
         applyWallpaper(record);
       } catch (error) {
         wallpaperState.name = error?.message || "壁纸更换失败";
@@ -370,6 +431,8 @@
         applySettings();
         try {
           await removeSavedWallpaper();
+          savedWallpaperRecord = null;
+          wallpaperLoadPromise = Promise.resolve(null);
           applyWallpaper(null);
         } catch {
           wallpaperState.name = "恢复壁纸失败";
@@ -450,10 +513,11 @@
     });
   };
 
-  const enable = async () => {
+  const enable = async (runtime = null) => {
     if (!document.body) throw new Error("Codex 窗口还没有准备好");
     await ensureStylesheet();
     active = true;
+    activeRuntime = runtime;
     document.documentElement.classList.add("codex-moonsea");
     applySettings();
     await loadSavedWallpaper();
@@ -476,10 +540,13 @@
     for (const property of [
       "--moonsea-main-alpha",
       "--moonsea-sidebar-alpha",
+      "--moonsea-titlebar-alpha",
       "--moonsea-control-alpha",
       "--moonsea-wallpaper-brightness",
       "--moonsea-wallpaper-blur",
       "--moonsea-wallpaper-image",
+      "--moonsea-wallpaper-position",
+      "--moonsea-wallpaper-gradient",
     ]) {
       root.style.removeProperty(property);
     }
@@ -494,6 +561,8 @@
     if (wallpaperObjectUrl) URL.revokeObjectURL(wallpaperObjectUrl);
     wallpaperObjectUrl = "";
     wallpaperLoadPromise = undefined;
+    savedWallpaperRecord = null;
+    activeRuntime = null;
     return { active: false };
   };
 

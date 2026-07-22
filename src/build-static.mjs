@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { createPackage, extractAll } from "@electron/asar";
+import { WALLPAPERS } from "./wallpaper-catalog.mjs";
 
 function findProjectRoot() {
   const candidates = [
@@ -26,7 +27,7 @@ function findProjectRoot() {
 
 const projectRoot = findProjectRoot();
 const themeDir = path.join(projectRoot, "theme", "static");
-const assetsDir = path.join(projectRoot, "assets");
+const wallpaperDir = path.join(projectRoot, "assets", "wallpapers");
 const bridgeTemplate = path.join(
   projectRoot,
   "theme",
@@ -37,8 +38,11 @@ const themeFiles = {
   css: path.join(themeDir, "theme.css"),
   petCss: path.join(themeDir, "pet-overlay.css"),
   script: path.join(themeDir, "theme.js"),
-  wallpaper: path.join(assetsDir, "dragon-girl.png"),
 };
+const wallpaperFiles = WALLPAPERS.map((wallpaper) => ({
+  ...wallpaper,
+  source: path.join(wallpaperDir, wallpaper.file),
+}));
 const editions = new Set(["standard", "pro"]);
 const asarCandidates = [
   path.join("resources", "app.asar"),
@@ -54,6 +58,9 @@ function assertFile(filePath, label) {
 for (const [name, filePath] of Object.entries(themeFiles)) {
   assertFile(filePath, `主题资源 ${name}`);
 }
+for (const wallpaper of wallpaperFiles) {
+  assertFile(wallpaper.source, `主题壁纸 ${wallpaper.name}`);
+}
 assertFile(bridgeTemplate, "外观控制桥模板");
 
 function getThemeVersion(edition = "standard") {
@@ -63,6 +70,10 @@ function getThemeVersion(edition = "standard") {
   hash.update(fs.readFileSync(bridgeTemplate));
   for (const filePath of Object.values(themeFiles)) {
     hash.update(fs.readFileSync(filePath));
+  }
+  hash.update(JSON.stringify(WALLPAPERS));
+  for (const wallpaper of wallpaperFiles) {
+    hash.update(fs.readFileSync(wallpaper.source));
   }
   return hash.digest("hex").slice(0, 12);
 }
@@ -205,7 +216,7 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
   const packedTheme = path.join(webviewDir, "moonsea", "theme.css");
   const packedPet = path.join(webviewDir, "moonsea", "pet-overlay.css");
   const packedScript = path.join(webviewDir, "moonsea", "theme.js");
-  const packedWallpaper = path.join(webviewDir, "moonsea", "dragon-girl.png");
+  const packedWallpaperDir = path.join(webviewDir, "moonsea", "wallpapers");
   const packedBridge = path.join(webviewDir, "moonsea", "appearance-bridge.js");
   const metadataPath = path.join(webviewDir, "moonsea", "metadata.json");
 
@@ -237,7 +248,6 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
     [packedTheme, "主题 CSS"],
     [packedPet, "宠物 CSS"],
     [packedScript, "主题脚本"],
-    [packedWallpaper, "主题壁纸"],
   ]) {
     assertFile(filePath, label);
   }
@@ -245,8 +255,14 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
     fs.readFileSync(packedTheme).equals(fs.readFileSync(themeFiles.css)),
     fs.readFileSync(packedPet).equals(fs.readFileSync(themeFiles.petCss)),
     fs.readFileSync(packedScript).equals(fs.readFileSync(themeFiles.script)),
-    fs.readFileSync(packedWallpaper).equals(fs.readFileSync(themeFiles.wallpaper)),
   );
+  for (const wallpaper of wallpaperFiles) {
+    const packedWallpaper = path.join(packedWallpaperDir, wallpaper.file);
+    assertFile(packedWallpaper, `主题壁纸 ${wallpaper.name}`);
+    checks.push(
+      fs.readFileSync(packedWallpaper).equals(fs.readFileSync(wallpaper.source)),
+    );
+  }
   if (edition === "standard") {
     checks.push(
       !index.includes(`id="codex-moonsea-static-theme"`),
@@ -338,7 +354,11 @@ function applyTheme(extractedDir, themeVersion, edition) {
   fs.copyFileSync(themeFiles.css, path.join(moonseaDir, "theme.css"));
   fs.copyFileSync(themeFiles.petCss, path.join(moonseaDir, "pet-overlay.css"));
   fs.copyFileSync(themeFiles.script, path.join(moonseaDir, "theme.js"));
-  fs.copyFileSync(themeFiles.wallpaper, path.join(moonseaDir, "dragon-girl.png"));
+  const packedWallpaperDir = path.join(moonseaDir, "wallpapers");
+  fs.mkdirSync(packedWallpaperDir, { recursive: true });
+  for (const wallpaper of wallpaperFiles) {
+    fs.copyFileSync(wallpaper.source, path.join(packedWallpaperDir, wallpaper.file));
+  }
 
   const indexPath = path.join(extractedDir, "webview", "index.html");
   const compositionPath = path.join(

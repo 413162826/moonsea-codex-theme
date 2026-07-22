@@ -10,6 +10,7 @@ import {
 } from "../src/manager-core.mjs";
 import { getStandardTheme, STANDARD_THEMES } from "../src/theme-catalog.mjs";
 import { getProTheme, PRO_THEMES } from "../src/pro-theme-catalog.mjs";
+import { WALLPAPERS } from "../src/wallpaper-catalog.mjs";
 
 const projectRoot = path.resolve(path.dirname(process.argv[1]), "..");
 
@@ -33,6 +34,9 @@ test("Pro 主题固定使用官方浅色不透明基底", () => {
     assert.equal(theme.mode, "light");
     assert.equal(theme.patch.opaqueWindows, true);
     assert.equal(theme.runtime.motion, true);
+    assert.match(theme.previewImage, /^\.\/wallpapers\/[a-z0-9-]+\.webp$/);
+    assert.match(theme.previewGradient, /gradient\(/);
+    assert.match(theme.runtime.wallpaperGradient, /gradient\(/);
   }
   assert.equal(getProTheme("tide-dragon-realm").runtime.layout, "immersive");
 });
@@ -68,6 +72,22 @@ test("控制桥等待 Codex 官方动作作用域就绪", () => {
   assert.match(bridge, /disableProRuntime/);
 });
 
+test("月海外观状态会跨重启恢复并同步官网选中项", () => {
+  const bridge = fs.readFileSync(
+    path.join(projectRoot, "theme", "runtime", "appearance-bridge.template.js"),
+    "utf8",
+  );
+  const manager = fs.readFileSync(path.join(projectRoot, "src", "manager-core.mjs"), "utf8");
+  const website = fs.readFileSync(path.join(projectRoot, "site", "app.js"), "utf8");
+
+  assert.match(bridge, /codex-moonsea-appearance-state-v1/);
+  assert.match(bridge, /restoreSavedAppearance/);
+  assert.match(bridge, /saveAppearanceState/);
+  assert.match(bridge, /themeId/);
+  assert.match(manager, /themeId:\s*bridgeStatus\?\.themeId/);
+  assert.match(website, /status\.themeId/);
+});
+
 test("Pro 运行时可以启用并完整退出", () => {
   const runtime = fs.readFileSync(
     path.join(projectRoot, "theme", "static", "theme.js"),
@@ -78,6 +98,31 @@ test("Pro 运行时可以启用并完整退出", () => {
   assert.match(runtime, /classList\.remove\(/);
   assert.match(runtime, /codex-moonsea-static-theme/);
   assert.match(runtime, /moonseaProRuntime/);
+  assert.match(runtime, /applyPackagedWallpaper/);
+  assert.match(runtime, /--moonsea-wallpaper-gradient/);
+  assert.match(runtime, /url\("\.\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
+  assert.doesNotMatch(runtime, /\.\/moonsea\/wallpapers\//);
+  assert.match(runtime, /savedWallpaperRecord/);
+  assert.match(runtime, /await loadSavedWallpaper\(\)/);
+});
+
+test("壁纸目录同时生成官网预览与安装资源", () => {
+  assert.ok(WALLPAPERS.length >= 1);
+  for (const wallpaper of WALLPAPERS) {
+    assert.equal(
+      fs.existsSync(path.join(projectRoot, "assets", "wallpapers", wallpaper.file)),
+      true,
+      `${wallpaper.name} 原图应存在`,
+    );
+    assert.equal(
+      fs.existsSync(path.join(projectRoot, "site", "wallpapers", wallpaper.previewFile)),
+      true,
+      `${wallpaper.name} 官网预览应存在`,
+    );
+  }
+  const catalog = JSON.parse(fs.readFileSync(path.join(projectRoot, "site", "catalog.json"), "utf8"));
+  assert.equal(catalog.catalogVersion, 2);
+  assert.equal(catalog.themes.filter(({ edition }) => edition === "pro").length, WALLPAPERS.length);
 });
 
 test("官网按系统直下安装包且入口使用通用命名", () => {
@@ -86,6 +131,9 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
   assert.match(website, /Moonsea-Codex-macOS\.zip/);
   assert.doesNotMatch(website, /releases\/latest["']/);
   assert.match(website, /status\.proCapable === true/);
+  assert.match(website, /status\.catalogVersion >= 2/);
+  assert.match(website, /\.\/catalog\.json/);
+  assert.match(website, /theme\.previewImage/);
   assert.match(website, /Pro 主题需要新版月海版/);
 
   for (const entry of ["Install.cmd", "Uninstall.cmd", "Install.command", "Uninstall.command"]) {

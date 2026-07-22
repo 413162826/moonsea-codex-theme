@@ -5,6 +5,8 @@ release/
 tools/moonsea-builder.cjs
 tools/moonsea-builder.mjs
 tools/moonsea-manager.mjs
+site/wallpapers/
+site/catalog.json
 *.log
 .DS_Store
 Thumbs.db
