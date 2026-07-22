@@ -56,7 +56,7 @@ $installedManagerPath = Join-Path $InstallRoot $managerFileName
 $managerPidPath = Join-Path $InstallRoot "manager.pid"
 
 if (-not (Test-Path -LiteralPath $BuilderPath -PathType Leaf)) {
-    throw "安装文件不完整，请重新下载并完整解压 Windows 安装包。"
+    throw "The installation package is incomplete. Download and fully extract it again."
 }
 if (-not (Test-Path -LiteralPath $launcherSourcePath -PathType Leaf)) {
     throw "Launcher script is missing: $launcherSourcePath"
@@ -239,11 +239,6 @@ if (-not $SkipShortcut -and -not $env:MOONSEA_SKIP_SHORTCUT) {
     $shortcut.IconLocation = "$(Join-Path $activeBuild 'ChatGPT.exe'),0"
     $shortcut.Save()
 }
-
-Write-Host ""
-Write-Host "安装完成，接下来只做两步："
-Write-Host "1. 打开桌面的“Codex 月海版”"
-Write-Host "2. 回到月海主题官网，选择皮肤并点击“应用到 Codex”"
 
 if (-not $SkipLaunch -and -not $env:MOONSEA_SKIP_LAUNCH) {
     & $installedLauncherPath

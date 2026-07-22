@@ -36,9 +36,11 @@ $staleMain = @($runningMain | Where-Object {
 })
 if ($staleMain.Count -gt 0) {
     Add-Type -AssemblyName PresentationFramework
+    $restartMessage = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("5qOA5rWL5Yiw5pen54mIIENvZGV4IOaciOa1t+eJiOato+WcqOi/kOihjOOAggoK5YWz6Zet5pen54mI5ZCO5omN6IO95ZCv5Yqo5paw55qE5Li76aKY6L+e5o6l44CC5pyq5L+d5a2Y55qE5Lu75Yqh6K+35YWI5L+d5a2Y44CCCgrmmK/lkKbnjrDlnKjlhbPpl63ml6fniYjlubbmiZPlvIDmlrDniYjvvJ8="))
+    $restartTitle = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("Q29kZXgg5pyI5rW354mI6ZyA6KaB6YeN5ZCv"))
     $choice = [System.Windows.MessageBox]::Show(
-        "检测到旧版 Codex 月海版正在运行。`n`n关闭旧版后才能启动新的主题连接。未保存的任务请先保存。`n`n是否现在关闭旧版并打开新版？",
-        "Codex 月海版需要重启",
+        $restartMessage,
+        $restartTitle,
         [System.Windows.MessageBoxButton]::YesNo,
         [System.Windows.MessageBoxImage]::Information
     )

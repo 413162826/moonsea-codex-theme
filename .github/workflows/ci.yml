@@ -26,12 +26,19 @@ jobs:
       - name: 验证 macOS 安装与卸载
         if: runner.os == 'macOS'
         run: zsh ./tests/macos-installer-smoke.sh
-      - name: 检查 PowerShell 语法
+      - name: 检查 Windows PowerShell 5.1 兼容性
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: powershell
         run: |
-          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
-            [void][scriptblock]::Create((Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8))
+          Get-ChildItem scripts/windows -Filter *.ps1 | ForEach-Object {
+            $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+            if ($bytes | Where-Object { $_ -ge 128 }) {
+              throw "$($_.Name) contains non-ASCII bytes and is unsafe on localized Windows PowerShell 5.1"
+            }
+            $parseTokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$parseTokens, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) { throw ($parseErrors | Out-String) }
           }
       - name: 检查 macOS 脚本语法
         if: runner.os == 'macOS'

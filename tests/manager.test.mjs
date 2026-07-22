@@ -92,3 +92,15 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
     assert.equal(fs.existsSync(path.join(projectRoot, entry)), true, `${entry} 应存在`);
   }
 });
+
+test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () => {
+  const scriptsRoot = path.join(projectRoot, "scripts", "windows");
+  for (const entry of fs.readdirSync(scriptsRoot).filter((name) => name.endsWith(".ps1"))) {
+    const script = fs.readFileSync(path.join(scriptsRoot, entry));
+    assert.equal(
+      script.every((byte) => byte < 0x80),
+      true,
+      `${entry} 必须保持纯 ASCII，避免 Windows PowerShell 5.1 按本地代码页误读`,
+    );
+  }
+});
