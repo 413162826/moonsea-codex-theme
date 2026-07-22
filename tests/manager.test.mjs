@@ -85,6 +85,8 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
   assert.match(website, /Moonsea-Codex-Windows-x64\.zip/);
   assert.match(website, /Moonsea-Codex-macOS\.zip/);
   assert.doesNotMatch(website, /releases\/latest["']/);
+  assert.match(website, /status\.proCapable === true/);
+  assert.match(website, /Pro 主题需要新版月海版/);
 
   for (const entry of ["Install.cmd", "Uninstall.cmd", "Install.command", "Uninstall.command"]) {
     assert.equal(fs.existsSync(path.join(projectRoot, entry)), true, `${entry} 应存在`);

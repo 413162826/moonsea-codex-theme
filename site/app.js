@@ -3,7 +3,7 @@ const DOWNLOADS = Object.freeze({
   windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip",
   macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
 });
-const state = { connected: false, selected: null, themes: [] };
+const state = { connected: false, proCapable: false, selected: null, themes: [] };
 
 const elements = {
   apply: document.querySelector("#apply-button"),
@@ -51,23 +51,32 @@ async function request(path, options) {
   return body;
 }
 
-function setConnection(connected, message) {
+function setConnection(connected, message, proCapable = false) {
   state.connected = connected;
+  state.proCapable = proCapable;
   elements.statusDot.className = `status-dot ${connected ? "connected" : "error"}`;
   elements.statusTitle.textContent = connected ? "Codex 已连接" : "还没有连接 Codex";
   elements.statusMessage.textContent = message;
-  elements.apply.disabled = !connected || !state.selected;
+  const proNeedsUpdate = state.selected?.edition === "pro" && !proCapable;
+  elements.apply.disabled = !connected || !state.selected || proNeedsUpdate;
+  if (connected && proNeedsUpdate) {
+    elements.result.textContent = "Pro 主题需要新版月海版，请重新打开桌面的“Codex 月海版”。";
+    elements.result.className = "result-message error";
+  }
 }
 
 function selectTheme(theme) {
   state.selected = theme;
   elements.selected.textContent = theme.name;
-  elements.apply.disabled = !state.connected;
+  const proNeedsUpdate = theme.edition === "pro" && !state.proCapable;
+  elements.apply.disabled = !state.connected || proNeedsUpdate;
   for (const card of document.querySelectorAll(".theme-card")) {
     card.setAttribute("aria-pressed", String(card.dataset.themeId === theme.id));
   }
-  elements.result.textContent = "";
-  elements.result.className = "result-message";
+  elements.result.textContent = proNeedsUpdate
+    ? "Pro 主题需要新版月海版，请重新打开桌面的“Codex 月海版”。"
+    : "";
+  elements.result.className = `result-message ${proNeedsUpdate ? "error" : ""}`.trim();
 }
 
 function createThemeCard(theme) {
@@ -118,7 +127,7 @@ async function connect() {
       state.themes.length ? Promise.resolve(null) : request("/api/themes"),
     ]);
     if (catalog) renderThemes(catalog.themes);
-    setConnection(status.connected, status.message);
+    setConnection(status.connected, status.message, status.proCapable === true);
   } catch (error) {
     setConnection(false, "请先下载并打开“Codex 月海版”，月海助手会自动启动。");
   }
