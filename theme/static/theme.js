@@ -363,7 +363,7 @@
     const renderUpdate = (update) => {
       updateState = update;
       updateVersion.textContent = update.currentVersion ? `v${update.currentVersion}` : "版本未知";
-      updateMessage.classList.toggle("is-error", update.status === "error");
+      updateMessage.classList.toggle("is-error", update.status === "error" || Boolean(update.error));
       updateProgress.hidden = update.status !== "downloading";
       updateProgress.style.setProperty("--moonsea-update-progress", String((update.progress || 0) / 100));
       toggle.classList.toggle("is-update-available", ["available", "ready"].includes(update.status));
@@ -383,8 +383,13 @@
         updateAction.textContent = "正在下载";
         updateAction.disabled = true;
       } else if (update.status === "ready") {
-        updateMessage.textContent = "新版本已经准备好。月海版会关闭，并在更新后自动重新打开。";
-        updateAction.textContent = "重新打开并更新";
+        updateMessage.textContent = update.error
+          || "新版本已经准备好。月海版会关闭，并在更新后自动重新打开。";
+        updateAction.textContent = update.error ? "重试安装" : "重新打开并更新";
+      } else if (update.status === "starting") {
+        updateMessage.textContent = "正在启动更新程序，确认安全接管后会自动重启…";
+        updateAction.textContent = "正在准备";
+        updateAction.disabled = true;
       } else if (update.status === "installing") {
         updateMessage.textContent = "正在切换到新版本…";
         updateAction.textContent = "正在更新";
@@ -412,7 +417,7 @@
     });
 
     updateSection.addEventListener("dblclick", () => {
-      if (["checking", "downloading", "ready", "installing"].includes(updateState?.status)) {
+      if (["checking", "downloading", "ready", "starting", "installing"].includes(updateState?.status)) {
         return;
       }
       pendingUpdateCommand = "check";
@@ -427,10 +432,10 @@
       updateAction.disabled = true;
       if (updateState?.status === "ready") {
         pendingUpdateCommand = "install";
-        renderUpdate({ ...updateState, status: "installing" });
+        renderUpdate({ ...updateState, status: "starting", error: null });
       } else {
         pendingUpdateCommand = "download";
-        renderUpdate({ ...updateState, status: "checking", error: null });
+        renderUpdate({ ...updateState, status: "downloading", progress: updateState?.progress || 0, error: null });
       }
     });
 

@@ -3,17 +3,25 @@ const DOWNLOADS = Object.freeze({
   windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip",
   macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
 });
-const state = { connected: false, proCapable: false, appVersion: null, catalogVersion: 0, selected: null, themes: [] };
+const state = {
+  connected: false,
+  proCapable: false,
+  appVersion: null,
+  catalogVersion: 0,
+  selected: null,
+  activeThemeId: null,
+  applyingThemeId: null,
+  connecting: false,
+  themes: [],
+};
 
 const elements = {
-  apply: document.querySelector("#apply-button"),
   downloadLabel: document.querySelector("#download-label"),
   downloadLink: document.querySelector("#download-link"),
   standardGrid: document.querySelector("#standard-theme-grid"),
   proGrid: document.querySelector("#pro-theme-grid"),
   result: document.querySelector("#result-message"),
   retry: document.querySelector("#retry-button"),
-  selected: document.querySelector("#selected-theme"),
   standardMetric: document.querySelector("#standard-metric"),
   standardRendererMetric: document.querySelector("#standard-renderer-metric"),
   proMetric: document.querySelector("#pro-metric"),
@@ -22,6 +30,33 @@ const elements = {
   statusMessage: document.querySelector("#status-message"),
   statusTitle: document.querySelector("#status-title"),
 };
+
+function updateCardActions() {
+  for (const card of document.querySelectorAll(".theme-card")) {
+    const theme = state.themes.find((item) => item.id === card.dataset.themeId);
+    if (!theme) continue;
+    const selected = state.selected?.id === theme.id;
+    const active = state.activeThemeId === theme.id;
+    const applying = state.applyingThemeId === theme.id;
+    const proNeedsUpdate = theme.edition === "pro" && !state.proCapable;
+    const action = card.querySelector("[data-theme-apply]");
+    const selector = card.querySelector("[data-theme-select]");
+    card.classList.toggle("is-selected", selected);
+    card.classList.toggle("is-active", active);
+    selector.setAttribute("aria-pressed", String(selected));
+    action.disabled = !state.connected || proNeedsUpdate || state.applyingThemeId !== null || active;
+    action.classList.toggle("loading", applying);
+    action.textContent = applying
+      ? "正在应用…"
+      : active
+        ? "正在使用"
+        : proNeedsUpdate
+          ? "升级后应用"
+          : state.connected
+            ? "应用主题"
+            : "连接后应用";
+  }
+}
 
 function configureDownload() {
   const platform = [navigator.userAgentData?.platform, navigator.platform, navigator.userAgent]
@@ -70,7 +105,7 @@ function setConnection(connected, message, proCapable = false, appVersion = null
     ? "请下载新版并安装一次。登录、设置和自定义壁纸都会保留。"
     : message;
   const proNeedsUpdate = state.selected?.edition === "pro" && !proCapable;
-  elements.apply.disabled = !connected || !state.selected || proNeedsUpdate;
+  updateCardActions();
   if (connected && proNeedsUpdate) {
     elements.result.textContent = "Pro 主题需要新版月海版，请重新打开桌面的“Codex 月海版”。";
     elements.result.className = "result-message error";
@@ -82,12 +117,8 @@ function setConnection(connected, message, proCapable = false, appVersion = null
 
 function selectTheme(theme) {
   state.selected = theme;
-  elements.selected.textContent = theme.name;
   const proNeedsUpdate = theme.edition === "pro" && !state.proCapable;
-  elements.apply.disabled = !state.connected || proNeedsUpdate;
-  for (const card of document.querySelectorAll(".theme-card")) {
-    card.setAttribute("aria-pressed", String(card.dataset.themeId === theme.id));
-  }
+  updateCardActions();
   elements.result.textContent = proNeedsUpdate
     ? "Pro 主题需要新版月海版，请重新打开桌面的“Codex 月海版”。"
     : "";
@@ -95,12 +126,16 @@ function selectTheme(theme) {
 }
 
 function createThemeCard(theme) {
-  const button = document.createElement("button");
-  button.className = `theme-card ${theme.edition === "pro" ? "pro-card" : ""}`;
-  button.type = "button";
-  button.dataset.themeId = theme.id;
-  button.setAttribute("aria-pressed", "false");
-  button.setAttribute("aria-label", `选择${theme.name}主题，${theme.description}`);
+  const card = document.createElement("article");
+  card.className = `theme-card ${theme.edition === "pro" ? "pro-card" : ""}`;
+  card.dataset.themeId = theme.id;
+
+  const selector = document.createElement("button");
+  selector.className = "theme-card__select";
+  selector.type = "button";
+  selector.dataset.themeSelect = "";
+  selector.setAttribute("aria-pressed", "false");
+  selector.setAttribute("aria-label", `预览${theme.name}主题，${theme.description}`);
 
   const preview = document.createElement("span");
   preview.className = `theme-preview ${theme.edition === "pro" ? "pro-preview" : "standard-preview"}`;
@@ -128,14 +163,31 @@ function createThemeCard(theme) {
   const description = document.createElement("small");
   description.textContent = theme.description;
   copy.append(name, description);
-  button.append(preview, copy);
-  button.addEventListener("click", () => selectTheme(theme));
-  return button;
+  selector.append(preview, copy);
+
+  const footer = document.createElement("div");
+  footer.className = "theme-card__footer";
+  const mode = document.createElement("span");
+  mode.textContent = theme.edition === "pro" ? "Pro 沉浸主题" : theme.mode === "dark" ? "深色外观" : "浅色外观";
+  const apply = document.createElement("button");
+  apply.className = "theme-card__apply";
+  apply.type = "button";
+  apply.dataset.themeApply = "";
+  apply.setAttribute("aria-label", `应用${theme.name}主题到 Codex`);
+  apply.textContent = "连接后应用";
+  apply.disabled = true;
+  footer.append(mode, apply);
+  card.append(selector, footer);
+  selector.addEventListener("click", () => selectTheme(theme));
+  apply.addEventListener("click", () => applyTheme(theme));
+  return card;
 }
 
 function renderThemes(themes) {
   state.themes = themes;
-  const standardThemes = themes.filter((theme) => theme.edition === "standard");
+  const standardThemes = themes
+    .filter((theme) => theme.edition === "standard")
+    .sort((left, right) => Number(left.mode === "dark") - Number(right.mode === "dark"));
   const proThemes = themes.filter((theme) => theme.edition === "pro");
   elements.standardGrid.replaceChildren(...standardThemes.map(createThemeCard));
   elements.proGrid.replaceChildren(...proThemes.map(createThemeCard));
@@ -143,6 +195,8 @@ function renderThemes(themes) {
 }
 
 async function connect() {
+  if (state.connecting) return;
+  state.connecting = true;
   elements.statusDot.className = "status-dot";
   elements.statusTitle.textContent = "正在连接月海助手";
   elements.statusMessage.textContent = "确认本机 Codex 是否已经就绪…";
@@ -162,43 +216,47 @@ async function connect() {
       status.appVersion ?? null,
     );
     const activeTheme = state.themes.find((theme) => theme.id === status.themeId);
+    state.activeThemeId = activeTheme?.id ?? null;
     if (activeTheme) selectTheme(activeTheme);
+    else updateCardActions();
   } catch (error) {
     setConnection(false, "请先下载并打开“Codex 月海版”，月海助手会自动启动。");
+  } finally {
+    state.connecting = false;
   }
 }
 
-async function applySelectedTheme() {
-  if (!state.selected || !state.connected) return;
-  elements.apply.disabled = true;
-  elements.apply.classList.add("loading");
+async function applyTheme(theme) {
+  if (!theme || !state.connected || state.applyingThemeId !== null) return;
+  selectTheme(theme);
+  if (theme.edition === "pro" && !state.proCapable) return;
+  state.applyingThemeId = theme.id;
+  updateCardActions();
   elements.result.textContent = "正在更新 Codex…";
   elements.result.className = "result-message";
   try {
     const { result } = await request("/api/themes/apply", {
       method: "POST",
-      body: JSON.stringify({ themeId: state.selected.id }),
+      body: JSON.stringify({ themeId: theme.id }),
     });
-    const isPro = state.selected.edition === "pro";
+    const isPro = theme.edition === "pro";
     const totalMetric = isPro ? elements.proMetric : elements.standardMetric;
     const rendererMetric = isPro ? elements.proRendererMetric : elements.standardRendererMetric;
     totalMetric.textContent = `${result.totalMs} ms`;
     rendererMetric.textContent = `Codex 窗口 ${result.rendererMs} ms`;
-    elements.result.textContent = `${state.selected.name}已应用，Codex 无需重启。`;
+    state.activeThemeId = theme.id;
+    elements.result.textContent = `${theme.name}已应用，Codex 无需重启。`;
   } catch (error) {
     elements.result.textContent = error.message;
     elements.result.className = "result-message error";
     await connect();
   } finally {
-    elements.apply.classList.remove("loading");
-    elements.apply.disabled = !state.connected
-      || !state.selected
-      || (state.selected.edition === "pro" && !state.proCapable);
+    state.applyingThemeId = null;
+    updateCardActions();
   }
 }
 
 elements.retry.addEventListener("click", connect);
-elements.apply.addEventListener("click", applySelectedTheme);
 configureDownload();
 connect();
 setInterval(connect, 5000);

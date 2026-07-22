@@ -46,12 +46,17 @@ const updaterPath = process.platform === "win32"
   : path.join(projectRoot, "scripts", "macos", "update-moonsea.sh");
 
 function launchUpdater({ packagePath, currentVersion, targetVersion }) {
+  const readyPath = path.join(installRoot, "updates", `updater-${targetVersion}.ready`);
+  const launchLogPath = path.join(installRoot, "updates", "updater-launch.log");
+  fs.mkdirSync(path.dirname(readyPath), { recursive: true });
+  fs.rmSync(readyPath, { force: true });
   const commonArguments = [
     "--install-root", installRoot,
     "--package-path", packagePath,
     "--manager-pid", String(process.pid),
     "--current-version", currentVersion,
     "--target-version", targetVersion,
+    "--ready-path", readyPath,
   ];
   const command = process.platform === "win32"
     ? process.env.SystemRoot
@@ -68,14 +73,51 @@ function launchUpdater({ packagePath, currentVersion, targetVersion }) {
         "-ManagerPid", String(process.pid),
         "-CurrentVersion", currentVersion,
         "-TargetVersion", targetVersion,
+        "-ReadyPath", readyPath,
       ]
     : [updaterPath, ...commonArguments];
-  const child = spawn(command, argumentsList, {
-    detached: true,
-    stdio: "ignore",
-    windowsHide: true,
+  return new Promise((resolve, reject) => {
+    const launchLog = fs.openSync(launchLogPath, "a");
+    let child;
+    try {
+      child = spawn(command, argumentsList, {
+        detached: true,
+        stdio: ["ignore", launchLog, launchLog],
+        windowsHide: true,
+      });
+    } catch (error) {
+      fs.closeSync(launchLog);
+      reject(error);
+      return;
+    }
+    fs.closeSync(launchLog);
+    let settled = false;
+    let pollTimer = null;
+    let timeoutTimer = null;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      if (pollTimer) clearInterval(pollTimer);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      if (error) {
+        if (child.exitCode === null && !child.killed) child.kill();
+        reject(error);
+      }
+      else {
+        fs.rmSync(readyPath, { force: true });
+        child.unref();
+        resolve();
+      }
+    };
+    child.once("error", (error) => finish(error));
+    child.once("exit", (code) => finish(new Error(`更新程序提前退出（代码 ${code ?? "未知"}）`)));
+    pollTimer = setInterval(() => {
+      if (fs.existsSync(readyPath)) finish();
+    }, 50);
+    timeoutTimer = setTimeout(() => {
+      finish(new Error("等待更新程序响应超时"));
+    }, 15_000);
   });
-  child.unref();
 }
 
 fs.mkdirSync(installRoot, { recursive: true });
@@ -120,7 +162,7 @@ async function syncAssistantUpdate() {
       const refreshedUpdate = await updateService.getStatus({ force: true });
       await exchangeAssistantUpdate(profilePath, refreshedUpdate);
     }
-    if (exchange?.command === "download") await updateService.startDownload();
+    if (exchange?.command === "download") await updateService.startDownload({ autoInstall: true });
     if (exchange?.command === "install") await updateService.startInstall();
   } catch {
     // Codex 可能还没有打开，下一轮会重新连接活动窗口。

@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory = $true)][string]$PackagePath,
     [Parameter(Mandatory = $true)][int]$ManagerPid,
     [Parameter(Mandatory = $true)][string]$CurrentVersion,
-    [Parameter(Mandatory = $true)][string]$TargetVersion
+    [Parameter(Mandatory = $true)][string]$TargetVersion,
+    [Parameter(Mandatory = $true)][string]$ReadyPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -67,6 +68,7 @@ function Wait-ForManager([string]$ExpectedVersion) {
 
 $InstallRoot = Get-FullPath $InstallRoot
 $PackagePath = Get-FullPath $PackagePath
+$ReadyPath = Get-FullPath $ReadyPath
 $updatesRoot = Join-Path $InstallRoot "updates"
 $buildsRoot = Join-Path $InstallRoot "builds"
 $manifestPath = Join-Path $InstallRoot "install.json"
@@ -74,8 +76,10 @@ $launcherPath = Join-Path $InstallRoot "Start-Moonsea-Windows.ps1"
 $extractRoot = Join-Path $updatesRoot "extract-$TargetVersion"
 $rollbackRoot = Join-Path $updatesRoot "rollback-$CurrentVersion-to-$TargetVersion"
 $logPath = Join-Path $updatesRoot "update.log"
+$resultPath = Join-Path $updatesRoot "update-result.json"
 
 Assert-ChildPath $PackagePath $updatesRoot "Update package"
+Assert-ChildPath $ReadyPath $updatesRoot "Updater ready marker"
 Assert-ChildPath $extractRoot $updatesRoot "Extraction directory"
 Assert-ChildPath $rollbackRoot $updatesRoot "Rollback directory"
 if ($CurrentVersion -notmatch "^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$") { throw "Current version is invalid." }
@@ -85,6 +89,13 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "The ins
 
 New-Item -ItemType Directory -Path $updatesRoot -Force | Out-Null
 Start-Transcript -LiteralPath $logPath -Append | Out-Null
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($resultPath, (@{
+    status = "installing"
+    currentVersion = $CurrentVersion
+    targetVersion = $TargetVersion
+} | ConvertTo-Json -Compress), $utf8NoBom)
+[System.IO.File]::WriteAllText($ReadyPath, "ready", $utf8NoBom)
 try {
     for ($attempt = 0; $attempt -lt 50; $attempt++) {
         if ($null -eq (Get-Process -Id $ManagerPid -ErrorAction SilentlyContinue)) { break }
@@ -133,6 +144,11 @@ try {
     }
     Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $PackagePath -Force -ErrorAction SilentlyContinue
+    [System.IO.File]::WriteAllText($resultPath, (@{
+        status = "succeeded"
+        currentVersion = $CurrentVersion
+        targetVersion = $TargetVersion
+    } | ConvertTo-Json -Compress), $utf8NoBom)
     Write-Output "Moonsea update completed: $CurrentVersion -> $TargetVersion"
 }
 catch {
@@ -145,6 +161,11 @@ catch {
     if (Test-Path -LiteralPath $rollbackLauncher -PathType Leaf) {
         Copy-Item -LiteralPath $rollbackLauncher -Destination $launcherPath -Force
     }
+    [System.IO.File]::WriteAllText($resultPath, (@{
+        status = "failed"
+        currentVersion = $CurrentVersion
+        targetVersion = $TargetVersion
+    } | ConvertTo-Json -Compress), $utf8NoBom)
     if (Test-Path -LiteralPath $launcherPath -PathType Leaf) {
         & $launcherPath
     }

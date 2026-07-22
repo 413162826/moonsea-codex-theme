@@ -14,6 +14,7 @@ $desktopPath = Join-Path $testRoot "Desktop"
 $legacyPackage = Join-Path $testRoot "legacy-package"
 $updatePackage = Join-Path $testRoot "update-package"
 $archivePath = Join-Path $installRoot "updates\Moonsea-Codex-test-Windows-x64.zip"
+$readyPath = Join-Path $installRoot "updates\updater-smoke.ready"
 $expectedVersion = [string](Get-Content -LiteralPath (Join-Path $PackageRoot "package.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version
 $builderPath = if (Test-Path -LiteralPath (Join-Path $PackageRoot "tools\moonsea-builder.exe")) {
     Join-Path $PackageRoot "tools\moonsea-builder.exe"
@@ -87,7 +88,11 @@ try {
         -PackagePath $archivePath `
         -ManagerPid 999999 `
         -CurrentVersion "1.3.9" `
-        -TargetVersion $expectedVersion
+        -TargetVersion $expectedVersion `
+        -ReadyPath $readyPath
+    if (-not (Test-Path -LiteralPath $readyPath -PathType Leaf)) { throw "Updater did not publish its ready marker" }
+    $updateResult = Get-Content -LiteralPath (Join-Path $installRoot "updates\update-result.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($updateResult.status -ne "succeeded") { throw "Updater did not persist its success result" }
 
     $currentManifest = Get-Content -LiteralPath (Join-Path $installRoot "install.json") -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($currentManifest.appVersion -ne $expectedVersion) { throw "Updater did not activate the new version" }
@@ -105,12 +110,15 @@ try {
             -PackagePath $archivePath `
             -ManagerPid $managerPid `
             -CurrentVersion $expectedVersion `
-            -TargetVersion "9.9.9"
+            -TargetVersion "9.9.9" `
+            -ReadyPath $readyPath
     }
     catch {
         $rollbackTriggered = $true
     }
     if (-not $rollbackTriggered) { throw "Failed startup did not trigger rollback" }
+    $failedResult = Get-Content -LiteralPath (Join-Path $installRoot "updates\update-result.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($failedResult.status -ne "failed") { throw "Updater did not persist its rollback result" }
     $rolledBackManifest = Get-Content -LiteralPath (Join-Path $installRoot "install.json") -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($rolledBackManifest.appVersion -ne $expectedVersion) { throw "Rollback did not restore the previous manifest" }
     $rollbackReady = $false

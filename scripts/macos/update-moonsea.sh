@@ -7,6 +7,7 @@ PACKAGE_PATH=""
 MANAGER_PID=""
 CURRENT_VERSION=""
 TARGET_VERSION=""
+READY_PATH=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -15,6 +16,7 @@ while [[ $# -gt 0 ]]; do
     --manager-pid) MANAGER_PID="$2"; shift 2 ;;
     --current-version) CURRENT_VERSION="$2"; shift 2 ;;
     --target-version) TARGET_VERSION="$2"; shift 2 ;;
+    --ready-path) READY_PATH="$2"; shift 2 ;;
     *) print -u2 -- "Unknown updater argument: $1"; exit 1 ;;
   esac
 done
@@ -24,12 +26,13 @@ fail() {
   exit 1
 }
 
-[[ -n "$INSTALL_ROOT" && -n "$PACKAGE_PATH" && -n "$MANAGER_PID" ]] || fail "required arguments are missing"
+[[ -n "$INSTALL_ROOT" && -n "$PACKAGE_PATH" && -n "$MANAGER_PID" && -n "$READY_PATH" ]] || fail "required arguments are missing"
 [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]] || fail "current version is invalid"
 [[ "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]] || fail "target version is invalid"
 
 INSTALL_ROOT="${INSTALL_ROOT:A}"
 PACKAGE_PATH="${PACKAGE_PATH:A}"
+READY_PATH="${READY_PATH:A}"
 UPDATES_ROOT="$INSTALL_ROOT/updates"
 BUILDS_ROOT="$INSTALL_ROOT/builds"
 MANIFEST_PATH="$INSTALL_ROOT/install.plist"
@@ -37,14 +40,18 @@ LAUNCHER_PATH="$INSTALL_ROOT/Start-Moonsea-macOS.command"
 EXTRACT_ROOT="$UPDATES_ROOT/extract-$TARGET_VERSION"
 ROLLBACK_ROOT="$UPDATES_ROOT/rollback-$CURRENT_VERSION-to-$TARGET_VERSION"
 LOG_PATH="$UPDATES_ROOT/update.log"
+RESULT_PATH="$UPDATES_ROOT/update-result.json"
 MANAGER_PORT="${MOONSEA_MANAGER_PORT:-17321}"
 
 case "$PACKAGE_PATH" in "$UPDATES_ROOT"/*) ;; *) fail "package path is outside the update directory" ;; esac
+case "$READY_PATH" in "$UPDATES_ROOT"/*) ;; *) fail "ready marker is outside the update directory" ;; esac
 case "$EXTRACT_ROOT" in "$UPDATES_ROOT"/*) ;; *) fail "extraction path is outside the update directory" ;; esac
 [[ -f "$PACKAGE_PATH" ]] || fail "downloaded package is missing"
 [[ -f "$MANIFEST_PATH" ]] || fail "installation manifest is missing"
 /bin/mkdir -p "$UPDATES_ROOT"
 exec >>"$LOG_PATH" 2>&1
+print -r -- "{\"status\":\"installing\",\"currentVersion\":\"$CURRENT_VERSION\",\"targetVersion\":\"$TARGET_VERSION\"}" >"$RESULT_PATH"
+print -n -- "ready" >"$READY_PATH"
 
 stop_manager() {
   local pid_path="$INSTALL_ROOT/manager.pid"
@@ -155,9 +162,11 @@ if perform_update; then
   cleanup_old_directories "$BUILDS_ROOT" "$PREVIOUS_BUILD" "$CURRENT_BUILD"
   /bin/rm -rf -- "$EXTRACT_ROOT"
   /bin/rm -f -- "$PACKAGE_PATH"
+  print -r -- "{\"status\":\"succeeded\",\"currentVersion\":\"$CURRENT_VERSION\",\"targetVersion\":\"$TARGET_VERSION\"}" >"$RESULT_PATH"
   print -r -- "Moonsea update completed: $CURRENT_VERSION -> $TARGET_VERSION"
 else
   restore_previous
+  print -r -- "{\"status\":\"failed\",\"currentVersion\":\"$CURRENT_VERSION\",\"targetVersion\":\"$TARGET_VERSION\"}" >"$RESULT_PATH"
   if [[ -z "${MOONSEA_NONINTERACTIVE:-}" ]]; then
     /usr/bin/osascript -e 'display dialog "月海更新没有完成，已经恢复到上一版本。请稍后重试。" with title "月海更新失败" buttons {"知道了"} default button "知道了" with icon caution' >/dev/null 2>&1 || true
   fi

@@ -40,6 +40,15 @@ function assertHttpsUrl(value, label) {
   return url.toString();
 }
 
+function readableUpdateError(error, action) {
+  const message = error?.message || "未知错误";
+  if (/\p{Script=Han}/u.test(message)) return message;
+  if (error?.name === "AbortError" || error?.name === "TimeoutError" || error instanceof TypeError) {
+    return `${action}失败：网络连接异常，请稍后重试`;
+  }
+  return `${action}失败：${message}`;
+}
+
 export function validateUpdateManifest(manifest, platform, currentVersion) {
   const platformKey = PLATFORM_KEYS.get(platform);
   if (!platformKey) throw new Error("当前系统暂不支持自动更新");
@@ -71,6 +80,12 @@ function publicSnapshot(state, currentVersion) {
     error: state.error,
     checkedAt: state.checkedAt,
   };
+}
+
+async function hashFile(filePath) {
+  const hash = crypto.createHash("sha256");
+  for await (const chunk of fs.createReadStream(filePath)) hash.update(chunk);
+  return hash.digest("hex");
 }
 
 export class UpdateService {
@@ -111,12 +126,53 @@ export class UpdateService {
     return publicSnapshot(this.state, this.currentVersion);
   }
 
+  packagePathFor(update = this.selectedUpdate) {
+    if (!update) return null;
+    const extension = this.platform === "darwin" ? "macOS.zip" : "Windows-x64.zip";
+    return path.join(
+      this.installRoot,
+      "updates",
+      `Moonsea-Codex-${update.version}-${extension}`,
+    );
+  }
+
+  async restoreDownloadedPackage() {
+    const packagePath = this.packagePathFor();
+    if (!packagePath || !fs.existsSync(packagePath)) return false;
+    const stat = fs.statSync(packagePath);
+    const valid = stat.isFile()
+      && stat.size === this.selectedUpdate.package.size
+      && await hashFile(packagePath) === this.selectedUpdate.package.sha256;
+    if (!valid) {
+      fs.rmSync(packagePath, { force: true });
+      return false;
+    }
+    this.packagePath = packagePath;
+    return true;
+  }
+
+  readPreviousFailure(targetVersion) {
+    const resultPath = path.join(this.installRoot, "updates", "update-result.json");
+    if (!fs.existsSync(resultPath)) return null;
+    try {
+      const result = JSON.parse(fs.readFileSync(resultPath, "utf8"));
+      if (
+        result?.status === "failed"
+        && result.currentVersion === this.currentVersion
+        && result.targetVersion === targetVersion
+      ) {
+        return "上次更新未完成，已经自动恢复到当前版本。可重试安装，详情见 updates/update.log。";
+      }
+    } catch { }
+    return null;
+  }
+
   async getStatus({ force = false } = {}) {
     const stale = this.state.checkedAt === null
       || this.now() - this.state.checkedAt > CHECK_INTERVAL_MS;
     if (
       force
-      || (stale && !["downloading", "ready", "installing"].includes(this.state.status))
+      || (stale && !["downloading", "ready", "starting", "installing"].includes(this.state.status))
     ) {
       await this.check();
     }
@@ -139,50 +195,70 @@ export class UpdateService {
       );
       this.selectedUpdate = selected;
       const available = compareVersions(selected.version, this.currentVersion) > 0;
+      const ready = available && await this.restoreDownloadedPackage();
+      const previousFailure = ready ? this.readPreviousFailure(selected.version) : null;
       this.state = {
-        status: available ? "available" : "current",
+        status: ready ? "ready" : available ? "available" : "current",
         latestVersion: selected.version,
         notes: selected.notes,
-        progress: available ? 0 : 100,
-        error: null,
+        progress: ready || !available ? 100 : 0,
+        error: previousFailure,
         checkedAt: this.now(),
       };
     } catch (error) {
       this.state = {
         ...this.state,
         status: "error",
-        error: error?.message || "暂时无法检查更新",
+        error: readableUpdateError(error, "检查更新"),
         checkedAt: this.now(),
       };
     }
     return this.snapshot();
   }
 
-  async startDownload() {
+  async startDownload({ autoInstall = false } = {}) {
     await this.getStatus({ force: this.state.status === "error" });
     if (this.state.status === "current") return this.snapshot();
-    if (this.state.status === "ready" || this.state.status === "downloading") return this.snapshot();
+    if (this.state.status === "ready") {
+      if (autoInstall) void this.startInstall();
+      return this.snapshot();
+    }
+    if (this.state.status === "downloading") return this.snapshot();
     if (this.state.status !== "available" || !this.selectedUpdate) {
       throw new Error(this.state.error || "还没有可下载的更新");
     }
 
+    if (await this.restoreDownloadedPackage()) {
+      this.state = { ...this.state, status: "ready", progress: 100, error: null };
+      if (autoInstall) void this.startInstall();
+      return this.snapshot();
+    }
+
     const updatesRoot = path.join(this.installRoot, "updates");
     fs.mkdirSync(updatesRoot, { recursive: true });
-    const extension = this.platform === "darwin" ? "macOS.zip" : "Windows-x64.zip";
-    const packagePath = path.join(
-      updatesRoot,
-      `Moonsea-Codex-${this.selectedUpdate.version}-${extension}`,
-    );
+    const packagePath = this.packagePathFor();
     const temporaryPath = `${packagePath}.partial`;
-    this.state = { ...this.state, status: "downloading", progress: 0, error: null };
+    const partialSize = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
+    if (partialSize > this.selectedUpdate.package.size) fs.rmSync(temporaryPath, { force: true });
+    const resumeSize = partialSize <= this.selectedUpdate.package.size ? partialSize : 0;
+    this.state = {
+      ...this.state,
+      status: "downloading",
+      progress: Math.min(99, Math.round((resumeSize / this.selectedUpdate.package.size) * 100)),
+      error: null,
+    };
     this.downloadPromise = this.downloadPackage(temporaryPath, packagePath)
+      .then(async () => {
+        if (autoInstall && this.state.status === "ready") await this.startInstall();
+      })
       .catch((error) => {
-        fs.rmSync(temporaryPath, { force: true });
         this.state = {
           ...this.state,
           status: "error",
-          progress: 0,
-          error: error?.message || "更新包下载失败",
+          progress: fs.existsSync(temporaryPath)
+            ? Math.min(99, Math.round((fs.statSync(temporaryPath).size / this.selectedUpdate.package.size) * 100))
+            : 0,
+          error: readableUpdateError(error, "下载更新"),
         };
       })
       .finally(() => {
@@ -192,21 +268,53 @@ export class UpdateService {
   }
 
   async downloadPackage(temporaryPath, packagePath) {
-    const response = await this.fetchImpl(this.selectedUpdate.package.url, { redirect: "follow" });
+    const expectedSize = this.selectedUpdate.package.size;
+    let received = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
+    if (received === expectedSize) {
+      if (await hashFile(temporaryPath) === this.selectedUpdate.package.sha256) {
+        fs.rmSync(packagePath, { force: true });
+        fs.renameSync(temporaryPath, packagePath);
+        this.packagePath = packagePath;
+        this.state = { ...this.state, status: "ready", progress: 100, error: null };
+        return;
+      }
+      fs.rmSync(temporaryPath, { force: true });
+      received = 0;
+    }
+
+    const response = await this.fetchImpl(this.selectedUpdate.package.url, {
+      redirect: "follow",
+      headers: received > 0 ? { Range: `bytes=${received}-` } : undefined,
+      signal: AbortSignal.timeout(10 * 60 * 1000),
+    });
     if (!response.ok || !response.body) throw new Error(`更新包下载失败（${response.status}）`);
     const hash = crypto.createHash("sha256");
-    const output = fs.createWriteStream(temporaryPath, { flags: "w" });
-    let received = 0;
+    let append = received > 0 && response.status === 206;
+    if (append) {
+      const contentRange = response.headers.get("content-range") ?? "";
+      if (!contentRange.startsWith(`bytes ${received}-`)) {
+        throw new Error("更新服务器返回的断点位置无效");
+      }
+      for await (const chunk of fs.createReadStream(temporaryPath)) hash.update(chunk);
+    } else if (received > 0) {
+      received = 0;
+      append = false;
+    }
+    const output = fs.createWriteStream(temporaryPath, { flags: append ? "a" : "w" });
     try {
       for await (const chunk of response.body) {
         const buffer = Buffer.from(chunk);
         received += buffer.length;
-        if (received > this.selectedUpdate.package.size) throw new Error("更新包大小与清单不一致");
+        if (received > expectedSize) {
+          const error = new Error("更新包大小与清单不一致");
+          error.invalidatePartial = true;
+          throw error;
+        }
         hash.update(buffer);
         if (!output.write(buffer)) await new Promise((resolve) => output.once("drain", resolve));
         this.state.progress = Math.min(
           99,
-          Math.round((received / this.selectedUpdate.package.size) * 100),
+          Math.round((received / expectedSize) * 100),
         );
       }
       await new Promise((resolve, reject) => {
@@ -214,11 +322,23 @@ export class UpdateService {
         output.once("error", reject);
       });
     } catch (error) {
-      output.destroy();
+      if (error.invalidatePartial) {
+        await new Promise((resolve) => {
+          output.once("close", resolve);
+          output.destroy();
+        });
+        fs.rmSync(temporaryPath, { force: true });
+      } else {
+        await new Promise((resolve) => {
+          output.once("error", resolve);
+          output.end(resolve);
+        });
+      }
       throw error;
     }
-    if (received !== this.selectedUpdate.package.size) throw new Error("更新包下载不完整");
+    if (received !== expectedSize) throw new Error("网络中断，已保留下载进度，请重试");
     if (hash.digest("hex") !== this.selectedUpdate.package.sha256) {
+      fs.rmSync(temporaryPath, { force: true });
       throw new Error("更新包完整性校验失败");
     }
     fs.rmSync(packagePath, { force: true });
@@ -228,19 +348,28 @@ export class UpdateService {
   }
 
   async startInstall() {
-    if (this.state.status !== "ready" || !this.packagePath || !this.selectedUpdate) {
-      throw new Error("更新包还没有准备好");
+    try {
+      if (this.state.status !== "ready" || !this.packagePath || !this.selectedUpdate) {
+        throw new Error("更新包还没有准备好");
+      }
+      if (!fs.existsSync(this.updaterPath)) throw new Error("月海更新程序缺失，请重新安装月海版");
+      this.state = { ...this.state, status: "starting", error: null };
+      await this.launchUpdater({
+        updaterPath: this.updaterPath,
+        installRoot: this.installRoot,
+        packagePath: this.packagePath,
+        currentVersion: this.currentVersion,
+        targetVersion: this.selectedUpdate.version,
+      });
+      this.state = { ...this.state, status: "installing", error: null };
+      this.requestShutdown();
+    } catch (error) {
+      this.state = {
+        ...this.state,
+        status: this.packagePath && fs.existsSync(this.packagePath) ? "ready" : "error",
+        error: `更新程序没有启动：${error?.message || "未知错误"}。详情见 updates/updater-launch.log。`,
+      };
     }
-    if (!fs.existsSync(this.updaterPath)) throw new Error("月海更新程序缺失，请重新安装迁移版");
-    this.launchUpdater({
-      updaterPath: this.updaterPath,
-      installRoot: this.installRoot,
-      packagePath: this.packagePath,
-      currentVersion: this.currentVersion,
-      targetVersion: this.selectedUpdate.version,
-    });
-    this.state = { ...this.state, status: "installing", error: null };
-    this.requestShutdown();
     return this.snapshot();
   }
 }

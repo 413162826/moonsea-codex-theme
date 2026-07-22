@@ -12,6 +12,7 @@ DESKTOP_DIR="$TEST_ROOT/Desktop"
 LEGACY_PACKAGE="$TEST_ROOT/legacy-package"
 UPDATE_PACKAGE="$TEST_ROOT/update-package"
 ARCHIVE_PATH="$INSTALL_ROOT/updates/Moonsea-Codex-test-macOS.zip"
+READY_PATH="$INSTALL_ROOT/updates/updater-smoke.ready"
 EXPECTED_VERSION="$(/usr/bin/sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$PACKAGE_ROOT/package.json" | /usr/bin/head -n 1)"
 MANAGER_PORT=18321
 
@@ -67,7 +68,14 @@ UPDATER_PATH="$(/usr/bin/plutil -extract updaterPath raw -o - "$INSTALL_ROOT/ins
   --package-path "$ARCHIVE_PATH" \
   --manager-pid 999999 \
   --current-version 1.3.9 \
-  --target-version "$EXPECTED_VERSION"
+  --target-version "$EXPECTED_VERSION" \
+  --ready-path "$READY_PATH"
+
+[[ -f "$READY_PATH" ]] || { echo "Updater did not publish its ready marker" >&2; exit 1; }
+/usr/bin/grep -q '"status":"succeeded"' "$INSTALL_ROOT/updates/update-result.json" || {
+  echo "Updater did not persist its success result" >&2
+  exit 1
+}
 
 [[ "$(/usr/bin/plutil -extract appVersion raw -o - "$INSTALL_ROOT/install.plist")" == "$EXPECTED_VERSION" ]]
 MANAGER_PATH="$(/usr/bin/plutil -extract managerPath raw -o - "$INSTALL_ROOT/install.plist")"

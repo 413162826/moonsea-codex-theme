@@ -23,9 +23,9 @@ function contrastRatio(first, second) {
 }
 
 test("普通主题形成完整且克制的官方外观系统", () => {
-  assert.equal(STANDARD_THEMES.length, 10);
-  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "light").length, 5);
-  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "dark").length, 5);
+  assert.equal(STANDARD_THEMES.length, 16);
+  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "light").length, 8);
+  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "dark").length, 8);
   assert.equal(new Set(STANDARD_THEMES.map((theme) => theme.id)).size, STANDARD_THEMES.length);
 
   for (const theme of STANDARD_THEMES) {
@@ -63,9 +63,15 @@ test("新增普通主题用不同渐变构图忠实预览纯色调色盘", () =>
     "pine-shadow",
     "star-ink",
     "dusk-harbor",
+    "glacier-cyan",
+    "rain-slate",
+    "celadon-mist",
+    "polar-night",
+    "violet-tide",
+    "storm-cobalt",
   ].includes(theme.id));
 
-  assert.equal(additions.length, 6);
+  assert.equal(additions.length, 12);
   assert.ok(additions.some((theme) => theme.previewGradient.startsWith("conic-gradient(")));
   assert.ok(additions.some((theme) => theme.previewGradient.startsWith("linear-gradient(")));
   assert.ok(additions.some((theme) => theme.previewGradient.startsWith("radial-gradient(")));
