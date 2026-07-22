@@ -5,7 +5,7 @@ const wallpapers = [
   {
     id: "tide-dragon-realm",
     name: "潮汐龙境",
-    description: "月海壁纸、动态光尘与沉浸式布局",
+    description: "月海壁纸、透明表面与沉浸式布局",
     file: "tide-dragon-realm.png",
     previewFile: "tide-dragon-realm.webp",
     previewPosition: "50% 46%",

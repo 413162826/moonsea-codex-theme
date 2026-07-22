@@ -1,6 +1,6 @@
 {
   "name": "moonsea-codex-theme",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "通过本地助手即时切换 Codex 普通主题与 Pro 运行时主题",
   "type": "module",
   "scripts": {

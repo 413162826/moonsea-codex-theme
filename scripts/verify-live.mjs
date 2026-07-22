@@ -120,7 +120,7 @@ results.push({
 });
 
 const status = await getCodexStatus(profilePath);
-if (!results[1].view.proClass || !results[1].view.controls || !results[1].view.ambient) {
+if (!results[1].view.proClass || !results[1].view.controls || results[1].view.ambient) {
   throw new Error("Pro 运行时没有完整启用");
 }
 if (!results[1].view.wallpaperImage.includes("wallpapers/tide-dragon-realm.png") || !results[1].view.wallpaperGradient.includes("gradient(")) {

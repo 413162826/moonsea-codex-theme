@@ -1,7 +1,6 @@
 html.codex-moonsea {
   --moonsea-main-alpha: 0.30;
   --moonsea-sidebar-alpha: 0.46;
-  --moonsea-titlebar-alpha: 0.46;
   --moonsea-control-alpha: 0.80;
   --moonsea-wallpaper-brightness: 0.94;
   --moonsea-wallpaper-blur: 0px;
@@ -14,7 +13,7 @@ html.codex-moonsea {
   --moonsea-panel: oklch(18% 0.045 243 / var(--moonsea-main-alpha));
   --moonsea-panel-strong: oklch(16% 0.045 244 / 0.94);
   --moonsea-sidebar: oklch(14% 0.04 244 / var(--moonsea-sidebar-alpha));
-  --moonsea-titlebar: oklch(14% 0.04 244 / var(--moonsea-titlebar-alpha));
+  --moonsea-titlebar: var(--moonsea-panel);
   --moonsea-control: oklch(15% 0.045 243 / var(--moonsea-control-alpha));
   --moonsea-hover: oklch(72% 0.09 222 / 0.16);
   --moonsea-border: oklch(82% 0.055 225 / 0.22);
@@ -119,76 +118,6 @@ html.codex-moonsea body::before {
   filter:
     brightness(var(--moonsea-wallpaper-brightness))
     blur(var(--moonsea-wallpaper-blur));
-}
-
-html.codex-moonsea body::after {
-  content: "";
-  position: fixed;
-  inset: -24% -10%;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(105deg, transparent 42%, oklch(93% 0.055 205 / 0.11) 48%, transparent 56%),
-    radial-gradient(circle at 76% 22%, oklch(92% 0.07 205 / 0.15), transparent 20%);
-  animation: moonsea-light 11s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-}
-
-#codex-moonsea-ambient {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-  contain: strict;
-}
-
-.moonsea-ambient__dust,
-.moonsea-ambient__glow {
-  position: absolute;
-  display: block;
-  pointer-events: none;
-}
-
-.moonsea-ambient__dust {
-  inset: -18%;
-  background-image:
-    radial-gradient(circle, oklch(92% 0.06 205 / 0.48) 0 1px, transparent 1.8px),
-    radial-gradient(circle, oklch(86% 0.10 155 / 0.34) 0 1.2px, transparent 2px),
-    radial-gradient(circle, oklch(96% 0.035 225 / 0.30) 0 0.8px, transparent 1.7px);
-  background-position: 0 0, 42px 76px, 108px 28px;
-}
-
-.moonsea-ambient__dust--near {
-  background-size: 128px 118px, 176px 164px, 94px 152px;
-  opacity: 0.42;
-  animation: moonsea-dust-near 16s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-}
-
-.moonsea-ambient__dust--far {
-  background-size: 214px 188px, 246px 226px, 172px 204px;
-  opacity: 0.25;
-  animation: moonsea-dust-far 24s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-}
-
-.moonsea-ambient__glow {
-  width: 34vw;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  filter: blur(28px);
-}
-
-.moonsea-ambient__glow--blue {
-  top: -12%;
-  right: 5%;
-  background: radial-gradient(circle, oklch(84% 0.09 215 / 0.18), transparent 68%);
-  animation: moonsea-glow-blue 13s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-}
-
-.moonsea-ambient__glow--pearl {
-  right: 22%;
-  bottom: -18%;
-  background: radial-gradient(circle, oklch(94% 0.055 180 / 0.14), transparent 68%);
-  animation: moonsea-glow-pearl 17s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
 }
 
 html.codex-moonsea #root {
@@ -554,7 +483,7 @@ html.codex-moonsea ::selection {
   font-size: 11px;
 }
 
-.moonsea-motion-row {
+.moonsea-toggle-row {
   position: relative;
   display: grid;
   grid-template-columns: 70px 38px 1fr;
@@ -565,7 +494,7 @@ html.codex-moonsea ::selection {
   cursor: pointer;
 }
 
-.moonsea-motion-row input {
+.moonsea-toggle-row input {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
@@ -573,7 +502,7 @@ html.codex-moonsea ::selection {
   pointer-events: none;
 }
 
-.moonsea-motion-switch {
+.moonsea-toggle-switch {
   position: relative;
   width: 34px;
   height: 18px;
@@ -582,7 +511,7 @@ html.codex-moonsea ::selection {
   transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.moonsea-motion-switch::after {
+.moonsea-toggle-switch::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -595,15 +524,15 @@ html.codex-moonsea ::selection {
   transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.moonsea-motion-row input:checked + .moonsea-motion-switch {
+.moonsea-toggle-row input:checked + .moonsea-toggle-switch {
   background: var(--moonsea-accent);
 }
 
-.moonsea-motion-row input:checked + .moonsea-motion-switch::after {
+.moonsea-toggle-row input:checked + .moonsea-toggle-switch::after {
   transform: translateX(16px);
 }
 
-.moonsea-motion-row output {
+.moonsea-toggle-row output {
   color: var(--moonsea-muted);
   text-align: right;
   font-size: 11px;
@@ -700,54 +629,6 @@ html.codex-moonsea ::selection {
 
 .moonsea-controls__reset:hover {
   color: var(--moonsea-ink);
-}
-
-@keyframes moonsea-light {
-  from { opacity: 0.42; transform: translate3d(-12%, -1%, 0) rotate(-1deg); }
-  to { opacity: 0.90; transform: translate3d(11%, 1%, 0) rotate(2deg); }
-}
-
-@keyframes moonsea-dust-near {
-  from { transform: translate3d(-1.4%, 2.8%, 0) rotate(-0.25deg); opacity: 0.28; }
-  to { transform: translate3d(1.2%, -2.2%, 0) rotate(0.25deg); opacity: 0.48; }
-}
-
-@keyframes moonsea-dust-far {
-  from { transform: translate3d(1%, -1.5%, 0); opacity: 0.17; }
-  to { transform: translate3d(-0.8%, 1.6%, 0); opacity: 0.31; }
-}
-
-@keyframes moonsea-glow-blue {
-  from { transform: translate3d(-4%, -3%, 0) scale(0.88); opacity: 0.42; }
-  to { transform: translate3d(7%, 5%, 0) scale(1.12); opacity: 0.88; }
-}
-
-@keyframes moonsea-glow-pearl {
-  from { transform: translate3d(6%, 4%, 0) scale(1.08); opacity: 0.72; }
-  to { transform: translate3d(-6%, -5%, 0) scale(0.90); opacity: 0.34; }
-}
-
-html.codex-moonsea.moonsea-motion-disabled body::before,
-html.codex-moonsea.moonsea-motion-disabled body::after,
-html.codex-moonsea.moonsea-motion-disabled .moonsea-ambient__dust,
-html.codex-moonsea.moonsea-motion-disabled .moonsea-ambient__glow {
-  animation: none !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html.codex-moonsea:not(.moonsea-motion-enabled) body::before,
-  html.codex-moonsea:not(.moonsea-motion-enabled) body::after,
-  html.codex-moonsea:not(.moonsea-motion-enabled) .moonsea-ambient__dust,
-  html.codex-moonsea:not(.moonsea-motion-enabled) .moonsea-ambient__glow {
-    animation: none !important;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html.codex-moonsea body::before,
-  html.codex-moonsea body::after {
-    transition: none !important;
-  }
 }
 
 @media (max-width: 720px) {

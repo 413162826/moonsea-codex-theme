@@ -209,8 +209,9 @@ export async function exchangeAssistantUpdate(profilePath, update) {
       expression: `(() => {
         const bridge = window.moonseaAssistantUpdateBridge;
         if (!bridge) return { ready: false, command: null };
-        bridge.setStatus(${JSON.stringify(update)});
-        return { ready: true, command: bridge.takeCommand() };
+        const command = bridge.takeCommand();
+        if (!command) bridge.setStatus(${JSON.stringify(update)});
+        return { ready: true, command };
       })()`,
       returnByValue: true,
     });

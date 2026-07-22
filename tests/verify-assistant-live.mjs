@@ -124,8 +124,10 @@ const pro = await evaluate(`(() => ({
   edition: document.querySelector("[data-assistant-edition]").textContent,
   proHidden: document.querySelector("[data-pro-settings]").hidden,
   transparency: document.querySelector('[data-setting="transparency"]').value,
+  motionControl: Boolean(document.querySelector('[data-setting="motion"]')),
   wallpaper: document.querySelector("[data-wallpaper-status]").value,
 }))()`);
+if (pro.motionControl) throw new Error("月海助手仍残留动态背景控件");
 const proScreenshot = await capture("assistant-pro.png");
 
 await fetch("http://127.0.0.1:17321/api/themes/apply", {

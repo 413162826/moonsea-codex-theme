@@ -124,15 +124,16 @@ test("设置页卡片使用月海深色表面令牌", () => {
   );
 });
 
-test("顶部栏与主界面共用透明度状态", () => {
+test("顶部栏直接复用主界面表面令牌", () => {
   const css = fs.readFileSync(themeCss, "utf8");
   const runtime = fs.readFileSync(
     path.join(projectRoot, "theme", "static", "theme.js"),
     "utf8",
   );
 
-  assert.match(css, /--moonsea-titlebar:\s*oklch\([^;]*var\(--moonsea-titlebar-alpha\)\)/);
+  assert.match(css, /--moonsea-titlebar:\s*var\(--moonsea-panel\);/);
   assert.match(css, /--codex-titlebar-tint:\s*var\(--moonsea-titlebar\)\s*!important;/);
   assert.match(css, /--vscode-titleBar-activeBackground:\s*var\(--moonsea-titlebar\)\s*!important;/);
-  assert.match(runtime, /--moonsea-titlebar-alpha/);
+  assert.doesNotMatch(css, /--moonsea-titlebar-alpha/);
+  assert.doesNotMatch(runtime, /--moonsea-titlebar-alpha/);
 });

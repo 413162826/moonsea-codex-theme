@@ -17,7 +17,6 @@ const proThemes = WALLPAPERS.map((wallpaper) => ({
     wallpaperName: wallpaper.name,
     wallpaperPosition: wallpaper.wallpaperPosition,
     wallpaperGradient: wallpaper.wallpaperGradient,
-    motion: true,
     layout: "immersive",
   },
 }));

@@ -19,15 +19,17 @@
     transparency: 70,
     brightness: 94,
     sharpness: 100,
-    motion: true,
     readingMode: true,
   };
 
   const readSettings = () => {
     try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
       return {
-        ...defaults,
-        ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"),
+        transparency: saved.transparency ?? defaults.transparency,
+        brightness: saved.brightness ?? defaults.brightness,
+        sharpness: saved.sharpness ?? defaults.sharpness,
+        readingMode: saved.readingMode ?? defaults.readingMode,
       };
     } catch {
       return { ...defaults };
@@ -236,15 +238,11 @@
       0.12,
       Math.min(0.78, 1 - settings.transparency / 100),
     );
-    const chromeAlpha = Math.min(0.86, mainAlpha + 0.16);
+    const sidebarAlpha = Math.min(0.86, mainAlpha + 0.16);
     root.style.setProperty("--moonsea-main-alpha", mainAlpha.toFixed(2));
     root.style.setProperty(
       "--moonsea-sidebar-alpha",
-      chromeAlpha.toFixed(2),
-    );
-    root.style.setProperty(
-      "--moonsea-titlebar-alpha",
-      chromeAlpha.toFixed(2),
+      sidebarAlpha.toFixed(2),
     );
     root.style.setProperty(
       "--moonsea-control-alpha",
@@ -258,8 +256,6 @@
       "--moonsea-wallpaper-blur",
       `${Math.max(0, Math.min(4, (100 - settings.sharpness) / 20)).toFixed(2)}px`,
     );
-    root.classList.toggle("moonsea-motion-enabled", settings.motion);
-    root.classList.toggle("moonsea-motion-disabled", !settings.motion);
     root.classList.toggle("moonsea-reading-enabled", settings.readingMode);
     root.classList.toggle("moonsea-reading-disabled", !settings.readingMode);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -287,7 +283,7 @@
           月海助手
           <span data-assistant-edition>普通主题</span>
         </div>
-        <div class="moonsea-assistant__update">
+        <div class="moonsea-assistant__update" title="双击立即检查更新">
           <div class="moonsea-assistant__update-heading">
             <strong>软件更新</strong>
             <span class="moonsea-assistant__version" data-update-version>正在读取版本</span>
@@ -314,16 +310,10 @@
             <input data-setting="sharpness" type="range" min="20" max="100" step="1">
             <output data-output="sharpness"></output>
           </label>
-          <label class="moonsea-motion-row">
-            <span>动态背景</span>
-            <input data-setting="motion" type="checkbox">
-            <span class="moonsea-motion-switch" aria-hidden="true"></span>
-            <output data-output="motion"></output>
-          </label>
-          <label class="moonsea-motion-row">
+          <label class="moonsea-toggle-row">
             <span>正文增强</span>
             <input data-setting="readingMode" type="checkbox">
-            <span class="moonsea-motion-switch" aria-hidden="true"></span>
+            <span class="moonsea-toggle-switch" aria-hidden="true"></span>
             <output data-output="readingMode"></output>
           </label>
           <div class="moonsea-wallpaper-row">
@@ -344,12 +334,12 @@
 
     const panel = controls.querySelector(".moonsea-controls__panel");
     const toggle = controls.querySelector(".moonsea-controls__toggle");
+    const updateSection = controls.querySelector(".moonsea-assistant__update");
     const transparencyInput = controls.querySelector(
       '[data-setting="transparency"]',
     );
     const brightnessInput = controls.querySelector('[data-setting="brightness"]');
     const sharpnessInput = controls.querySelector('[data-setting="sharpness"]');
-    const motionInput = controls.querySelector('[data-setting="motion"]');
     const readingModeInput = controls.querySelector(
       '[data-setting="readingMode"]',
     );
@@ -358,7 +348,6 @@
     );
     const brightnessOutput = controls.querySelector('[data-output="brightness"]');
     const sharpnessOutput = controls.querySelector('[data-output="sharpness"]');
-    const motionOutput = controls.querySelector('[data-output="motion"]');
     const readingModeOutput = controls.querySelector(
       '[data-output="readingMode"]',
     );
@@ -410,18 +399,28 @@
       transparencyInput.value = String(settings.transparency);
       brightnessInput.value = String(settings.brightness);
       sharpnessInput.value = String(settings.sharpness);
-      motionInput.checked = settings.motion;
       readingModeInput.checked = settings.readingMode;
       transparencyOutput.value = `${settings.transparency}%`;
       brightnessOutput.value = `${settings.brightness}%`;
       sharpnessOutput.value = `${settings.sharpness}%`;
-      motionOutput.value = settings.motion ? "开启" : "关闭";
       readingModeOutput.value = settings.readingMode ? "开启" : "关闭";
     };
 
     toggle.addEventListener("click", () => {
       panel.hidden = !panel.hidden;
       toggle.setAttribute("aria-expanded", String(!panel.hidden));
+    });
+
+    updateSection.addEventListener("dblclick", () => {
+      if (["checking", "downloading", "ready", "installing"].includes(updateState?.status)) {
+        return;
+      }
+      pendingUpdateCommand = "check";
+      renderUpdate({
+        ...(updateState ?? {}),
+        status: "checking",
+        error: null,
+      });
     });
 
     updateAction.addEventListener("click", () => {
@@ -449,12 +448,6 @@
 
     sharpnessInput.addEventListener("input", () => {
       settings.sharpness = Number(sharpnessInput.value);
-      syncControls();
-      applySettings();
-    });
-
-    motionInput.addEventListener("change", () => {
-      settings.motion = motionInput.checked;
       syncControls();
       applySettings();
     });
@@ -536,21 +529,6 @@
     });
   };
 
-  const createAmbientMotion = () => {
-    if (document.getElementById("codex-moonsea-ambient")) return;
-
-    const ambient = document.createElement("div");
-    ambient.id = "codex-moonsea-ambient";
-    ambient.setAttribute("aria-hidden", "true");
-    ambient.innerHTML = `
-      <span class="moonsea-ambient__dust moonsea-ambient__dust--near"></span>
-      <span class="moonsea-ambient__dust moonsea-ambient__dust--far"></span>
-      <span class="moonsea-ambient__glow moonsea-ambient__glow--blue"></span>
-      <span class="moonsea-ambient__glow moonsea-ambient__glow--pearl"></span>
-    `;
-    document.body.appendChild(ambient);
-  };
-
   const reportTitlebarButtonStyles = () => {
     const buttons = [...document.querySelectorAll(TITLEBAR_BUTTON_SELECTOR)];
     if (buttons.length === 0) return false;
@@ -611,7 +589,6 @@
     document.documentElement.classList.add("codex-moonsea");
     applySettings();
     await loadSavedWallpaper();
-    createAmbientMotion();
     createControls();
     refreshAssistantMode();
     scheduleTitlebarButtonProbe();
@@ -623,15 +600,12 @@
     const root = document.documentElement;
     root.classList.remove(
       "codex-moonsea",
-      "moonsea-motion-enabled",
-      "moonsea-motion-disabled",
       "moonsea-reading-enabled",
       "moonsea-reading-disabled",
     );
     for (const property of [
       "--moonsea-main-alpha",
       "--moonsea-sidebar-alpha",
-      "--moonsea-titlebar-alpha",
       "--moonsea-control-alpha",
       "--moonsea-wallpaper-brightness",
       "--moonsea-wallpaper-blur",
@@ -641,7 +615,6 @@
     ]) {
       root.style.removeProperty(property);
     }
-    document.getElementById("codex-moonsea-ambient")?.remove();
     document.getElementById("codex-moonsea-static-theme")?.remove();
     titlebarObserver?.disconnect();
     titlebarObserver = undefined;

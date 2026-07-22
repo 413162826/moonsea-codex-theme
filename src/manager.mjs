@@ -116,6 +116,10 @@ async function syncAssistantUpdate() {
   try {
     const update = await updateService.getStatus();
     const exchange = await exchangeAssistantUpdate(profilePath, update);
+    if (exchange?.command === "check") {
+      const refreshedUpdate = await updateService.getStatus({ force: true });
+      await exchangeAssistantUpdate(profilePath, refreshedUpdate);
+    }
     if (exchange?.command === "download") await updateService.startDownload();
     if (exchange?.command === "install") await updateService.startInstall();
   } catch {

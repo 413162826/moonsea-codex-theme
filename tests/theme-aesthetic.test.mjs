@@ -23,9 +23,10 @@ function contrastRatio(first, second) {
 }
 
 test("普通主题形成完整且克制的官方外观系统", () => {
-  assert.equal(STANDARD_THEMES.length, 4);
-  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "light").length, 2);
-  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "dark").length, 2);
+  assert.equal(STANDARD_THEMES.length, 10);
+  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "light").length, 5);
+  assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "dark").length, 5);
+  assert.equal(new Set(STANDARD_THEMES.map((theme) => theme.id)).size, STANDARD_THEMES.length);
 
   for (const theme of STANDARD_THEMES) {
     const { patch } = theme;
@@ -51,5 +52,28 @@ test("普通主题形成完整且克制的官方外观系统", () => {
         `${theme.name} 的 ${role} 状态色需要在主表面清晰可见`,
       );
     }
+  }
+});
+
+test("新增普通主题用不同渐变构图忠实预览纯色调色盘", () => {
+  const additions = STANDARD_THEMES.filter((theme) => [
+    "tundra-green",
+    "distant-ridge",
+    "morning-frost",
+    "pine-shadow",
+    "star-ink",
+    "dusk-harbor",
+  ].includes(theme.id));
+
+  assert.equal(additions.length, 6);
+  assert.ok(additions.some((theme) => theme.previewGradient.startsWith("conic-gradient(")));
+  assert.ok(additions.some((theme) => theme.previewGradient.startsWith("linear-gradient(")));
+  assert.ok(additions.some((theme) => theme.previewGradient.startsWith("radial-gradient(")));
+
+  for (const theme of additions) {
+    assert.ok(theme.preview.includes(theme.patch.surface), `${theme.name} 预览必须包含真实底色`);
+    assert.ok(theme.preview.includes(theme.patch.accent), `${theme.name} 预览必须包含真实强调色`);
+    assert.ok(theme.preview.includes(theme.patch.ink), `${theme.name} 预览必须包含真实文字色`);
+    assert.match(theme.patch.surface, /^#[0-9A-F]{6}$/, `${theme.name} 官方表面必须保持纯色`);
   }
 });
