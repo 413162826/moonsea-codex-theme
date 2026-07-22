@@ -31,6 +31,7 @@ $managerPort = 18321
 $previousManagerPort = $env:MOONSEA_MANAGER_PORT
 $previousNonInteractive = $env:MOONSEA_NONINTERACTIVE
 $previousHealthAttempts = $env:MOONSEA_UPDATE_HEALTH_ATTEMPTS
+$previousSkipShortcut = $env:MOONSEA_SKIP_SHORTCUT
 
 function Stop-TestManager {
     $pidPath = Join-Path $installRoot "manager.pid"
@@ -47,6 +48,7 @@ try {
     $env:MOONSEA_MANAGER_PORT = [string]$managerPort
     $env:MOONSEA_NONINTERACTIVE = "1"
     $env:MOONSEA_UPDATE_HEALTH_ATTEMPTS = "8"
+    $env:MOONSEA_SKIP_SHORTCUT = "1"
 
     New-Item -ItemType Directory -Path (Join-Path $legacyPackage "scripts\windows") -Force | Out-Null
     Copy-Item -Path (Join-Path $PackageRoot "scripts\windows\*") -Destination (Join-Path $legacyPackage "scripts\windows") -Force
@@ -130,5 +132,6 @@ finally {
     $env:MOONSEA_MANAGER_PORT = $previousManagerPort
     $env:MOONSEA_NONINTERACTIVE = $previousNonInteractive
     $env:MOONSEA_UPDATE_HEALTH_ATTEMPTS = $previousHealthAttempts
+    $env:MOONSEA_SKIP_SHORTCUT = $previousSkipShortcut
     if (Test-Path -LiteralPath $testRoot) { Remove-Item -LiteralPath $testRoot -Recurse -Force }
 }
