@@ -15,6 +15,18 @@ $legacyPackage = Join-Path $testRoot "legacy-package"
 $updatePackage = Join-Path $testRoot "update-package"
 $archivePath = Join-Path $installRoot "updates\Moonsea-Codex-test-Windows-x64.zip"
 $expectedVersion = [string](Get-Content -LiteralPath (Join-Path $PackageRoot "package.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version
+$builderPath = if (Test-Path -LiteralPath (Join-Path $PackageRoot "tools\moonsea-builder.exe")) {
+    Join-Path $PackageRoot "tools\moonsea-builder.exe"
+}
+else {
+    Join-Path $PackageRoot "tools\moonsea-builder.mjs"
+}
+$managerPath = if (Test-Path -LiteralPath (Join-Path $PackageRoot "tools\moonsea-manager.exe")) {
+    Join-Path $PackageRoot "tools\moonsea-manager.exe"
+}
+else {
+    Join-Path $PackageRoot "tools\moonsea-manager.mjs"
+}
 $managerPort = 18321
 $previousManagerPort = $env:MOONSEA_MANAGER_PORT
 $previousNonInteractive = $env:MOONSEA_NONINTERACTIVE
@@ -49,8 +61,8 @@ try {
         -SourceApp $sourceApp `
         -InstallRoot $installRoot `
         -DesktopPath $desktopPath `
-        -BuilderPath (Join-Path $PackageRoot "tools\moonsea-builder.mjs") `
-        -ManagerPath (Join-Path $PackageRoot "tools\moonsea-manager.mjs") `
+        -BuilderPath $builderPath `
+        -ManagerPath $managerPath `
         -SkipShortcut `
         -SkipLaunch
     $legacyManifest = Get-Content -LiteralPath (Join-Path $installRoot "install.json") -Raw -Encoding UTF8 | ConvertFrom-Json
