@@ -2,8 +2,11 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import process from "node:process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { createRequestHandler, MANAGER_PORT } from "./manager-core.mjs";
+import { createRequestHandler, exchangeAssistantUpdate, MANAGER_PORT } from "./manager-core.mjs";
+import { UpdateService } from "./update-service.mjs";
+import { APP_VERSION } from "./version.mjs";
 
 function readArgument(name) {
   const index = process.argv.indexOf(name);
@@ -38,11 +41,62 @@ const profilePath = path.resolve(
 );
 const projectRoot = findProjectRoot();
 const pidPath = path.join(installRoot, "manager.pid");
+const updaterPath = process.platform === "win32"
+  ? path.join(projectRoot, "scripts", "windows", "Update-Moonsea-Windows.ps1")
+  : path.join(projectRoot, "scripts", "macos", "update-moonsea.sh");
+
+function launchUpdater({ packagePath, currentVersion, targetVersion }) {
+  const commonArguments = [
+    "--install-root", installRoot,
+    "--package-path", packagePath,
+    "--manager-pid", String(process.pid),
+    "--current-version", currentVersion,
+    "--target-version", targetVersion,
+  ];
+  const command = process.platform === "win32"
+    ? process.env.SystemRoot
+      ? path.join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+      : "powershell.exe"
+    : "/bin/zsh";
+  const argumentsList = process.platform === "win32"
+    ? [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", updaterPath,
+        "-InstallRoot", installRoot,
+        "-PackagePath", packagePath,
+        "-ManagerPid", String(process.pid),
+        "-CurrentVersion", currentVersion,
+        "-TargetVersion", targetVersion,
+      ]
+    : [updaterPath, ...commonArguments];
+  const child = spawn(command, argumentsList, {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  child.unref();
+}
 
 fs.mkdirSync(installRoot, { recursive: true });
+let shutdownRequested = false;
+let assistantSyncRunning = false;
+const updateService = new UpdateService({
+  currentVersion: APP_VERSION,
+  platform: process.platform,
+  installRoot,
+  updaterPath,
+  launchUpdater,
+  requestShutdown: () => {
+    shutdownRequested = true;
+    setTimeout(shutdown, 350);
+  },
+});
 const server = http.createServer(createRequestHandler({
   profilePath,
   siteRoot: path.join(projectRoot, "site"),
+  appVersion: APP_VERSION,
+  updateService,
 }));
 
 server.on("error", (error) => {
@@ -56,13 +110,36 @@ server.listen(MANAGER_PORT, "127.0.0.1", () => {
   console.log(`月海助手已启动：http://127.0.0.1:${MANAGER_PORT}`);
 });
 
+async function syncAssistantUpdate() {
+  if (assistantSyncRunning || shutdownRequested) return;
+  assistantSyncRunning = true;
+  try {
+    const update = await updateService.getStatus();
+    const exchange = await exchangeAssistantUpdate(profilePath, update);
+    if (exchange?.command === "download") await updateService.startDownload();
+    if (exchange?.command === "install") await updateService.startInstall();
+  } catch {
+    // Codex 可能还没有打开，下一轮会重新连接活动窗口。
+  } finally {
+    assistantSyncRunning = false;
+  }
+}
+
+const assistantSyncTimer = setInterval(syncAssistantUpdate, 1_000);
+assistantSyncTimer.unref();
+void syncAssistantUpdate();
+
 function shutdown() {
+  clearInterval(assistantSyncTimer);
   server.close(() => {
     if (fs.existsSync(pidPath) && fs.readFileSync(pidPath, "utf8").trim() === String(process.pid)) {
       fs.rmSync(pidPath, { force: true });
     }
     process.exit(0);
   });
+  if (shutdownRequested) {
+    setTimeout(() => process.exit(0), 2_000).unref();
+  }
 }
 
 process.on("SIGINT", shutdown);

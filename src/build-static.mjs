@@ -35,6 +35,7 @@ const bridgeTemplate = path.join(
   "appearance-bridge.template.js",
 );
 const themeFiles = {
+  assistantCss: path.join(themeDir, "assistant.css"),
   css: path.join(themeDir, "theme.css"),
   petCss: path.join(themeDir, "pet-overlay.css"),
   script: path.join(themeDir, "theme.js"),
@@ -121,15 +122,19 @@ function assertSafeTarget(sourceApp, targetApp) {
   }
 }
 
-function injectStyles(html, themeVersion, { includeMainTheme }) {
+function injectStyles(html, themeVersion, { includeMainTheme, includePetOverlay = true }) {
   let output = html
+    .replace(/\s*<link\s+id="codex-moonsea-assistant"[^>]*>/g, "")
     .replace(/\s*<link\s+id="codex-moonsea-static-theme"[^>]*>/g, "")
     .replace(/\s*<link\s+id="codex-moonsea-pet-overlay"[^>]*>/g, "");
   const links = [
+    `<link id="codex-moonsea-assistant" rel="stylesheet" href="./moonsea/assistant.css?v=${themeVersion}">`,
     includeMainTheme
       ? `<link id="codex-moonsea-static-theme" rel="stylesheet" href="./moonsea/theme.css?v=${themeVersion}">`
       : null,
-    `<link id="codex-moonsea-pet-overlay" rel="stylesheet" href="./moonsea/pet-overlay.css?v=${themeVersion}">`,
+    includePetOverlay
+      ? `<link id="codex-moonsea-pet-overlay" rel="stylesheet" href="./moonsea/pet-overlay.css?v=${themeVersion}">`
+      : null,
   ].filter(Boolean);
   return output.replace("</head>", `    ${links.join("\n    ")}\n  </head>`);
 }
@@ -160,6 +165,7 @@ function injectAppearanceBridge(html, themeVersion) {
 
 function removeProInjection(html) {
   return html
+    .replace(/\s*<link\s+id="codex-moonsea-assistant"[^>]*>/g, "")
     .replace(/\s*<link\s+id="codex-moonsea-static-theme"[^>]*>/g, "")
     .replace(/\s*<link\s+id="codex-moonsea-pet-overlay"[^>]*>/g, "")
     .replace(
@@ -214,6 +220,7 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
     "avatar-overlay-composition-surface.html",
   );
   const packedTheme = path.join(webviewDir, "moonsea", "theme.css");
+  const packedAssistant = path.join(webviewDir, "moonsea", "assistant.css");
   const packedPet = path.join(webviewDir, "moonsea", "pet-overlay.css");
   const packedScript = path.join(webviewDir, "moonsea", "theme.js");
   const packedWallpaperDir = path.join(webviewDir, "moonsea", "wallpapers");
@@ -224,6 +231,7 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
     [indexPath, "主页面"],
     [compositionPath, "宠物合成页面"],
     [packedBridge, "外观控制桥"],
+    [packedAssistant, "月海助手 CSS"],
     [metadataPath, "构建元数据"],
   ]) {
     assertFile(filePath, label);
@@ -252,6 +260,7 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
     assertFile(filePath, label);
   }
   checks.push(
+    fs.readFileSync(packedAssistant).equals(fs.readFileSync(themeFiles.assistantCss)),
     fs.readFileSync(packedTheme).equals(fs.readFileSync(themeFiles.css)),
     fs.readFileSync(packedPet).equals(fs.readFileSync(themeFiles.petCss)),
     fs.readFileSync(packedScript).equals(fs.readFileSync(themeFiles.script)),
@@ -265,6 +274,7 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
   }
   if (edition === "standard") {
     checks.push(
+      index.includes(`id="codex-moonsea-assistant"`) && index.includes(`assistant.css${expectedVersion}`),
       !index.includes(`id="codex-moonsea-static-theme"`),
       !index.includes(`id="codex-moonsea-pet-overlay"`),
       !index.includes(`id="codex-moonsea-static-theme-script"`),
@@ -272,6 +282,7 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
     );
   } else {
     checks.push(
+      index.includes(`id="codex-moonsea-assistant"`) && index.includes(`assistant.css${expectedVersion}`),
       index.includes(`id="codex-moonsea-static-theme"`) && index.includes(`theme.css${expectedVersion}`),
       index.includes(`id="codex-moonsea-pet-overlay"`) && index.includes(`pet-overlay.css${expectedVersion}`),
       index.includes(`id="codex-moonsea-static-theme-script"`) && index.includes(`theme.js${expectedVersion}`),
@@ -352,6 +363,7 @@ function applyTheme(extractedDir, themeVersion, edition) {
     "utf8",
   );
   fs.copyFileSync(themeFiles.css, path.join(moonseaDir, "theme.css"));
+  fs.copyFileSync(themeFiles.assistantCss, path.join(moonseaDir, "assistant.css"));
   fs.copyFileSync(themeFiles.petCss, path.join(moonseaDir, "pet-overlay.css"));
   fs.copyFileSync(themeFiles.script, path.join(moonseaDir, "theme.js"));
   const packedWallpaperDir = path.join(moonseaDir, "wallpapers");
@@ -377,7 +389,7 @@ function applyTheme(extractedDir, themeVersion, edition) {
           injectStyles(cleanIndex, themeVersion, { includeMainTheme: true }),
           themeVersion,
         )
-      : cleanIndex,
+      : injectStyles(cleanIndex, themeVersion, { includeMainTheme: false, includePetOverlay: false }),
     themeVersion,
   );
   const themedComposition = edition === "pro"

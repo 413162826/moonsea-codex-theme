@@ -140,9 +140,12 @@ async function getStatus() {
 async function restoreSavedAppearance() {
   const state = readAppearanceState();
   restoredAppearanceState = state;
-  if (state?.edition !== "pro") return;
   const runtime = await ensureProRuntime();
-  await runtime.enable(state.runtime);
+  if (state?.edition === "pro") {
+    await runtime.enable(state.runtime);
+  } else {
+    runtime.disable();
+  }
 }
 
 Object.defineProperty(window, "moonseaThemeBridge", {

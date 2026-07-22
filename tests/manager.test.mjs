@@ -52,6 +52,7 @@ test("解析 Codex 随机调试端口", () => {
 test("本地助手只接受官网和本机页面", () => {
   assert.equal(isAllowedOrigin(PUBLIC_SITE_ORIGIN), true);
   assert.equal(isAllowedOrigin("http://127.0.0.1:17321"), true);
+  assert.equal(isAllowedOrigin("app://-"), true);
   assert.equal(isAllowedOrigin("https://example.com"), false);
 });
 
@@ -106,6 +107,25 @@ test("Pro 运行时可以启用并完整退出", () => {
   assert.match(runtime, /await loadSavedWallpaper\(\)/);
 });
 
+test("普通主题与 Pro 主题共用月海助手，透明度仅在 Pro 状态显示", () => {
+  const runtime = fs.readFileSync(
+    path.join(projectRoot, "theme", "static", "theme.js"),
+    "utf8",
+  );
+  const assistantCss = fs.readFileSync(
+    path.join(projectRoot, "theme", "static", "assistant.css"),
+    "utf8",
+  );
+  assert.match(runtime, /月海助手/);
+  assert.match(runtime, /data-pro-settings hidden/);
+  assert.match(runtime, /当前使用 Codex 官方外观/);
+  assert.match(runtime, /moonseaAssistantUpdateBridge/);
+  assert.match(runtime, /pendingUpdateCommand = "download"/);
+  assert.match(runtime, /重新打开并更新/);
+  assert.match(assistantCss, /\.moonsea-controls__toggle\.is-update-available::after/);
+  assert.match(assistantCss, /prefers-reduced-motion/);
+});
+
 test("壁纸目录同时生成官网预览与安装资源", () => {
   assert.ok(WALLPAPERS.length >= 1);
   for (const wallpaper of WALLPAPERS) {
@@ -135,6 +155,8 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
   assert.match(website, /\.\/catalog\.json/);
   assert.match(website, /theme\.previewImage/);
   assert.match(website, /Pro 主题需要新版月海版/);
+  assert.match(website, /月海助手需要升级/);
+  assert.match(website, /最后一次手动安装/);
 
   for (const entry of ["Install.cmd", "Uninstall.cmd", "Install.command", "Uninstall.command"]) {
     assert.equal(fs.existsSync(path.join(projectRoot, entry)), true, `${entry} 应存在`);

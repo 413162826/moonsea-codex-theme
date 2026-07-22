@@ -1,0 +1,234 @@
+#codex-moonsea-controls {
+  --moonsea-assistant-ink: var(--moonsea-ink, var(--color-token-text-primary, oklch(25% 0.035 236)));
+  --moonsea-assistant-muted: var(--moonsea-muted, var(--color-token-text-secondary, oklch(48% 0.028 232)));
+  --moonsea-assistant-border: var(--moonsea-border, var(--color-token-border-default, oklch(72% 0.025 228 / 0.52)));
+  --moonsea-assistant-surface: var(--moonsea-control, var(--color-token-main-surface-primary, oklch(97% 0.012 225)));
+  --moonsea-assistant-panel: var(--moonsea-panel-strong, var(--color-background-elevated-primary, oklch(98% 0.009 225)));
+  --moonsea-assistant-soft: color-mix(in oklab, var(--moonsea-assistant-ink) 7%, transparent);
+  --moonsea-assistant-accent: var(--moonsea-accent, var(--codex-base-accent, oklch(60% 0.12 216)));
+  position: fixed;
+  right: 18px;
+  bottom: 74px;
+  z-index: 2147483000;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  color: var(--moonsea-assistant-ink);
+  font-family: system-ui, "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  text-shadow: none;
+}
+
+#codex-moonsea-controls *,
+#codex-moonsea-controls *::before,
+#codex-moonsea-controls *::after {
+  box-sizing: border-box;
+}
+
+#codex-moonsea-controls button,
+#codex-moonsea-controls input {
+  font: inherit;
+}
+
+#codex-moonsea-controls [hidden] {
+  display: none !important;
+}
+
+.moonsea-controls__toggle {
+  position: relative;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--moonsea-assistant-border);
+  border-radius: 999px;
+  color: var(--moonsea-assistant-ink);
+  background: var(--moonsea-assistant-surface);
+  box-shadow: 0 10px 28px oklch(12% 0.025 240 / 0.18);
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.moonsea-controls__toggle:hover { transform: translateY(-2px); }
+.moonsea-controls__toggle:active { transform: translateY(0); }
+.moonsea-controls__toggle > svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.moonsea-controls__toggle.is-update-available::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--moonsea-assistant-surface);
+  border-radius: 50%;
+  background: oklch(64% 0.19 28);
+}
+
+.moonsea-controls__panel {
+  width: min(310px, calc(100vw - 80px));
+  max-height: min(640px, calc(100vh - 110px));
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--moonsea-assistant-border);
+  border-radius: 15px;
+  color: var(--moonsea-assistant-ink);
+  background: var(--moonsea-assistant-panel);
+  box-shadow: 0 20px 54px oklch(10% 0.03 240 / 0.24);
+}
+
+.moonsea-controls__title,
+.moonsea-assistant__update-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.moonsea-controls__title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.moonsea-controls__title span,
+.moonsea-assistant__version,
+.moonsea-assistant__message,
+.moonsea-control-row output,
+.moonsea-motion-row output,
+.moonsea-wallpaper-row output {
+  color: var(--moonsea-assistant-muted) !important;
+}
+
+.moonsea-controls__title span { font-size: 11px; font-weight: 500; }
+
+.moonsea-assistant__update {
+  margin-top: 13px;
+  padding: 12px 0 14px;
+  border-block: 1px solid var(--moonsea-assistant-border);
+}
+
+.moonsea-assistant__update-heading strong { font-size: 12px; font-weight: 650; }
+.moonsea-assistant__version { font-size: 11px; }
+.moonsea-assistant__message { margin: 7px 0 0; line-height: 1.55; font-size: 11px; text-wrap: pretty; }
+.moonsea-assistant__message.is-error { color: oklch(57% 0.18 27) !important; }
+
+.moonsea-assistant__progress {
+  height: 3px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--moonsea-assistant-soft);
+}
+
+.moonsea-assistant__progress > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--moonsea-assistant-accent);
+  transform: scaleX(var(--moonsea-update-progress, 0));
+  transform-origin: left;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.moonsea-assistant__update-action,
+.moonsea-wallpaper-select {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--moonsea-assistant-border);
+  border-radius: 8px;
+  color: var(--moonsea-assistant-ink);
+  background: var(--moonsea-assistant-soft);
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1), transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.moonsea-assistant__update-action {
+  width: 100%;
+  margin-top: 11px;
+  color: oklch(98% 0.01 220);
+  border-color: transparent;
+  background: var(--moonsea-assistant-accent);
+}
+
+.moonsea-assistant__update-action:hover,
+.moonsea-wallpaper-select:hover { filter: brightness(1.06); }
+.moonsea-assistant__update-action:active,
+.moonsea-wallpaper-select:active { transform: translateY(1px); }
+.moonsea-assistant__update-action:disabled,
+.moonsea-wallpaper-select:disabled { cursor: wait; opacity: 0.58; }
+
+.moonsea-assistant__standard-note {
+  margin: 13px 0 0;
+  color: var(--moonsea-assistant-muted);
+  line-height: 1.55;
+  font-size: 11px;
+}
+
+.moonsea-assistant__pro-title {
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.moonsea-control-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 36px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.moonsea-control-row output,
+.moonsea-motion-row output { text-align: right; font-size: 11px; }
+.moonsea-control-row input[type="range"] { width: 100%; height: 4px; margin: 0; accent-color: var(--moonsea-assistant-accent); cursor: pointer; }
+
+.moonsea-motion-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 70px 38px 1fr;
+  align-items: center;
+  gap: 9px;
+  margin-top: 13px;
+  cursor: pointer;
+}
+
+.moonsea-motion-row input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+.moonsea-motion-switch { position: relative; width: 34px; height: 18px; border-radius: 999px; background: color-mix(in oklab, var(--moonsea-assistant-ink) 24%, transparent); transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+.moonsea-motion-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--moonsea-assistant-ink); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+.moonsea-motion-row input:checked + .moonsea-motion-switch { background: var(--moonsea-assistant-accent); }
+.moonsea-motion-row input:checked + .moonsea-motion-switch::after { transform: translateX(16px); }
+
+.moonsea-wallpaper-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 9px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--moonsea-assistant-border); }
+.moonsea-wallpaper-row input[type="file"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.moonsea-wallpaper-row output { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.moonsea-wallpaper-row output.is-error { color: oklch(65% 0.18 27) !important; }
+.moonsea-controls__actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.moonsea-controls__reset { border: 0; padding: 5px 7px; color: var(--moonsea-assistant-muted); background: transparent; cursor: pointer; font-size: 11px; }
+.moonsea-controls__reset:hover { color: var(--moonsea-assistant-ink); }
+
+.moonsea-wallpaper-select:focus-visible,
+.moonsea-controls__reset:focus-visible,
+.moonsea-controls__toggle:focus-visible,
+.moonsea-assistant__update-action:focus-visible {
+  outline: 2px solid var(--moonsea-assistant-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #codex-moonsea-controls *,
+  #codex-moonsea-controls *::before,
+  #codex-moonsea-controls *::after { transition-duration: 0.01ms !important; }
+}
+
+@media (max-width: 720px) {
+  #codex-moonsea-controls { right: 12px; bottom: 64px; }
+  .moonsea-controls__toggle { width: 38px; padding: 0; }
+  .moonsea-controls__toggle > span { display: none; }
+}

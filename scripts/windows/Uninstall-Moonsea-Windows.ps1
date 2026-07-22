@@ -53,7 +53,7 @@ if (Test-Path -LiteralPath $InstallRoot -PathType Container) {
         Remove-Item -LiteralPath $InstallRoot -Recurse -Force
     }
     else {
-        foreach ($name in @("builds", "install.json", "Start-Moonsea-Windows.ps1", "MoonseaManager.exe", "MoonseaManager.mjs", "manager.pid", "site")) {
+        foreach ($name in @("builds", "releases", "updates", "install.json", "Start-Moonsea-Windows.ps1", "MoonseaManager.exe", "MoonseaManager.mjs", "manager.pid", "site")) {
             $target = Join-Path $InstallRoot $name
             if (Test-Path -LiteralPath $target) {
                 Remove-Item -LiteralPath $target -Recurse -Force

@@ -65,6 +65,7 @@ async function inspectAndCapture(name) {
       expression: `(async () => ({
         proClass: document.documentElement.classList.contains("codex-moonsea"),
         controls: Boolean(document.querySelector("#codex-moonsea-controls")),
+        assistantLabel: document.querySelector(".moonsea-controls__toggle")?.textContent?.trim() ?? null,
         ambient: Boolean(document.querySelector("#codex-moonsea-ambient")),
         runtimeStylesheet: Boolean(document.querySelector("#codex-moonsea-static-theme")),
         titlebarButtons: document.querySelectorAll(".draggable button[aria-label], [class*=\\"electron:h-toolbar\\"] button[aria-label]").length,

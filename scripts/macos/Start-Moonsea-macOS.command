@@ -37,10 +37,12 @@ APPLESCRIPT
 fi
 
 /bin/rm -f -- "$PROFILE_PATH/DevToolsActivePort"
-/usr/bin/open -na "$ACTIVE_BUILD" --args \
-  "--user-data-dir=$PROFILE_PATH" \
-  "--remote-debugging-address=127.0.0.1" \
-  "--remote-debugging-port=0"
+if [[ -z "${MOONSEA_SKIP_APP_LAUNCH:-}" ]]; then
+  /usr/bin/open -na "$ACTIVE_BUILD" --args \
+    "--user-data-dir=$PROFILE_PATH" \
+    "--remote-debugging-address=127.0.0.1" \
+    "--remote-debugging-port=0"
+fi
 if [[ "$MANAGER_PATH" == *.mjs ]]; then
   /usr/bin/nohup /usr/bin/env node "$MANAGER_PATH" \
     --install-root "$INSTALL_ROOT" --profile-path "$PROFILE_PATH" \

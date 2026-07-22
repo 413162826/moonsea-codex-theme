@@ -4,12 +4,16 @@ import { performance } from "node:perf_hooks";
 import { STANDARD_THEMES, toPublicTheme } from "./theme-catalog.mjs";
 import { PRO_THEMES, toPublicProTheme } from "./pro-theme-catalog.mjs";
 
-export const MANAGER_PORT = 17321;
+export const MANAGER_PORT = Number.parseInt(process.env.MOONSEA_MANAGER_PORT ?? "17321", 10);
+if (!Number.isInteger(MANAGER_PORT) || MANAGER_PORT < 1 || MANAGER_PORT > 65535) {
+  throw new Error("月海助手端口无效");
+}
 export const PUBLIC_SITE_ORIGIN = "https://413162826.github.io";
 
 const LOCAL_ORIGINS = new Set([
   `http://127.0.0.1:${MANAGER_PORT}`,
   `http://localhost:${MANAGER_PORT}`,
+  "app://-",
 ]);
 
 const MIME_TYPES = new Map([
@@ -148,7 +152,7 @@ export async function getCodexStatus(profilePath) {
             proRuntimeActive: bridgeStatus?.proActive === true,
             themeId: bridgeStatus?.themeId ?? null,
             restoreError: bridgeStatus?.restoreError ?? null,
-            transparencyControlPresent: Array.from(document.querySelectorAll("button")).some((button) => button.textContent?.trim() === "透明度")
+            assistantPresent: Array.from(document.querySelectorAll("button")).some((button) => button.textContent?.trim() === "月海助手")
           };
         })()`,
         awaitPromise: true,
@@ -163,7 +167,7 @@ export async function getCodexStatus(profilePath) {
           proCapable: value.proCapable,
           proRuntimeActive: value.proRuntimeActive,
           themeId: value.themeId,
-          transparencyControlPresent: value.transparencyControlPresent,
+          assistantPresent: value.assistantPresent,
           message: value.restoreError
             ? `Codex 已连接，外观恢复失败：${value.restoreError}`
             : "Codex 已连接",
@@ -197,6 +201,21 @@ export async function applyThemeToCodex(profilePath, themeId) {
     ...bridgeResult,
     totalMs: Math.round((performance.now() - startedAt) * 10) / 10,
   };
+}
+
+export async function exchangeAssistantUpdate(profilePath, update) {
+  return withCodexClient(profilePath, async (client) => {
+    const result = await client.call("Runtime.evaluate", {
+      expression: `(() => {
+        const bridge = window.moonseaAssistantUpdateBridge;
+        if (!bridge) return { ready: false, command: null };
+        bridge.setStatus(${JSON.stringify(update)});
+        return { ready: true, command: bridge.takeCommand() };
+      })()`,
+      returnByValue: true,
+    });
+    return readEvaluationResult(result);
+  });
 }
 
 function sendJson(response, statusCode, body, origin) {
@@ -236,7 +255,14 @@ function serveStatic(response, siteRoot, pathname) {
   return true;
 }
 
-export function createRequestHandler({ profilePath, siteRoot, status = getCodexStatus, apply = applyThemeToCodex }) {
+export function createRequestHandler({
+  profilePath,
+  siteRoot,
+  appVersion = "0.0.0",
+  updateService = null,
+  status = getCodexStatus,
+  apply = applyThemeToCodex,
+}) {
   return async (request, response) => {
     const origin = request.headers.origin ?? "";
     const host = request.headers.host ?? "";
@@ -263,7 +289,12 @@ export function createRequestHandler({ profilePath, siteRoot, status = getCodexS
     const url = new URL(request.url, `http://${host}`);
     try {
       if (request.method === "GET" && url.pathname === "/api/status") {
-        sendJson(response, 200, { ok: true, catalogVersion: 2, ...(await status(profilePath)) }, origin);
+        sendJson(response, 200, {
+          ok: true,
+          appVersion,
+          catalogVersion: 2,
+          ...(await status(profilePath)),
+        }, origin);
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/themes") {
@@ -282,6 +313,21 @@ export function createRequestHandler({ profilePath, siteRoot, status = getCodexS
         const { themeId } = await readJsonBody(request);
         const result = await apply(profilePath, themeId);
         sendJson(response, 200, { ok: true, result }, origin);
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/update/status") {
+        if (!updateService) throw new Error("当前安装不支持应用内更新");
+        sendJson(response, 200, { ok: true, update: await updateService.getStatus() }, origin);
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/update/download") {
+        if (!updateService) throw new Error("当前安装不支持应用内更新");
+        sendJson(response, 202, { ok: true, update: await updateService.startDownload() }, origin);
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/update/install") {
+        if (!updateService) throw new Error("当前安装不支持应用内更新");
+        sendJson(response, 202, { ok: true, update: await updateService.startInstall() }, origin);
         return;
       }
       if (request.method === "GET" && serveStatic(response, siteRoot, url.pathname)) return;

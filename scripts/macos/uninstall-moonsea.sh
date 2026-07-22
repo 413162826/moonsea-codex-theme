@@ -45,6 +45,8 @@ if [[ -d "$INSTALL_ROOT" ]]; then
   else
     /bin/rm -rf -- \
       "$INSTALL_ROOT/builds" \
+      "$INSTALL_ROOT/releases" \
+      "$INSTALL_ROOT/updates" \
       "$INSTALL_ROOT/install.plist" \
       "$INSTALL_ROOT/Start-Moonsea-macOS.command" \
       "$INSTALL_ROOT/MoonseaManager" \

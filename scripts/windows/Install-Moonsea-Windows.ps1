@@ -32,7 +32,8 @@ if ([string]::IsNullOrWhiteSpace($DesktopPath)) {
     $DesktopPath = if ($env:MOONSEA_DESKTOP_PATH) { $env:MOONSEA_DESKTOP_PATH } else { [Environment]::GetFolderPath("Desktop") }
 }
 if ([string]::IsNullOrWhiteSpace($BuilderPath)) {
-    $BuilderPath = Join-Path $projectRoot "tools\moonsea-builder.exe"
+    $releaseBuilder = Join-Path $projectRoot "tools\moonsea-builder.exe"
+    $BuilderPath = if (Test-Path -LiteralPath $releaseBuilder -PathType Leaf) { $releaseBuilder } else { Join-Path $projectRoot "tools\moonsea-builder.mjs" }
 }
 if ([string]::IsNullOrWhiteSpace($ManagerPath)) {
     $releaseManager = Join-Path $projectRoot "tools\moonsea-manager.exe"
@@ -49,11 +50,11 @@ $manifestPath = Join-Path $InstallRoot "install.json"
 $installedLauncherPath = Join-Path $InstallRoot "Start-Moonsea-Windows.ps1"
 $launcherSourcePath = Join-Path $scriptRoot "Start-Moonsea-Windows.ps1"
 $siteSourcePath = Join-Path $projectRoot "site"
-$installedSitePath = Join-Path $InstallRoot "site"
 $managerExtension = [System.IO.Path]::GetExtension($ManagerPath)
 $managerFileName = if ($managerExtension -eq ".mjs") { "MoonseaManager.mjs" } else { "MoonseaManager.exe" }
-$installedManagerPath = Join-Path $InstallRoot $managerFileName
 $managerPidPath = Join-Path $InstallRoot "manager.pid"
+$packageMetadataPath = Join-Path $projectRoot "package.json"
+$updaterSourcePath = Join-Path $scriptRoot "Update-Moonsea-Windows.ps1"
 
 if (-not (Test-Path -LiteralPath $BuilderPath -PathType Leaf)) {
     throw "The installation package is incomplete. Download and fully extract it again."
@@ -67,6 +68,24 @@ if (-not (Test-Path -LiteralPath $ManagerPath -PathType Leaf)) {
 if (-not (Test-Path -LiteralPath (Join-Path $siteSourcePath "index.html") -PathType Leaf)) {
     throw "Moonsea website resources are missing: $siteSourcePath"
 }
+if (-not (Test-Path -LiteralPath $packageMetadataPath -PathType Leaf)) {
+    throw "Moonsea package metadata is missing: $packageMetadataPath"
+}
+if (-not (Test-Path -LiteralPath $updaterSourcePath -PathType Leaf)) {
+    throw "Moonsea updater is missing: $updaterSourcePath"
+}
+
+$appVersion = [string](Get-Content -LiteralPath $packageMetadataPath -Raw -Encoding UTF8 | ConvertFrom-Json).version
+if ($appVersion -notmatch "^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$") {
+    throw "Moonsea package version is invalid: $appVersion"
+}
+$releasesRoot = Join-Path $InstallRoot "releases"
+$releaseRoot = Join-Path $releasesRoot $appVersion
+$releaseStaging = Join-Path $releasesRoot "$appVersion-staging"
+Assert-ChildPath $releaseRoot $releasesRoot "Release"
+Assert-ChildPath $releaseStaging $releasesRoot "Release staging"
+$installedManagerPath = Join-Path $releaseRoot $managerFileName
+$installedUpdaterPath = Join-Path $releaseRoot "scripts\windows\Update-Moonsea-Windows.ps1"
 
 if (Test-Path -LiteralPath $managerPidPath -PathType Leaf) {
     $managerPidText = (Get-Content -LiteralPath $managerPidPath -Raw -Encoding UTF8).Trim()
@@ -154,6 +173,7 @@ Assert-ChildPath $stagingBuild $buildsRoot "Staging build"
 New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $buildsRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $profilePath -Force | Out-Null
+New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
 
 $needsBuild = $true
 if (Test-Path -LiteralPath $activeBuild -PathType Container) {
@@ -204,28 +224,63 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
     }
     catch { }
 }
+$releaseBackup = $null
+if (Test-Path -LiteralPath $releaseRoot) {
+    $releaseBackup = Join-Path $releasesRoot "$appVersion-replaced"
+    Assert-ChildPath $releaseBackup $releasesRoot "Release backup"
+    if (Test-Path -LiteralPath $releaseBackup) {
+        Remove-Item -LiteralPath $releaseBackup -Recurse -Force
+    }
+    Move-Item -LiteralPath $releaseRoot -Destination $releaseBackup
+}
+if (Test-Path -LiteralPath $releaseStaging) {
+    Remove-Item -LiteralPath $releaseStaging -Recurse -Force
+}
+try {
+    New-Item -ItemType Directory -Path $releaseStaging -Force | Out-Null
+    Copy-Item -LiteralPath $ManagerPath -Destination (Join-Path $releaseStaging $managerFileName) -Force
+    Copy-Item -LiteralPath $siteSourcePath -Destination (Join-Path $releaseStaging "site") -Recurse -Force
+    $updaterTargetDirectory = Join-Path $releaseStaging "scripts\windows"
+    New-Item -ItemType Directory -Path $updaterTargetDirectory -Force | Out-Null
+    Copy-Item -LiteralPath $updaterSourcePath -Destination (Join-Path $updaterTargetDirectory "Update-Moonsea-Windows.ps1") -Force
+    Move-Item -LiteralPath $releaseStaging -Destination $releaseRoot
+    if ($null -ne $releaseBackup -and (Test-Path -LiteralPath $releaseBackup)) {
+        Remove-Item -LiteralPath $releaseBackup -Recurse -Force
+    }
+}
+catch {
+    if (Test-Path -LiteralPath $releaseStaging) {
+        Remove-Item -LiteralPath $releaseStaging -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $releaseBackup -and (Test-Path -LiteralPath $releaseBackup) -and -not (Test-Path -LiteralPath $releaseRoot)) {
+        Move-Item -LiteralPath $releaseBackup -Destination $releaseRoot
+    }
+    throw
+}
 $manifest = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
     platform = "windows"
     edition = "standard"
+    appVersion = $appVersion
     themeVersion = $themeVersion
     officialVersion = $officialVersion
     sourceApp = $SourceApp
     activeBuild = $activeBuild
     profilePath = $profilePath
     managerPath = $installedManagerPath
+    updaterPath = $installedUpdaterPath
+    releasePath = $releaseRoot
     managerPort = 17321
     installedAt = $installedAt
     updatedAt = (Get-Date).ToUniversalTime().ToString("o")
 }
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-[System.IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 4), $utf8NoBom)
-Copy-Item -LiteralPath $launcherSourcePath -Destination $installedLauncherPath -Force
-Copy-Item -LiteralPath $ManagerPath -Destination $installedManagerPath -Force
-if (Test-Path -LiteralPath $installedSitePath) {
-    Remove-Item -LiteralPath $installedSitePath -Recurse -Force
-}
-Copy-Item -LiteralPath $siteSourcePath -Destination $installedSitePath -Recurse -Force
+$manifestStagingPath = "$manifestPath.tmp"
+[System.IO.File]::WriteAllText($manifestStagingPath, ($manifest | ConvertTo-Json -Depth 4), $utf8NoBom)
+Move-Item -LiteralPath $manifestStagingPath -Destination $manifestPath -Force
+$launcherStagingPath = "$installedLauncherPath.tmp"
+Copy-Item -LiteralPath $launcherSourcePath -Destination $launcherStagingPath -Force
+Move-Item -LiteralPath $launcherStagingPath -Destination $installedLauncherPath -Force
 
 if (-not $SkipShortcut -and -not $env:MOONSEA_SKIP_SHORTCUT) {
     New-Item -ItemType Directory -Path $DesktopPath -Force | Out-Null

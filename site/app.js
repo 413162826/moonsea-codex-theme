@@ -3,7 +3,7 @@ const DOWNLOADS = Object.freeze({
   windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip",
   macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
 });
-const state = { connected: false, proCapable: false, catalogVersion: 0, selected: null, themes: [] };
+const state = { connected: false, proCapable: false, appVersion: null, catalogVersion: 0, selected: null, themes: [] };
 
 const elements = {
   apply: document.querySelector("#apply-button"),
@@ -57,16 +57,25 @@ async function readCatalog() {
   return response.json();
 }
 
-function setConnection(connected, message, proCapable = false) {
+function setConnection(connected, message, proCapable = false, appVersion = null) {
   state.connected = connected;
   state.proCapable = proCapable;
+  state.appVersion = appVersion;
   elements.statusDot.className = `status-dot ${connected ? "connected" : "error"}`;
-  elements.statusTitle.textContent = connected ? "Codex 已连接" : "还没有连接 Codex";
-  elements.statusMessage.textContent = message;
+  const legacyAssistant = connected && !appVersion;
+  elements.statusTitle.textContent = legacyAssistant
+    ? "月海助手需要升级"
+    : connected ? "Codex 已连接" : "还没有连接 Codex";
+  elements.statusMessage.textContent = legacyAssistant
+    ? "请下载新版并安装一次。登录、设置和自定义壁纸都会保留。"
+    : message;
   const proNeedsUpdate = state.selected?.edition === "pro" && !proCapable;
   elements.apply.disabled = !connected || !state.selected || proNeedsUpdate;
   if (connected && proNeedsUpdate) {
     elements.result.textContent = "Pro 主题需要新版月海版，请重新打开桌面的“Codex 月海版”。";
+    elements.result.className = "result-message error";
+  } else if (legacyAssistant) {
+    elements.result.textContent = "这是最后一次手动安装；升级后可直接在 Codex 的“月海助手”里更新。";
     elements.result.className = "result-message error";
   }
 }
@@ -150,6 +159,7 @@ async function connect() {
       status.connected,
       status.message,
       status.proCapable === true && status.catalogVersion >= 2,
+      status.appVersion ?? null,
     );
     const activeTheme = state.themes.find((theme) => theme.id === status.themeId);
     if (activeTheme) selectTheme(activeTheme);

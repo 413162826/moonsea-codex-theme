@@ -17,6 +17,9 @@ $installRoot = Join-Path $testRoot "MoonseaCodex"
 $desktopPath = Join-Path $testRoot "Desktop"
 $installer = Join-Path $PackageRoot "scripts\windows\Install-Moonsea-Windows.ps1"
 $uninstaller = Join-Path $PackageRoot "scripts\windows\Uninstall-Moonsea-Windows.ps1"
+$expectedVersion = [string](Get-Content -LiteralPath (Join-Path $PackageRoot "package.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version
+$managerPort = 18320
+$previousManagerPort = $env:MOONSEA_MANAGER_PORT
 
 function Invoke-TestBuilder([string[]]$Arguments) {
     if ([System.IO.Path]::GetExtension($BuilderPath) -eq ".mjs") {
@@ -33,14 +36,17 @@ if (Test-Path -LiteralPath $testRoot) {
 }
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 try {
+    $env:MOONSEA_MANAGER_PORT = [string]$managerPort
     node (Join-Path $sourceRoot "tests\create-fixture.mjs") windows $sourceApp | Out-Null
     & $installer -SourceApp $sourceApp -InstallRoot $installRoot -DesktopPath $desktopPath -BuilderPath $BuilderPath -SkipShortcut -SkipLaunch
     $manifestPath = Join-Path $installRoot "install.json"
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Manifest was not created" }
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($manifest.edition -ne "standard") { throw "Installer did not select the standard edition" }
+    if ($manifest.schemaVersion -ne 2 -or $manifest.appVersion -ne $expectedVersion) { throw "Installer did not write the application version" }
     if (-not (Test-Path -LiteralPath $manifest.managerPath -PathType Leaf)) { throw "Manager was not installed" }
-    if (-not (Test-Path -LiteralPath (Join-Path $installRoot "site\index.html") -PathType Leaf)) { throw "Website was not installed" }
+    if (-not (Test-Path -LiteralPath $manifest.updaterPath -PathType Leaf)) { throw "Updater was not installed" }
+    if (-not (Test-Path -LiteralPath (Join-Path $manifest.releasePath "site\index.html") -PathType Leaf)) { throw "Website was not installed" }
     $managerArguments = "--install-root `"$installRoot`" --profile-path `"$($manifest.profilePath)`""
     if ([System.IO.Path]::GetExtension([string]$manifest.managerPath) -eq ".mjs") {
         Start-Process -FilePath "node" -ArgumentList "`"$($manifest.managerPath)`" $managerArguments" -WindowStyle Hidden
@@ -51,7 +57,7 @@ try {
     $managerReady = $false
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         try {
-            $catalog = Invoke-RestMethod -Uri "http://127.0.0.1:17321/api/themes" -Headers @{ Host = "127.0.0.1:17321" } -TimeoutSec 1
+            $catalog = Invoke-RestMethod -Uri "http://127.0.0.1:$managerPort/api/themes" -Headers @{ Host = "127.0.0.1:$managerPort" } -TimeoutSec 1
             if ($catalog.ok -and $catalog.themes.Count -ge 4) { $managerReady = $true; break }
         }
         catch { Start-Sleep -Milliseconds 100 }
@@ -61,7 +67,7 @@ try {
     Invoke-TestBuilder -Arguments @("--verify", $manifest.activeBuild)
     & $uninstaller -InstallRoot $installRoot -DesktopPath $desktopPath -NonInteractive
     if (Test-Path -LiteralPath (Join-Path $installRoot "builds")) { throw "Default uninstall did not remove builds" }
-    if (Test-Path -LiteralPath (Join-Path $installRoot "site")) { throw "Default uninstall did not remove website files" }
+    if (Test-Path -LiteralPath (Join-Path $installRoot "releases")) { throw "Default uninstall did not remove release files" }
     if (-not (Test-Path -LiteralPath (Join-Path $installRoot "BrowserProfile"))) { throw "Default uninstall did not preserve user data" }
 
     & $installer -SourceApp $sourceApp -InstallRoot $installRoot -DesktopPath $desktopPath -BuilderPath $BuilderPath -SkipShortcut -SkipLaunch
@@ -70,6 +76,7 @@ try {
     Write-Host "Windows install, update, and uninstall smoke test passed"
 }
 finally {
+    $env:MOONSEA_MANAGER_PORT = $previousManagerPort
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
     }

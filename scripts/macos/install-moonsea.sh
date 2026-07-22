@@ -19,12 +19,13 @@ MANIFEST_PATH="$INSTALL_ROOT/install.plist"
 START_SOURCE="$SCRIPT_DIR/Start-Moonsea-macOS.command"
 START_INSTALLED="$INSTALL_ROOT/Start-Moonsea-macOS.command"
 SITE_SOURCE="$PROJECT_ROOT/site"
-SITE_INSTALLED="$INSTALL_ROOT/site"
 if [[ "$MANAGER_PATH" == *.mjs ]]; then
-  MANAGER_INSTALLED="$INSTALL_ROOT/MoonseaManager.mjs"
+  MANAGER_FILE_NAME="MoonseaManager.mjs"
 else
-  MANAGER_INSTALLED="$INSTALL_ROOT/MoonseaManager"
+  MANAGER_FILE_NAME="MoonseaManager"
 fi
+PACKAGE_METADATA="$PROJECT_ROOT/package.json"
+UPDATER_SOURCE="$SCRIPT_DIR/update-moonsea.sh"
 APPLICATIONS_DIR="${MOONSEA_APPLICATIONS_DIR:-$HOME/Applications}"
 DESKTOP_DIR="${MOONSEA_DESKTOP_DIR:-$HOME/Desktop}"
 LAUNCHER_APP="$APPLICATIONS_DIR/Codex 月海版.app"
@@ -86,6 +87,16 @@ fi
 [[ -f "$START_SOURCE" ]] || fail "启动脚本缺失：$START_SOURCE"
 [[ -f "$MANAGER_PATH" ]] || fail "月海助手缺失：$MANAGER_PATH"
 [[ -f "$SITE_SOURCE/index.html" ]] || fail "月海网页资源缺失：$SITE_SOURCE"
+[[ -f "$PACKAGE_METADATA" ]] || fail "月海安装包缺少版本信息：$PACKAGE_METADATA"
+[[ -f "$UPDATER_SOURCE" ]] || fail "月海更新程序缺失：$UPDATER_SOURCE"
+
+APP_VERSION="$(/usr/bin/sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$PACKAGE_METADATA" | /usr/bin/head -n 1)"
+[[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]] || fail "月海安装包版本无效：$APP_VERSION"
+RELEASES_ROOT="$INSTALL_ROOT/releases"
+RELEASE_ROOT="$RELEASES_ROOT/$APP_VERSION"
+RELEASE_STAGING="$RELEASES_ROOT/$APP_VERSION-staging"
+MANAGER_INSTALLED="$RELEASE_ROOT/$MANAGER_FILE_NAME"
+UPDATER_INSTALLED="$RELEASE_ROOT/scripts/macos/update-moonsea.sh"
 
 MANAGER_PID_PATH="$INSTALL_ROOT/manager.pid"
 if [[ -f "$MANAGER_PID_PATH" ]]; then
@@ -113,7 +124,7 @@ BUILD_NAME="Moonsea-Codex-standard-$OFFICIAL_VERSION-$THEME_VERSION"
 ACTIVE_BUILD="$BUILDS_ROOT/$BUILD_NAME.app"
 STAGING_BUILD="$BUILDS_ROOT/$BUILD_NAME-staging.app"
 
-/bin/mkdir -p "$BUILDS_ROOT" "$PROFILE_PATH" "$APPLICATIONS_DIR"
+/bin/mkdir -p "$BUILDS_ROOT" "$PROFILE_PATH" "$APPLICATIONS_DIR" "$RELEASES_ROOT"
 
 NEEDS_BUILD=1
 if [[ -d "$ACTIVE_BUILD" ]]; then
@@ -146,17 +157,44 @@ if [[ -f "$MANIFEST_PATH" ]]; then
   PREVIOUS_INSTALLED_AT="$(/usr/bin/plutil -extract installedAt raw -o - "$MANIFEST_PATH" 2>/dev/null || true)"
   [[ -z "$PREVIOUS_INSTALLED_AT" ]] || INSTALLED_AT="$PREVIOUS_INSTALLED_AT"
 fi
+RELEASE_BACKUP=""
+if [[ -e "$RELEASE_ROOT" ]]; then
+  RELEASE_BACKUP="$RELEASES_ROOT/$APP_VERSION-replaced"
+  /bin/rm -rf -- "$RELEASE_BACKUP"
+  /bin/mv "$RELEASE_ROOT" "$RELEASE_BACKUP"
+fi
+/bin/rm -rf -- "$RELEASE_STAGING"
+if ! {
+  /bin/mkdir -p "$RELEASE_STAGING/scripts/macos"
+  /bin/cp "$MANAGER_PATH" "$RELEASE_STAGING/$MANAGER_FILE_NAME"
+  [[ "$MANAGER_FILE_NAME" == *.mjs ]] || /bin/chmod +x "$RELEASE_STAGING/$MANAGER_FILE_NAME"
+  /usr/bin/ditto "$SITE_SOURCE" "$RELEASE_STAGING/site"
+  /bin/cp "$UPDATER_SOURCE" "$RELEASE_STAGING/scripts/macos/update-moonsea.sh"
+  /bin/chmod +x "$RELEASE_STAGING/scripts/macos/update-moonsea.sh"
+  /bin/mv "$RELEASE_STAGING" "$RELEASE_ROOT"
+}; then
+  /bin/rm -rf -- "$RELEASE_STAGING"
+  if [[ -n "$RELEASE_BACKUP" && -e "$RELEASE_BACKUP" && ! -e "$RELEASE_ROOT" ]]; then
+    /bin/mv "$RELEASE_BACKUP" "$RELEASE_ROOT"
+  fi
+  fail "写入月海版本文件失败"
+fi
+[[ -z "$RELEASE_BACKUP" ]] || /bin/rm -rf -- "$RELEASE_BACKUP"
+
 TEMP_MANIFEST="$INSTALL_ROOT/install.plist.tmp"
 /usr/bin/plutil -create xml1 "$TEMP_MANIFEST"
-/usr/bin/plutil -insert schemaVersion -integer 1 "$TEMP_MANIFEST"
+/usr/bin/plutil -insert schemaVersion -integer 2 "$TEMP_MANIFEST"
 /usr/bin/plutil -insert platform -string "macos" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert edition -string "standard" "$TEMP_MANIFEST"
+/usr/bin/plutil -insert appVersion -string "$APP_VERSION" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert themeVersion -string "$THEME_VERSION" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert officialVersion -string "$OFFICIAL_VERSION" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert sourceApp -string "$SOURCE_APP" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert activeBuild -string "$ACTIVE_BUILD" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert profilePath -string "$PROFILE_PATH" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert managerPath -string "$MANAGER_INSTALLED" "$TEMP_MANIFEST"
+/usr/bin/plutil -insert updaterPath -string "$UPDATER_INSTALLED" "$TEMP_MANIFEST"
+/usr/bin/plutil -insert releasePath -string "$RELEASE_ROOT" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert managerPort -integer 17321 "$TEMP_MANIFEST"
 /usr/bin/plutil -insert installedAt -string "$INSTALLED_AT" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert updatedAt -string "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$TEMP_MANIFEST"
@@ -164,10 +202,6 @@ TEMP_MANIFEST="$INSTALL_ROOT/install.plist.tmp"
 
 /bin/cp "$START_SOURCE" "$START_INSTALLED"
 /bin/chmod +x "$START_INSTALLED"
-/bin/cp "$MANAGER_PATH" "$MANAGER_INSTALLED"
-[[ "$MANAGER_INSTALLED" == *.mjs ]] || /bin/chmod +x "$MANAGER_INSTALLED"
-/bin/rm -rf -- "$SITE_INSTALLED"
-/usr/bin/ditto "$SITE_SOURCE" "$SITE_INSTALLED"
 
 if [[ -z "${MOONSEA_SKIP_LAUNCHER_APP:-}" ]]; then
   [[ ! -e "$LAUNCHER_APP" ]] || /bin/rm -rf -- "$LAUNCHER_APP"

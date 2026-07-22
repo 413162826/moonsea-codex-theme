@@ -25,7 +25,7 @@ jobs:
           $stage = Join-Path $PWD ".build/Moonsea-Codex-Windows-x64"
           New-Item -ItemType Directory -Path "$stage/tools" -Force | Out-Null
           New-Item -ItemType Directory -Path "$stage/scripts/windows" -Force | Out-Null
-          Copy-Item README.md,LICENSE,ASSET-LICENSE.md,Install.cmd,Uninstall.cmd -Destination $stage
+          Copy-Item README.md,LICENSE,ASSET-LICENSE.md,package.json,Install.cmd,Uninstall.cmd -Destination $stage
           Copy-Item theme,assets,site -Destination $stage -Recurse
           Copy-Item scripts/windows/* -Destination "$stage/scripts/windows"
           bun build ./src/build-static.mjs --compile --target=bun-windows-x64 --outfile "$stage/tools/moonsea-builder.exe"
@@ -33,6 +33,7 @@ jobs:
           $env:MOONSEA_PROJECT_ROOT = $stage
           & "$stage/tools/moonsea-builder.exe" --theme-version
           ./tests/windows-installer-smoke.ps1 -PackageRoot $stage -BuilderPath "$stage/tools/moonsea-builder.exe"
+          ./tests/windows-updater-smoke.ps1 -PackageRoot $stage
           Compress-Archive -Path "$stage/*" -DestinationPath "$PWD/Moonsea-Codex-Windows-x64.zip"
       - uses: actions/upload-artifact@v7.0.1
         with:
@@ -56,7 +57,7 @@ jobs:
           stage="$PWD/.build/Moonsea-Codex-macOS"
           tool_stage="$PWD/.build/macos-universal-tools"
           mkdir -p "$stage/tools" "$stage/scripts/macos" "$tool_stage"
-          cp README.md LICENSE ASSET-LICENSE.md Install.command Uninstall.command "$stage/"
+          cp README.md LICENSE ASSET-LICENSE.md package.json Install.command Uninstall.command "$stage/"
           cp -R theme assets site "$stage/"
           cp scripts/macos/* "$stage/scripts/macos/"
           for target in bun-darwin-arm64 bun-darwin-x64; do
@@ -75,6 +76,7 @@ jobs:
           MOONSEA_TEST_PACKAGE_ROOT="$stage" \
             MOONSEA_TEST_BUILDER_PATH="$stage/tools/moonsea-builder" \
             zsh ./tests/macos-installer-smoke.sh
+          MOONSEA_TEST_PACKAGE_ROOT="$stage" zsh ./tests/macos-updater-smoke.sh
           ditto -c -k --sequesterRsrc --keepParent "$stage" "$PWD/Moonsea-Codex-macOS.zip"
       - uses: actions/upload-artifact@v7.0.1
         with:
@@ -93,7 +95,35 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" artifacts/* \
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          windows_file="artifacts/Moonsea-Codex-Windows-x64.zip"
+          macos_file="artifacts/Moonsea-Codex-macOS.zip"
+          windows_sha="$(sha256sum "$windows_file" | cut -d' ' -f1)"
+          macos_sha="$(sha256sum "$macos_file" | cut -d' ' -f1)"
+          windows_size="$(stat -c%s "$windows_file")"
+          macos_size="$(stat -c%s "$macos_file")"
+          jq -n \
+            --arg version "$version" \
+            --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg notes "月海助手与主题体验更新" \
+            --arg windowsUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-Windows-x64.zip" \
+            --arg windowsSha "$windows_sha" \
+            --argjson windowsSize "$windows_size" \
+            --arg macosUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-macOS.zip" \
+            --arg macosSha "$macos_sha" \
+            --argjson macosSize "$macos_size" \
+            '{
+              schemaVersion: 1,
+              version: $version,
+              publishedAt: $publishedAt,
+              notes: $notes,
+              platforms: {
+                windows: { url: $windowsUrl, sha256: $windowsSha, size: $windowsSize },
+                macos: { url: $macosUrl, sha256: $macosSha, size: $macosSize }
+              }
+            }' > artifacts/update.json
+          gh release create "$GITHUB_REF_NAME" artifacts/*.zip artifacts/update.json \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes
