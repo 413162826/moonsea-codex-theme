@@ -36,7 +36,7 @@ jobs:
       - name: 检查 macOS 脚本语法
         if: runner.os == 'macOS'
         run: |
-          zsh -n Install-Moonsea-macOS.command
-          zsh -n Uninstall-Moonsea-macOS.command
+          zsh -n Install.command
+          zsh -n Uninstall.command
           zsh -n scripts/macos/*.sh
           zsh -n scripts/macos/*.command

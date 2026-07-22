@@ -1,4 +1,5 @@
 (() => {
+  const autoEnable = document.currentScript?.dataset.autoEnable === "true";
   const initialRoute = new URLSearchParams(window.location.search).get("initialRoute");
   if (initialRoute === "/avatar-overlay") {
     return;
@@ -37,6 +38,9 @@
   let wallpaperObjectUrl = "";
   let wallpaperLoadPromise;
   let titlebarProbeScheduled = false;
+  let titlebarObserver;
+  let titlebarProbeTimer;
+  let active = false;
   const wallpaperState = {
     name: "默认壁纸",
     error: false,
@@ -425,40 +429,81 @@
     titlebarProbeScheduled = true;
     if (reportTitlebarButtonStyles()) return;
 
-    const observer = new MutationObserver(() => {
-      if (reportTitlebarButtonStyles()) observer.disconnect();
+    titlebarObserver = new MutationObserver(() => {
+      if (reportTitlebarButtonStyles()) titlebarObserver?.disconnect();
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    window.setTimeout(() => observer.disconnect(), 15_000);
+    titlebarObserver.observe(document.documentElement, { childList: true, subtree: true });
+    titlebarProbeTimer = window.setTimeout(() => titlebarObserver?.disconnect(), 15_000);
   };
 
-  const applyTheme = () => {
-    document.documentElement.classList.add("codex-moonsea");
-
-    let stylesheet = document.getElementById("codex-moonsea-static-theme");
-    if (!stylesheet) {
-      stylesheet = document.createElement("link");
+  const ensureStylesheet = () => {
+    const existing = document.getElementById("codex-moonsea-static-theme");
+    if (existing?.sheet) return Promise.resolve(existing);
+    return new Promise((resolve, reject) => {
+      const stylesheet = existing ?? document.createElement("link");
       stylesheet.id = "codex-moonsea-static-theme";
       stylesheet.rel = "stylesheet";
       stylesheet.href = "./moonsea/theme.css";
-    }
-
-    // 放到 head 末尾，确保主题样式排在 Codex 自身动态加载的 CSS 之后。
-    document.head.appendChild(stylesheet);
-    applySettings();
-    void loadSavedWallpaper();
-    if (document.body) {
-      createAmbientMotion();
-      createControls();
-      scheduleTitlebarButtonProbe();
-    }
+      stylesheet.addEventListener("load", () => resolve(stylesheet), { once: true });
+      stylesheet.addEventListener("error", () => reject(new Error("Pro 主题样式加载失败")), { once: true });
+      document.head.appendChild(stylesheet);
+    });
   };
 
-  applyTheme();
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", applyTheme, { once: true });
-  }
-  window.addEventListener("load", applyTheme, { once: true });
+  const enable = async () => {
+    if (!document.body) throw new Error("Codex 窗口还没有准备好");
+    await ensureStylesheet();
+    active = true;
+    document.documentElement.classList.add("codex-moonsea");
+    applySettings();
+    await loadSavedWallpaper();
+    createAmbientMotion();
+    createControls();
+    scheduleTitlebarButtonProbe();
+    return { active: true };
+  };
+
+  const disable = () => {
+    active = false;
+    const root = document.documentElement;
+    root.classList.remove(
+      "codex-moonsea",
+      "moonsea-motion-enabled",
+      "moonsea-motion-disabled",
+      "moonsea-reading-enabled",
+      "moonsea-reading-disabled",
+    );
+    for (const property of [
+      "--moonsea-main-alpha",
+      "--moonsea-sidebar-alpha",
+      "--moonsea-control-alpha",
+      "--moonsea-wallpaper-brightness",
+      "--moonsea-wallpaper-blur",
+      "--moonsea-wallpaper-image",
+    ]) {
+      root.style.removeProperty(property);
+    }
+    document.getElementById("codex-moonsea-controls")?.remove();
+    document.getElementById("codex-moonsea-ambient")?.remove();
+    document.getElementById("codex-moonsea-static-theme")?.remove();
+    titlebarObserver?.disconnect();
+    titlebarObserver = undefined;
+    if (titlebarProbeTimer) window.clearTimeout(titlebarProbeTimer);
+    titlebarProbeTimer = undefined;
+    titlebarProbeScheduled = false;
+    if (wallpaperObjectUrl) URL.revokeObjectURL(wallpaperObjectUrl);
+    wallpaperObjectUrl = "";
+    wallpaperLoadPromise = undefined;
+    return { active: false };
+  };
+
+  Object.defineProperty(window, "moonseaProRuntime", {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: Object.freeze({ disable, enable, isActive: () => active }),
+  });
+  if (autoEnable) void enable();
   window.addEventListener("beforeunload", () => {
     if (wallpaperObjectUrl) URL.revokeObjectURL(wallpaperObjectUrl);
   });

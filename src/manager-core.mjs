@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
-import { getStandardTheme, STANDARD_THEMES, toPublicTheme } from "./theme-catalog.mjs";
+import { STANDARD_THEMES, toPublicTheme } from "./theme-catalog.mjs";
+import { PRO_THEMES, toPublicProTheme } from "./pro-theme-catalog.mjs";
 
 export const MANAGER_PORT = 17321;
 export const PUBLIC_SITE_ORIGIN = "https://413162826.github.io";
@@ -143,7 +144,8 @@ export async function getCodexStatus(profilePath) {
           return {
             bridgeInstalled,
             bridgeReady: bridgeStatus?.ready === true,
-            proRuntimeActive: document.documentElement.classList.contains("codex-moonsea"),
+            proCapable: typeof window.moonseaThemeBridge?.applyProTheme === "function",
+            proRuntimeActive: bridgeStatus?.proActive === true,
             transparencyControlPresent: Array.from(document.querySelectorAll("button")).some((button) => button.textContent?.trim() === "透明度")
           };
         })()`,
@@ -155,7 +157,8 @@ export async function getCodexStatus(profilePath) {
     return value?.bridgeReady
       ? {
           connected: true,
-          edition: "standard",
+          edition: value.proRuntimeActive ? "pro" : "standard",
+          proCapable: value.proCapable,
           proRuntimeActive: value.proRuntimeActive,
           transparencyControlPresent: value.transparencyControlPresent,
           message: "Codex 已连接",
@@ -172,11 +175,14 @@ export async function getCodexStatus(profilePath) {
 }
 
 export async function applyThemeToCodex(profilePath, themeId) {
-  const theme = getStandardTheme(themeId);
+  const standardTheme = STANDARD_THEMES.find((theme) => theme.id === themeId);
+  const theme = standardTheme ?? PRO_THEMES.find((item) => item.id === themeId);
+  if (!theme) throw new Error(`没有这个主题：${themeId}`);
   const startedAt = performance.now();
   const bridgeResult = await withCodexClient(profilePath, async (client) => {
+    const method = theme.edition === "pro" ? "applyProTheme" : "applyStandardTheme";
     const result = await client.call("Runtime.evaluate", {
-      expression: `window.moonseaThemeBridge.applyStandardTheme(${JSON.stringify(theme)})`,
+      expression: `window.moonseaThemeBridge.${method}(${JSON.stringify(theme)})`,
       awaitPromise: true,
       returnByValue: true,
     });
@@ -258,8 +264,11 @@ export function createRequestHandler({ profilePath, siteRoot, status = getCodexS
       if (request.method === "GET" && url.pathname === "/api/themes") {
         sendJson(response, 200, {
           ok: true,
-          themes: STANDARD_THEMES.map(toPublicTheme),
-          pro: { available: false, message: "Pro 主题正在开发" },
+          themes: [
+            ...STANDARD_THEMES.map(toPublicTheme),
+            ...PRO_THEMES.map(toPublicProTheme),
+          ],
+          pro: { available: true },
         }, origin);
         return;
       }

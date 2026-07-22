@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+title 月海助手卸载
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\windows\Uninstall-Moonsea-Windows.ps1"
 set "MOONSEA_EXIT=%ERRORLEVEL%"
 echo.

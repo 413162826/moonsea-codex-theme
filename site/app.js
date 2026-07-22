@@ -1,18 +1,45 @@
 const API_ROOT = "http://127.0.0.1:17321";
+const DOWNLOADS = Object.freeze({
+  windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip",
+  macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
+});
 const state = { connected: false, selected: null, themes: [] };
 
 const elements = {
   apply: document.querySelector("#apply-button"),
-  grid: document.querySelector("#theme-grid"),
+  downloadLabel: document.querySelector("#download-label"),
+  downloadLink: document.querySelector("#download-link"),
+  standardGrid: document.querySelector("#standard-theme-grid"),
+  proGrid: document.querySelector("#pro-theme-grid"),
   result: document.querySelector("#result-message"),
   retry: document.querySelector("#retry-button"),
   selected: document.querySelector("#selected-theme"),
   standardMetric: document.querySelector("#standard-metric"),
-  rendererMetric: document.querySelector("#renderer-metric"),
+  standardRendererMetric: document.querySelector("#standard-renderer-metric"),
+  proMetric: document.querySelector("#pro-metric"),
+  proRendererMetric: document.querySelector("#pro-renderer-metric"),
   statusDot: document.querySelector("#status-dot"),
   statusMessage: document.querySelector("#status-message"),
   statusTitle: document.querySelector("#status-title"),
 };
+
+function configureDownload() {
+  const platform = [navigator.userAgentData?.platform, navigator.platform, navigator.userAgent]
+    .filter(Boolean)
+    .join(" ");
+  const macos = /Mac/i.test(platform) && !/iPhone|iPad|iPod/i.test(platform);
+  const windows = /Win/i.test(platform);
+  if (macos) {
+    elements.downloadLink.href = DOWNLOADS.macos;
+    elements.downloadLabel.textContent = "下载 macOS 版";
+    return;
+  }
+  if (windows) return;
+  elements.downloadLink.removeAttribute("href");
+  elements.downloadLink.removeAttribute("download");
+  elements.downloadLabel.textContent = "仅支持 Windows / macOS";
+  elements.downloadLink.setAttribute("aria-disabled", "true");
+}
 
 async function request(path, options) {
   const response = await fetch(`${API_ROOT}${path}`, {
@@ -36,43 +63,48 @@ function selectTheme(theme) {
   state.selected = theme;
   elements.selected.textContent = theme.name;
   elements.apply.disabled = !state.connected;
-  for (const card of elements.grid.querySelectorAll(".theme-card")) {
+  for (const card of document.querySelectorAll(".theme-card")) {
     card.setAttribute("aria-pressed", String(card.dataset.themeId === theme.id));
   }
   elements.result.textContent = "";
   elements.result.className = "result-message";
 }
 
+function createThemeCard(theme) {
+  const button = document.createElement("button");
+  button.className = `theme-card ${theme.edition === "pro" ? "pro-card" : ""}`;
+  button.type = "button";
+  button.dataset.themeId = theme.id;
+  button.setAttribute("aria-pressed", "false");
+  button.setAttribute("aria-label", `选择${theme.name}主题，${theme.description}`);
+
+  const preview = document.createElement("span");
+  preview.className = "theme-preview";
+  preview.setAttribute("aria-hidden", "true");
+  for (const color of theme.preview.slice(0, 4)) {
+    const swatch = document.createElement("span");
+    swatch.style.background = color;
+    preview.append(swatch);
+  }
+
+  const copy = document.createElement("span");
+  copy.className = "theme-copy";
+  const name = document.createElement("strong");
+  name.textContent = theme.name;
+  const description = document.createElement("small");
+  description.textContent = theme.description;
+  copy.append(name, description);
+  button.append(preview, copy);
+  button.addEventListener("click", () => selectTheme(theme));
+  return button;
+}
+
 function renderThemes(themes) {
   state.themes = themes;
-  elements.grid.replaceChildren(...themes.map((theme) => {
-    const button = document.createElement("button");
-    button.className = "theme-card";
-    button.type = "button";
-    button.dataset.themeId = theme.id;
-    button.setAttribute("aria-pressed", "false");
-    button.setAttribute("aria-label", `选择${theme.name}主题，${theme.description}`);
-
-    const preview = document.createElement("span");
-    preview.className = "theme-preview";
-    preview.setAttribute("aria-hidden", "true");
-    for (const color of theme.preview.slice(0, 3)) {
-      const swatch = document.createElement("span");
-      swatch.style.background = color;
-      preview.append(swatch);
-    }
-
-    const copy = document.createElement("span");
-    copy.className = "theme-copy";
-    const name = document.createElement("strong");
-    name.textContent = theme.name;
-    const description = document.createElement("small");
-    description.textContent = theme.description;
-    copy.append(name, description);
-    button.append(preview, copy);
-    button.addEventListener("click", () => selectTheme(theme));
-    return button;
-  }));
+  const standardThemes = themes.filter((theme) => theme.edition === "standard");
+  const proThemes = themes.filter((theme) => theme.edition === "pro");
+  elements.standardGrid.replaceChildren(...standardThemes.map(createThemeCard));
+  elements.proGrid.replaceChildren(...proThemes.map(createThemeCard));
   if (themes[0]) selectTheme(themes[0]);
 }
 
@@ -103,8 +135,11 @@ async function applySelectedTheme() {
       method: "POST",
       body: JSON.stringify({ themeId: state.selected.id }),
     });
-    elements.standardMetric.textContent = `${result.totalMs} ms`;
-    elements.rendererMetric.textContent = `Codex 窗口 ${result.rendererMs} ms`;
+    const isPro = state.selected.edition === "pro";
+    const totalMetric = isPro ? elements.proMetric : elements.standardMetric;
+    const rendererMetric = isPro ? elements.proRendererMetric : elements.standardRendererMetric;
+    totalMetric.textContent = `${result.totalMs} ms`;
+    rendererMetric.textContent = `Codex 窗口 ${result.rendererMs} ms`;
     elements.result.textContent = `${state.selected.name}已应用，Codex 无需重启。`;
   } catch (error) {
     elements.result.textContent = error.message;
@@ -118,5 +153,6 @@ async function applySelectedTheme() {
 
 elements.retry.addEventListener("click", connect);
 elements.apply.addEventListener("click", applySelectedTheme);
+configureDownload();
 connect();
 setInterval(connect, 5000);

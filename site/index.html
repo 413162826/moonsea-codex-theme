@@ -16,14 +16,16 @@
         </span>
         <span>月海主题</span>
       </a>
-      <a class="download-link" href="https://github.com/413162826/moonsea-codex-theme/releases/latest">下载月海助手</a>
+      <a class="download-link" id="download-link" href="https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip" download>
+        <span id="download-label">下载 Windows 版</span>
+      </a>
     </header>
 
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <p class="eyebrow">MOONSEA FOR CODEX</p>
         <h1 id="hero-title">选一个主题，Codex 马上换好。</h1>
-        <p class="hero-copy">普通主题只使用 Codex 官方外观能力。没有壁纸注入，没有透明度控件。</p>
+        <p class="hero-copy">普通主题调用 Codex 官方外观，Pro 主题增加壁纸、动画与沉浸布局。安装一次，以后都在这里即时切换。</p>
         <div class="connection-card" aria-live="polite">
           <span class="status-dot" id="status-dot" aria-hidden="true"></span>
           <div>
@@ -42,7 +44,17 @@
           </div>
           <span class="edition-badge">STANDARD</span>
         </div>
-        <div class="theme-grid" id="theme-grid" aria-live="polite">
+        <div class="theme-grid" id="standard-theme-grid" aria-live="polite">
+          <div class="empty-state">连接月海助手后会显示可用主题。</div>
+        </div>
+        <div class="pro-heading">
+          <div>
+            <p class="section-kicker">Pro 主题</p>
+            <h2>壁纸、动画与沉浸布局</h2>
+          </div>
+          <span class="edition-badge pro">PRO</span>
+        </div>
+        <div class="theme-grid pro-grid" id="pro-theme-grid" aria-live="polite">
           <div class="empty-state">连接月海助手后会显示可用主题。</div>
         </div>
         <div class="apply-bar">
@@ -61,26 +73,26 @@
       <section class="performance" aria-labelledby="performance-title">
         <div>
           <p class="section-kicker">真实切换耗时</p>
-          <h2 id="performance-title">先测普通主题，再和 Pro 对比</h2>
-          <p>计时从网页请求开始，到 Codex 当前窗口完成官方主题更新为止。</p>
+          <h2 id="performance-title">普通与 Pro，速度当场看</h2>
+          <p>计时从网页请求开始，到 Codex 当前窗口完成界面更新为止。</p>
         </div>
         <div class="metric-grid">
           <div class="metric active">
             <span>普通主题</span>
             <strong id="standard-metric">等待测试</strong>
-            <small id="renderer-metric">官方 Appearance</small>
+            <small id="standard-renderer-metric">官方 Appearance</small>
           </div>
-          <div class="metric locked" aria-disabled="true">
+          <div class="metric active pro-metric">
             <span>Pro 主题</span>
-            <strong>开发中</strong>
-            <small>壁纸 · 动画 · 布局</small>
+            <strong id="pro-metric">等待测试</strong>
+            <small id="pro-renderer-metric">壁纸 · 动画 · 布局</small>
           </div>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>普通主题不修改官方 Codex，也不启用运行时视觉注入。</p>
+      <p>普通主题保持原生；Pro 主题可随时一键切回，Codex 无需重启。</p>
       <a href="https://github.com/413162826/moonsea-codex-theme">GitHub</a>
     </footer>
     <script type="module" src="./app.js"></script>

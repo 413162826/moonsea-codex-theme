@@ -1,62 +1,100 @@
+const CODE_FONT_STACK = 'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
+
 const standardThemes = [
   {
     id: "moon-white",
     name: "月白",
-    description: "清亮、克制的浅色界面",
+    description: "冷白底与深青字，适合长时间阅读",
     edition: "standard",
     mode: "light",
-    preview: ["#F5F8FA", "#DCE9EE", "#397A8C", "#172830"],
+    preview: ["#F7F9FA", "#E2EAED", "#176E83", "#17272F"],
     patch: {
-      accent: "#397A8C",
-      surface: "#F5F8FA",
-      ink: "#172830",
-      contrast: 7,
+      accent: "#176E83",
+      surface: "#F7F9FA",
+      ink: "#17272F",
+      contrast: 32,
+      fonts: {
+        ui: null,
+        code: CODE_FONT_STACK,
+      },
       opaqueWindows: true,
+      semanticColors: {
+        diffAdded: "#1F7552",
+        diffRemoved: "#B13F4A",
+        skill: "#6752A2",
+      },
     },
   },
   {
     id: "mist-blue",
-    name: "雾蓝",
-    description: "柔和的蓝灰工作空间",
+    name: "潮雾",
+    description: "蓝灰层次更明确，适合多面板工作",
     edition: "standard",
     mode: "light",
-    preview: ["#EEF4F7", "#C9DDE6", "#4C7393", "#192B39"],
+    preview: ["#E3EDF2", "#CADAE2", "#2A678B", "#132934"],
     patch: {
-      accent: "#4C7393",
-      surface: "#EEF4F7",
-      ink: "#192B39",
-      contrast: 10,
+      accent: "#2A678B",
+      surface: "#E3EDF2",
+      ink: "#132934",
+      contrast: 42,
+      fonts: {
+        ui: null,
+        code: CODE_FONT_STACK,
+      },
       opaqueWindows: true,
+      semanticColors: {
+        diffAdded: "#176D4F",
+        diffRemoved: "#A93E49",
+        skill: "#62519B",
+      },
     },
   },
   {
     id: "deep-sea",
     name: "深海",
-    description: "低眩光的深蓝夜间界面",
+    description: "深蓝底与海青强调，适合夜间专注",
     edition: "standard",
     mode: "dark",
-    preview: ["#10212C", "#1C3441", "#63A8B7", "#E9F2F4"],
+    preview: ["#0D1A21", "#19303A", "#60B2C1", "#E5EEF1"],
     patch: {
-      accent: "#63A8B7",
-      surface: "#10212C",
-      ink: "#E9F2F4",
-      contrast: 12,
+      accent: "#60B2C1",
+      surface: "#0D1A21",
+      ink: "#E5EEF1",
+      contrast: 44,
+      fonts: {
+        ui: null,
+        code: CODE_FONT_STACK,
+      },
       opaqueWindows: true,
+      semanticColors: {
+        diffAdded: "#69C79B",
+        diffRemoved: "#F1848C",
+        skill: "#C1A2E7",
+      },
     },
   },
   {
     id: "ink-night",
-    name: "墨夜",
-    description: "更沉静的中性深色界面",
+    name: "夜航",
+    description: "中性墨黑与月蓝强调，适合低光环境",
     edition: "standard",
     mode: "dark",
-    preview: ["#171D22", "#293138", "#8AA9B4", "#F0F3F4"],
+    preview: ["#171D24", "#282F39", "#8BA9D6", "#E9EEF2"],
     patch: {
-      accent: "#8AA9B4",
-      surface: "#171D22",
-      ink: "#F0F3F4",
-      contrast: 8,
+      accent: "#8BA9D6",
+      surface: "#171D24",
+      ink: "#E9EEF2",
+      contrast: 36,
+      fonts: {
+        ui: null,
+        code: CODE_FONT_STACK,
+      },
       opaqueWindows: true,
+      semanticColors: {
+        diffAdded: "#72C69D",
+        diffRemoved: "#F08B91",
+        skill: "#C0A6DB",
+      },
     },
   },
 ];
@@ -80,6 +118,17 @@ export function validateStandardTheme(theme) {
   }
   if (!Number.isInteger(theme.patch.contrast) || theme.patch.contrast < 0 || theme.patch.contrast > 100) {
     throw new Error("主题对比度无效");
+  }
+  if (theme.patch.fonts?.ui !== null || typeof theme.patch.fonts?.code !== "string") {
+    throw new Error("主题字体无效");
+  }
+  for (const key of ["diffAdded", "diffRemoved", "skill"]) {
+    if (!HEX_COLOR.test(theme.patch.semanticColors?.[key] ?? "")) {
+      throw new Error(`主题语义颜色 ${key} 无效`);
+    }
+  }
+  if (!Array.isArray(theme.preview) || theme.preview.length !== 4 || theme.preview.some((color) => !HEX_COLOR.test(color))) {
+    throw new Error("主题预览色无效");
   }
   if (theme.patch.opaqueWindows !== true) {
     throw new Error("普通主题必须保持窗口不透明");

@@ -25,7 +25,7 @@ jobs:
           $stage = Join-Path $PWD ".build/Moonsea-Codex-Windows-x64"
           New-Item -ItemType Directory -Path "$stage/tools" -Force | Out-Null
           New-Item -ItemType Directory -Path "$stage/scripts/windows" -Force | Out-Null
-          Copy-Item README.md,LICENSE,ASSET-LICENSE.md,Install-Moonsea-Windows.cmd,Uninstall-Moonsea-Windows.cmd -Destination $stage
+          Copy-Item README.md,LICENSE,ASSET-LICENSE.md,Install.cmd,Uninstall.cmd -Destination $stage
           Copy-Item theme,assets,site -Destination $stage -Recurse
           Copy-Item scripts/windows/* -Destination "$stage/scripts/windows"
           bun build ./src/build-static.mjs --compile --target=bun-windows-x64 --outfile "$stage/tools/moonsea-builder.exe"
@@ -53,34 +53,33 @@ jobs:
       - name: 生成 macOS 安装包
         run: |
           set -euo pipefail
-          make_package() {
-            local arch="$1"
-            local target="$2"
-            local stage="$PWD/.build/Moonsea-Codex-macOS-$arch"
-            mkdir -p "$stage/tools" "$stage/scripts/macos"
-            cp README.md LICENSE ASSET-LICENSE.md Install-Moonsea-macOS.command Uninstall-Moonsea-macOS.command "$stage/"
-            cp -R theme assets site "$stage/"
-            cp scripts/macos/* "$stage/scripts/macos/"
-            bun build ./src/build-static.mjs --compile --target="$target" --outfile "$stage/tools/moonsea-builder"
-            bun build ./src/manager.mjs --compile --target="$target" --outfile "$stage/tools/moonsea-manager"
-            chmod +x "$stage"/*.command "$stage/tools/moonsea-builder" "$stage/tools/moonsea-manager" "$stage/scripts/macos"/*.sh "$stage/scripts/macos"/*.command
-            tar -czf "$PWD/Moonsea-Codex-macOS-$arch.tar.gz" -C "$stage" .
-          }
-          make_package Apple-Silicon bun-darwin-arm64
-          make_package Intel bun-darwin-x64
-          case "$(uname -m)" in
-            arm64) TEST_ARCH=Apple-Silicon ;;
-            *) TEST_ARCH=Intel ;;
-          esac
-          MOONSEA_PROJECT_ROOT="$PWD/.build/Moonsea-Codex-macOS-$TEST_ARCH" \
-            "$PWD/.build/Moonsea-Codex-macOS-$TEST_ARCH/tools/moonsea-builder" --theme-version
-          MOONSEA_TEST_PACKAGE_ROOT="$PWD/.build/Moonsea-Codex-macOS-$TEST_ARCH" \
-            MOONSEA_TEST_BUILDER_PATH="$PWD/.build/Moonsea-Codex-macOS-$TEST_ARCH/tools/moonsea-builder" \
+          stage="$PWD/.build/Moonsea-Codex-macOS"
+          tool_stage="$PWD/.build/macos-universal-tools"
+          mkdir -p "$stage/tools" "$stage/scripts/macos" "$tool_stage"
+          cp README.md LICENSE ASSET-LICENSE.md Install.command Uninstall.command "$stage/"
+          cp -R theme assets site "$stage/"
+          cp scripts/macos/* "$stage/scripts/macos/"
+          for target in bun-darwin-arm64 bun-darwin-x64; do
+            arch="${target#bun-darwin-}"
+            bun build ./src/build-static.mjs --compile --target="$target" --outfile "$tool_stage/moonsea-builder-$arch"
+            bun build ./src/manager.mjs --compile --target="$target" --outfile "$tool_stage/moonsea-manager-$arch"
+            codesign --remove-signature "$tool_stage/moonsea-builder-$arch" 2>/dev/null || true
+            codesign --remove-signature "$tool_stage/moonsea-manager-$arch" 2>/dev/null || true
+          done
+          lipo -create "$tool_stage/moonsea-builder-arm64" "$tool_stage/moonsea-builder-x64" -output "$stage/tools/moonsea-builder"
+          lipo -create "$tool_stage/moonsea-manager-arm64" "$tool_stage/moonsea-manager-x64" -output "$stage/tools/moonsea-manager"
+          codesign --force --sign - "$stage/tools/moonsea-builder"
+          codesign --force --sign - "$stage/tools/moonsea-manager"
+          chmod +x "$stage"/*.command "$stage/tools/moonsea-builder" "$stage/tools/moonsea-manager" "$stage/scripts/macos"/*.sh "$stage/scripts/macos"/*.command
+          MOONSEA_PROJECT_ROOT="$stage" "$stage/tools/moonsea-builder" --theme-version
+          MOONSEA_TEST_PACKAGE_ROOT="$stage" \
+            MOONSEA_TEST_BUILDER_PATH="$stage/tools/moonsea-builder" \
             zsh ./tests/macos-installer-smoke.sh
+          ditto -c -k --sequesterRsrc --keepParent "$stage" "$PWD/Moonsea-Codex-macOS.zip"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: macos-packages
-          path: Moonsea-Codex-macOS-*.tar.gz
+          path: Moonsea-Codex-macOS.zip
 
   release:
     needs: [windows, macos]

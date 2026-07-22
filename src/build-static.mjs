@@ -61,8 +61,7 @@ function getThemeVersion(edition = "standard") {
   const hash = crypto.createHash("sha256");
   hash.update(edition);
   hash.update(fs.readFileSync(bridgeTemplate));
-  const versionFiles = edition === "pro" ? Object.values(themeFiles) : [];
-  for (const filePath of versionFiles) {
+  for (const filePath of Object.values(themeFiles)) {
     hash.update(fs.readFileSync(filePath));
   }
   return hash.digest("hex").slice(0, 12);
@@ -132,7 +131,7 @@ function injectThemeScript(html, themeVersion) {
     )
     .replace(
       "</body>",
-      `    <script id="codex-moonsea-static-theme-script" src="./moonsea/theme.js?v=${themeVersion}"></script>\n  </body>`,
+      `    <script id="codex-moonsea-static-theme-script" data-auto-enable="true" src="./moonsea/theme.js?v=${themeVersion}"></script>\n  </body>`,
     );
 }
 
@@ -184,11 +183,12 @@ function resolveAppActionModule(extractedDir) {
   };
 }
 
-function buildAppearanceBridge(extractedDir) {
+function buildAppearanceBridge(extractedDir, themeVersion) {
   const { modulePath, exportName } = resolveAppActionModule(extractedDir);
   return readUtf8(bridgeTemplate)
     .replace("__MOONSEA_RPC_MODULE_PATH__", modulePath)
-    .replace("__MOONSEA_APP_ACTION_EXPORT__", exportName);
+    .replace("__MOONSEA_APP_ACTION_EXPORT__", exportName)
+    .replace("__MOONSEA_THEME_VERSION__", themeVersion);
 }
 
 function readUtf8(filePath) {
@@ -230,38 +230,37 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
     index.includes(`id="codex-moonsea-appearance-bridge"`) &&
       index.includes(`appearance-bridge.js${expectedVersion}`),
     readUtf8(packedBridge).includes("app.appearance.set_theme"),
+    readUtf8(packedBridge).includes("applyProTheme"),
     metadata.themeVersion === themeVersion,
   ];
+  for (const [filePath, label] of [
+    [packedTheme, "主题 CSS"],
+    [packedPet, "宠物 CSS"],
+    [packedScript, "主题脚本"],
+    [packedWallpaper, "主题壁纸"],
+  ]) {
+    assertFile(filePath, label);
+  }
+  checks.push(
+    fs.readFileSync(packedTheme).equals(fs.readFileSync(themeFiles.css)),
+    fs.readFileSync(packedPet).equals(fs.readFileSync(themeFiles.petCss)),
+    fs.readFileSync(packedScript).equals(fs.readFileSync(themeFiles.script)),
+    fs.readFileSync(packedWallpaper).equals(fs.readFileSync(themeFiles.wallpaper)),
+  );
   if (edition === "standard") {
     checks.push(
       !index.includes(`id="codex-moonsea-static-theme"`),
       !index.includes(`id="codex-moonsea-pet-overlay"`),
       !index.includes(`id="codex-moonsea-static-theme-script"`),
       !composition.includes(`id="codex-moonsea-pet-overlay"`),
-      !fs.existsSync(packedTheme),
-      !fs.existsSync(packedPet),
-      !fs.existsSync(packedScript),
-      !fs.existsSync(packedWallpaper),
     );
   } else {
-    for (const [filePath, label] of [
-      [packedTheme, "主题 CSS"],
-      [packedPet, "宠物 CSS"],
-      [packedScript, "主题脚本"],
-      [packedWallpaper, "主题壁纸"],
-    ]) {
-      assertFile(filePath, label);
-    }
     checks.push(
       index.includes(`id="codex-moonsea-static-theme"`) && index.includes(`theme.css${expectedVersion}`),
       index.includes(`id="codex-moonsea-pet-overlay"`) && index.includes(`pet-overlay.css${expectedVersion}`),
       index.includes(`id="codex-moonsea-static-theme-script"`) && index.includes(`theme.js${expectedVersion}`),
       composition.includes(`id="codex-moonsea-pet-overlay"`) && composition.includes(`pet-overlay.css${expectedVersion}`),
       !composition.includes(`id="codex-moonsea-static-theme"`),
-      fs.readFileSync(packedTheme).equals(fs.readFileSync(themeFiles.css)),
-      fs.readFileSync(packedPet).equals(fs.readFileSync(themeFiles.petCss)),
-      fs.readFileSync(packedScript).equals(fs.readFileSync(themeFiles.script)),
-      fs.readFileSync(packedWallpaper).equals(fs.readFileSync(themeFiles.wallpaper)),
       readUtf8(packedTheme).startsWith("html.codex-moonsea {"),
       readUtf8(packedPet).includes(`[data-avatar-overlay-size="notification-tray"]`),
     );
@@ -328,7 +327,7 @@ function applyTheme(extractedDir, themeVersion, edition) {
   fs.mkdirSync(moonseaDir, { recursive: true });
   fs.writeFileSync(
     path.join(moonseaDir, "appearance-bridge.js"),
-    buildAppearanceBridge(extractedDir),
+    buildAppearanceBridge(extractedDir, themeVersion),
     "utf8",
   );
   fs.writeFileSync(
@@ -336,12 +335,10 @@ function applyTheme(extractedDir, themeVersion, edition) {
     JSON.stringify({ schemaVersion: 1, edition, themeVersion }),
     "utf8",
   );
-  if (edition === "pro") {
-    fs.copyFileSync(themeFiles.css, path.join(moonseaDir, "theme.css"));
-    fs.copyFileSync(themeFiles.petCss, path.join(moonseaDir, "pet-overlay.css"));
-    fs.copyFileSync(themeFiles.script, path.join(moonseaDir, "theme.js"));
-    fs.copyFileSync(themeFiles.wallpaper, path.join(moonseaDir, "dragon-girl.png"));
-  }
+  fs.copyFileSync(themeFiles.css, path.join(moonseaDir, "theme.css"));
+  fs.copyFileSync(themeFiles.petCss, path.join(moonseaDir, "pet-overlay.css"));
+  fs.copyFileSync(themeFiles.script, path.join(moonseaDir, "theme.js"));
+  fs.copyFileSync(themeFiles.wallpaper, path.join(moonseaDir, "dragon-girl.png"));
 
   const indexPath = path.join(extractedDir, "webview", "index.html");
   const compositionPath = path.join(

@@ -81,7 +81,7 @@ run_builder() {
 if [[ "$BUILDER_PATH" == *.mjs ]]; then
   [[ -f "$BUILDER_PATH" ]] || fail "没有找到开发构建器：$BUILDER_PATH"
 else
-  [[ -x "$BUILDER_PATH" ]] || fail "没有找到 macOS 构建器。请从 GitHub Releases 下载对应芯片的 macOS 安装包并完整解压。"
+  [[ -x "$BUILDER_PATH" ]] || fail "安装文件不完整，请重新下载并完整解压 macOS 安装包。"
 fi
 [[ -f "$START_SOURCE" ]] || fail "启动脚本缺失：$START_SOURCE"
 [[ -f "$MANAGER_PATH" ]] || fail "月海助手缺失：$MANAGER_PATH"
@@ -184,7 +184,9 @@ fi
 
 echo
 echo "安装完成：Codex 月海版"
-echo "以后更新主题，只需再次运行安装脚本。"
+echo "接下来只做两步："
+echo "1. 打开桌面的“Codex 月海版”"
+echo "2. 回到月海主题官网，选择皮肤并点击“应用到 Codex”"
 
 if [[ -z "${MOONSEA_SKIP_LAUNCH:-}" ]]; then
   /bin/zsh "$START_INSTALLED"

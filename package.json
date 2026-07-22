@@ -1,7 +1,7 @@
 {
   "name": "moonsea-codex-theme",
-  "version": "1.1.0",
-  "description": "通过本地助手即时切换 Codex 普通主题，并为 Pro 主题预留运行时能力",
+  "version": "1.2.0",
+  "description": "通过本地助手即时切换 Codex 普通主题与 Pro 运行时主题",
   "type": "module",
   "scripts": {
     "build": "node ./scripts/build-tool.mjs",

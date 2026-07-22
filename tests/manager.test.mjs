@@ -9,6 +9,7 @@ import {
   PUBLIC_SITE_ORIGIN,
 } from "../src/manager-core.mjs";
 import { getStandardTheme, STANDARD_THEMES } from "../src/theme-catalog.mjs";
+import { getProTheme, PRO_THEMES } from "../src/pro-theme-catalog.mjs";
 
 const projectRoot = path.resolve(path.dirname(process.argv[1]), "..");
 
@@ -23,6 +24,17 @@ test("普通主题全部保持不透明", () => {
 
 test("拒绝不存在的普通主题", () => {
   assert.throws(() => getStandardTheme("unknown"), /没有这个普通主题/);
+});
+
+test("Pro 主题固定使用官方浅色不透明基底", () => {
+  assert.ok(PRO_THEMES.length >= 1);
+  for (const theme of PRO_THEMES) {
+    assert.equal(theme.edition, "pro");
+    assert.equal(theme.mode, "light");
+    assert.equal(theme.patch.opaqueWindows, true);
+    assert.equal(theme.runtime.motion, true);
+  }
+  assert.equal(getProTheme("tide-dragon-realm").runtime.layout, "immersive");
 });
 
 test("解析 Codex 随机调试端口", () => {
@@ -52,4 +64,29 @@ test("控制桥等待 Codex 官方动作作用域就绪", () => {
   );
   assert.match(bridge, /appActions\.scope != null/);
   assert.match(bridge, /getStatus/);
+  assert.match(bridge, /applyProTheme/);
+  assert.match(bridge, /disableProRuntime/);
+});
+
+test("Pro 运行时可以启用并完整退出", () => {
+  const runtime = fs.readFileSync(
+    path.join(projectRoot, "theme", "static", "theme.js"),
+    "utf8",
+  );
+  assert.match(runtime, /const enable = async/);
+  assert.match(runtime, /const disable = \(\) =>/);
+  assert.match(runtime, /classList\.remove\(/);
+  assert.match(runtime, /codex-moonsea-static-theme/);
+  assert.match(runtime, /moonseaProRuntime/);
+});
+
+test("官网按系统直下安装包且入口使用通用命名", () => {
+  const website = fs.readFileSync(path.join(projectRoot, "site", "app.js"), "utf8");
+  assert.match(website, /Moonsea-Codex-Windows-x64\.zip/);
+  assert.match(website, /Moonsea-Codex-macOS\.zip/);
+  assert.doesNotMatch(website, /releases\/latest["']/);
+
+  for (const entry of ["Install.cmd", "Uninstall.cmd", "Install.command", "Uninstall.command"]) {
+    assert.equal(fs.existsSync(path.join(projectRoot, entry)), true, `${entry} 应存在`);
+  }
 });

@@ -26,6 +26,40 @@ if (-not (Test-Path -LiteralPath $managerPath -PathType Leaf)) {
     throw "The Moonsea manager is missing. Run the installer again."
 }
 
+$runningMoonsea = @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
+    $_.ExecutablePath -and $_.ExecutablePath.StartsWith($buildsRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+})
+$runningMain = @($runningMoonsea | Where-Object { $_.CommandLine -notmatch "\s--type=" })
+$staleMain = @($runningMain | Where-Object {
+    -not $_.ExecutablePath.StartsWith($activeBuild + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
+    $_.CommandLine -notmatch "--remote-debugging-port=0"
+})
+if ($staleMain.Count -gt 0) {
+    Add-Type -AssemblyName PresentationFramework
+    $choice = [System.Windows.MessageBox]::Show(
+        "检测到旧版 Codex 月海版正在运行。`n`n关闭旧版后才能启动新的主题连接。未保存的任务请先保存。`n`n是否现在关闭旧版并打开新版？",
+        "Codex 月海版需要重启",
+        [System.Windows.MessageBoxButton]::YesNo,
+        [System.Windows.MessageBoxImage]::Information
+    )
+    if ($choice -ne [System.Windows.MessageBoxResult]::Yes) { exit 0 }
+    foreach ($process in $runningMoonsea) {
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        $remaining = @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
+            $_.ExecutablePath -and $_.ExecutablePath.StartsWith($buildsRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($remaining.Count -eq 0) { break }
+        Start-Sleep -Milliseconds 100
+    }
+}
+
+$devToolsPortPath = Join-Path $profilePath "DevToolsActivePort"
+if (Test-Path -LiteralPath $devToolsPortPath) {
+    Remove-Item -LiteralPath $devToolsPortPath -Force
+}
+
 Start-Process -FilePath $app -ArgumentList @(
     "--user-data-dir=`"$profilePath`"",
     "--remote-debugging-address=127.0.0.1",

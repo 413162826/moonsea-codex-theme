@@ -96,6 +96,8 @@ button { font: inherit; }
   background: oklch(100% 0 0 / 0.7);
 }
 
+.download-link[aria-disabled="true"] { color: var(--ink-soft); cursor: not-allowed; }
+
 main {
   width: min(1000px, calc(100% - 2rem));
   margin: 0 auto;
@@ -205,6 +207,22 @@ h2 { margin: 0; font-size: clamp(1.45rem, 4vw, 2.05rem); line-height: 1.2; lette
   background: oklch(96% 0.028 215);
 }
 
+.edition-badge.pro {
+  border-color: oklch(67% 0.09 250);
+  color: oklch(40% 0.1 250);
+  background: oklch(95% 0.035 250);
+}
+
+.pro-heading {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-top: 2.2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line);
+}
+
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -232,6 +250,8 @@ h2 { margin: 0; font-size: clamp(1.45rem, 4vw, 2.05rem); line-height: 1.2; lette
 
 .theme-card:hover { transform: translateY(-2px); border-color: oklch(68% 0.065 215); }
 .theme-card[aria-pressed="true"] { border-color: var(--sea); box-shadow: 0 0 0 3px oklch(54% 0.095 215 / 0.13); }
+.theme-card.pro-card { background: linear-gradient(145deg, white, oklch(96% 0.025 245)); }
+.theme-card.pro-card[aria-pressed="true"] { border-color: oklch(58% 0.11 250); box-shadow: 0 0 0 3px oklch(58% 0.11 250 / 0.13); }
 
 .theme-preview {
   display: grid;
@@ -244,6 +264,7 @@ h2 { margin: 0; font-size: clamp(1.45rem, 4vw, 2.05rem); line-height: 1.2; lette
 }
 
 .theme-preview span:first-child { grid-row: span 2; }
+.theme-preview span:nth-child(4) { grid-column: 2; }
 .theme-copy strong { display: block; font-size: 1rem; }
 .theme-copy small { display: block; margin-top: 0.35rem; color: var(--ink-soft); line-height: 1.45; }
 
@@ -314,6 +335,7 @@ a:focus-visible { outline: 3px solid oklch(67% 0.12 215); outline-offset: 3px; }
 .metric small { color: oklch(68% 0.02 220); }
 .metric.active { border-color: oklch(58% 0.07 210); background: linear-gradient(145deg, oklch(27% 0.045 215), oklch(22% 0.032 225)); }
 .metric.locked { opacity: 0.6; }
+.metric.pro-metric { border-color: oklch(57% 0.07 250); background: linear-gradient(145deg, oklch(27% 0.045 245), oklch(22% 0.032 225)); }
 
 footer {
   display: flex;
