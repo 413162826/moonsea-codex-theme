@@ -26,6 +26,8 @@ html.codex-moonsea {
   --color-token-main-surface-primary: var(--moonsea-panel) !important;
   --color-token-side-bar-background: var(--moonsea-sidebar) !important;
   --color-token-bg-primary: oklch(17% 0.04 243 / var(--moonsea-main-alpha)) !important;
+  --color-background-panel: var(--moonsea-panel-strong) !important;
+  --color-token-bg-fog: var(--moonsea-panel-strong) !important;
   --color-background-elevated-primary-opaque: oklch(19% 0.045 243) !important;
   --color-background-elevated-secondary: var(--moonsea-control) !important;
   --color-background-accent: oklch(70% 0.08 220 / 0.16) !important;

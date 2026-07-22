@@ -8,6 +8,7 @@ import { createPackage, extractAll } from "@electron/asar";
 
 const projectRoot = path.resolve(path.dirname(process.argv[1]), "..");
 const builder = path.join(projectRoot, "tools", "moonsea-builder.mjs");
+const themeCss = path.join(projectRoot, "theme", "static", "theme.css");
 
 async function createFixture(root, platform) {
   const source =
@@ -83,3 +84,15 @@ async function verifyLayout(platform) {
 
 test("构建 Windows 布局", () => verifyLayout("windows"));
 test("构建 macOS 应用包布局", () => verifyLayout("mac"));
+
+test("设置页卡片使用月海深色表面令牌", () => {
+  const css = fs.readFileSync(themeCss, "utf8");
+  assert.match(
+    css,
+    /--color-background-panel:\s*var\(--moonsea-panel-strong\)\s*!important;/,
+  );
+  assert.match(
+    css,
+    /--color-token-bg-fog:\s*var\(--moonsea-panel-strong\)\s*!important;/,
+  );
+});

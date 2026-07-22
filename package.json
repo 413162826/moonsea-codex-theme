@@ -1,6 +1,6 @@
 {
   "name": "moonsea-codex-theme",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "为 Codex 桌面客户端生成独立的月海主题副本",
   "type": "module",
   "scripts": {
