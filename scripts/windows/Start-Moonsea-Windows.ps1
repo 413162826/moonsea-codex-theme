@@ -18,4 +18,24 @@ if (-not (Test-Path -LiteralPath $app -PathType Leaf)) {
 }
 $profilePath = [System.IO.Path]::GetFullPath([string]$manifest.profilePath)
 New-Item -ItemType Directory -Path $profilePath -Force | Out-Null
-Start-Process -FilePath $app -ArgumentList "--user-data-dir=`"$profilePath`""
+$managerPath = [System.IO.Path]::GetFullPath([string]$manifest.managerPath)
+if (-not $managerPath.StartsWith($installRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "The manager path in the installation data is invalid."
+}
+if (-not (Test-Path -LiteralPath $managerPath -PathType Leaf)) {
+    throw "The Moonsea manager is missing. Run the installer again."
+}
+
+Start-Process -FilePath $app -ArgumentList @(
+    "--user-data-dir=`"$profilePath`"",
+    "--remote-debugging-address=127.0.0.1",
+    "--remote-debugging-port=0"
+)
+
+$managerArguments = "--install-root `"$installRoot`" --profile-path `"$profilePath`""
+if ([System.IO.Path]::GetExtension($managerPath) -eq ".mjs") {
+    Start-Process -FilePath "node" -ArgumentList "`"$managerPath`" $managerArguments" -WindowStyle Hidden
+}
+else {
+    Start-Process -FilePath $managerPath -ArgumentList $managerArguments -WindowStyle Hidden
+}

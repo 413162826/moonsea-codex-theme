@@ -17,6 +17,12 @@ fs.writeFileSync(
   path.join(unpacked, "webview", "index.html"),
   "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",
 );
+const fixtureAssets = path.join(unpacked, "webview", "assets");
+fs.mkdirSync(fixtureAssets, { recursive: true });
+fs.writeFileSync(
+  path.join(fixtureAssets, "rpc-fixture.js"),
+  "var Service,instance;Service=class{scope=null;bindScope(e){return this.scope=e,()=>{this.scope=null}}},instance=new Service;export{instance as z};",
+);
 fs.writeFileSync(
   path.join(unpacked, "webview", "avatar-overlay-composition-surface.html"),
   "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",

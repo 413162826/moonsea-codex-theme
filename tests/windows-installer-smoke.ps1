@@ -38,9 +38,30 @@ try {
     $manifestPath = Join-Path $installRoot "install.json"
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Manifest was not created" }
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($manifest.edition -ne "standard") { throw "Installer did not select the standard edition" }
+    if (-not (Test-Path -LiteralPath $manifest.managerPath -PathType Leaf)) { throw "Manager was not installed" }
+    if (-not (Test-Path -LiteralPath (Join-Path $installRoot "site\index.html") -PathType Leaf)) { throw "Website was not installed" }
+    $managerArguments = "--install-root `"$installRoot`" --profile-path `"$($manifest.profilePath)`""
+    if ([System.IO.Path]::GetExtension([string]$manifest.managerPath) -eq ".mjs") {
+        Start-Process -FilePath "node" -ArgumentList "`"$($manifest.managerPath)`" $managerArguments" -WindowStyle Hidden
+    }
+    else {
+        Start-Process -FilePath $manifest.managerPath -ArgumentList $managerArguments -WindowStyle Hidden
+    }
+    $managerReady = $false
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        try {
+            $catalog = Invoke-RestMethod -Uri "http://127.0.0.1:17321/api/themes" -Headers @{ Host = "127.0.0.1:17321" } -TimeoutSec 1
+            if ($catalog.ok -and $catalog.themes.Count -ge 4) { $managerReady = $true; break }
+        }
+        catch { Start-Sleep -Milliseconds 100 }
+    }
+    if (-not $managerReady) { throw "Installed manager did not serve the theme website" }
+    & $installer -SourceApp $sourceApp -InstallRoot $installRoot -DesktopPath $desktopPath -BuilderPath $BuilderPath -SkipShortcut -SkipLaunch
     Invoke-TestBuilder -Arguments @("--verify", $manifest.activeBuild)
     & $uninstaller -InstallRoot $installRoot -DesktopPath $desktopPath -NonInteractive
     if (Test-Path -LiteralPath (Join-Path $installRoot "builds")) { throw "Default uninstall did not remove builds" }
+    if (Test-Path -LiteralPath (Join-Path $installRoot "site")) { throw "Default uninstall did not remove website files" }
     if (-not (Test-Path -LiteralPath (Join-Path $installRoot "BrowserProfile"))) { throw "Default uninstall did not preserve user data" }
 
     & $installer -SourceApp $sourceApp -InstallRoot $installRoot -DesktopPath $desktopPath -BuilderPath $BuilderPath -SkipShortcut -SkipLaunch

@@ -25,6 +25,16 @@ if (-not $NonInteractive -and -not $RemoveUserData) {
 }
 
 $buildsRoot = Join-Path $InstallRoot "builds"
+$managerPidPath = Join-Path $InstallRoot "manager.pid"
+if (Test-Path -LiteralPath $managerPidPath -PathType Leaf) {
+    $managerPidText = (Get-Content -LiteralPath $managerPidPath -Raw -Encoding UTF8).Trim()
+    if ($managerPidText -match "^\d+$") {
+        $managerProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $managerPidText" -ErrorAction SilentlyContinue
+        if ($null -ne $managerProcess -and $managerProcess.CommandLine -and $managerProcess.CommandLine.IndexOf($InstallRoot, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+            Stop-Process -Id ([int]$managerPidText) -Force
+        }
+    }
+}
 $running = @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
     $_.ExecutablePath -and $_.ExecutablePath.StartsWith($buildsRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
 })
@@ -43,7 +53,7 @@ if (Test-Path -LiteralPath $InstallRoot -PathType Container) {
         Remove-Item -LiteralPath $InstallRoot -Recurse -Force
     }
     else {
-        foreach ($name in @("builds", "install.json", "Start-Moonsea-Windows.ps1")) {
+        foreach ($name in @("builds", "install.json", "Start-Moonsea-Windows.ps1", "MoonseaManager.exe", "MoonseaManager.mjs", "manager.pid", "site")) {
             $target = Join-Path $InstallRoot $name
             if (Test-Path -LiteralPath $target) {
                 Remove-Item -LiteralPath $target -Recurse -Force

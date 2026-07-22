@@ -10,6 +10,15 @@ const projectRoot = path.resolve(path.dirname(process.argv[1]), "..");
 const builder = path.join(projectRoot, "tools", "moonsea-builder.mjs");
 const themeCss = path.join(projectRoot, "theme", "static", "theme.css");
 
+function writeRpcFixture(unpacked) {
+  const assets = path.join(unpacked, "webview", "assets");
+  fs.mkdirSync(assets, { recursive: true });
+  fs.writeFileSync(
+    path.join(assets, "rpc-fixture.js"),
+    "var Service,instance;Service=class{scope=null;bindScope(e){return this.scope=e,()=>{this.scope=null}}},instance=new Service;export{instance as z};",
+  );
+}
+
 async function createFixture(root, platform) {
   const source =
     platform === "mac"
@@ -25,6 +34,7 @@ async function createFixture(root, platform) {
     path.join(unpacked, "webview", "index.html"),
     "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",
   );
+  writeRpcFixture(unpacked);
   fs.writeFileSync(
     path.join(unpacked, "webview", "avatar-overlay-composition-surface.html"),
     "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",
@@ -40,7 +50,7 @@ async function createFixture(root, platform) {
   return source;
 }
 
-async function verifyLayout(platform) {
+async function verifyLayout(platform, edition = "standard") {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `moonsea-${platform}-test-`));
   try {
     const source = await createFixture(root, platform);
@@ -50,8 +60,9 @@ async function verifyLayout(platform) {
         ? "Moonsea-Codex-test.app"
         : "Moonsea-Codex-test-windows",
     );
-    execFileSync(process.execPath, [builder, source, target], { stdio: "pipe" });
-    execFileSync(process.execPath, [builder, "--verify", target], {
+    const editionArgs = ["--edition", edition];
+    execFileSync(process.execPath, [builder, ...editionArgs, source, target], { stdio: "pipe" });
+    execFileSync(process.execPath, [builder, ...editionArgs, "--verify", target], {
       stdio: "pipe",
     });
 
@@ -73,10 +84,17 @@ async function verifyLayout(platform) {
       ),
       "utf8",
     );
-    assert.match(index, /codex-moonsea-static-theme/);
-    assert.match(index, /codex-moonsea-pet-overlay/);
-    assert.match(composition, /codex-moonsea-pet-overlay/);
-    assert.doesNotMatch(composition, /codex-moonsea-static-theme/);
+    assert.match(index, /codex-moonsea-appearance-bridge/);
+    if (edition === "standard") {
+      assert.doesNotMatch(index, /codex-moonsea-static-theme/);
+      assert.doesNotMatch(index, /codex-moonsea-pet-overlay/);
+      assert.doesNotMatch(composition, /codex-moonsea-pet-overlay/);
+    } else {
+      assert.match(index, /codex-moonsea-static-theme/);
+      assert.match(index, /codex-moonsea-pet-overlay/);
+      assert.match(composition, /codex-moonsea-pet-overlay/);
+      assert.doesNotMatch(composition, /codex-moonsea-static-theme/);
+    }
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -84,6 +102,7 @@ async function verifyLayout(platform) {
 
 test("构建 Windows 布局", () => verifyLayout("windows"));
 test("构建 macOS 应用包布局", () => verifyLayout("mac"));
+test("Pro 构建保留运行时视觉能力", () => verifyLayout("windows", "pro"));
 
 test("设置页卡片使用月海深色表面令牌", () => {
   const css = fs.readFileSync(themeCss, "utf8");

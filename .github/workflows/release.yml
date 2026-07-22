@@ -26,9 +26,10 @@ jobs:
           New-Item -ItemType Directory -Path "$stage/tools" -Force | Out-Null
           New-Item -ItemType Directory -Path "$stage/scripts/windows" -Force | Out-Null
           Copy-Item README.md,LICENSE,ASSET-LICENSE.md,Install-Moonsea-Windows.cmd,Uninstall-Moonsea-Windows.cmd -Destination $stage
-          Copy-Item theme,assets -Destination $stage -Recurse
+          Copy-Item theme,assets,site -Destination $stage -Recurse
           Copy-Item scripts/windows/* -Destination "$stage/scripts/windows"
           bun build ./src/build-static.mjs --compile --target=bun-windows-x64 --outfile "$stage/tools/moonsea-builder.exe"
+          bun build ./src/manager.mjs --compile --target=bun-windows-x64 --outfile "$stage/tools/moonsea-manager.exe"
           $env:MOONSEA_PROJECT_ROOT = $stage
           & "$stage/tools/moonsea-builder.exe" --theme-version
           ./tests/windows-installer-smoke.ps1 -PackageRoot $stage -BuilderPath "$stage/tools/moonsea-builder.exe"
@@ -58,10 +59,11 @@ jobs:
             local stage="$PWD/.build/Moonsea-Codex-macOS-$arch"
             mkdir -p "$stage/tools" "$stage/scripts/macos"
             cp README.md LICENSE ASSET-LICENSE.md Install-Moonsea-macOS.command Uninstall-Moonsea-macOS.command "$stage/"
-            cp -R theme assets "$stage/"
+            cp -R theme assets site "$stage/"
             cp scripts/macos/* "$stage/scripts/macos/"
             bun build ./src/build-static.mjs --compile --target="$target" --outfile "$stage/tools/moonsea-builder"
-            chmod +x "$stage"/*.command "$stage/tools/moonsea-builder" "$stage/scripts/macos"/*.sh "$stage/scripts/macos"/*.command
+            bun build ./src/manager.mjs --compile --target="$target" --outfile "$stage/tools/moonsea-manager"
+            chmod +x "$stage"/*.command "$stage/tools/moonsea-builder" "$stage/tools/moonsea-manager" "$stage/scripts/macos"/*.sh "$stage/scripts/macos"/*.command
             tar -czf "$PWD/Moonsea-Codex-macOS-$arch.tar.gz" -C "$stage" .
           }
           make_package Apple-Silicon bun-darwin-arm64

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="一键切换 Codex 月海主题">
+    <title>月海主题</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#theme-picker">跳到主题选择</a>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="月海主题首页">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M23.8 22.8A11 11 0 0 1 9.2 8.2 11 11 0 1 0 23.8 22.8Z"/></svg>
+        </span>
+        <span>月海主题</span>
+      </a>
+      <a class="download-link" href="https://github.com/413162826/moonsea-codex-theme/releases/latest">下载月海助手</a>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow">MOONSEA FOR CODEX</p>
+        <h1 id="hero-title">选一个主题，Codex 马上换好。</h1>
+        <p class="hero-copy">普通主题只使用 Codex 官方外观能力。没有壁纸注入，没有透明度控件。</p>
+        <div class="connection-card" aria-live="polite">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <div>
+            <strong id="status-title">正在连接月海助手</strong>
+            <p id="status-message">确认本机 Codex 是否已经就绪…</p>
+          </div>
+          <button class="quiet-button" id="retry-button" type="button">重新连接</button>
+        </div>
+      </section>
+
+      <section class="picker" id="theme-picker" aria-labelledby="picker-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">普通主题</p>
+            <h2 id="picker-title">官方外观，轻量切换</h2>
+          </div>
+          <span class="edition-badge">STANDARD</span>
+        </div>
+        <div class="theme-grid" id="theme-grid" aria-live="polite">
+          <div class="empty-state">连接月海助手后会显示可用主题。</div>
+        </div>
+        <div class="apply-bar">
+          <div class="selection-copy">
+            <span>当前选择</span>
+            <strong id="selected-theme">还没有选择主题</strong>
+          </div>
+          <button class="apply-button" id="apply-button" type="button" disabled>
+            <span>应用到 Codex</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <p class="result-message" id="result-message" role="status"></p>
+      </section>
+
+      <section class="performance" aria-labelledby="performance-title">
+        <div>
+          <p class="section-kicker">真实切换耗时</p>
+          <h2 id="performance-title">先测普通主题，再和 Pro 对比</h2>
+          <p>计时从网页请求开始，到 Codex 当前窗口完成官方主题更新为止。</p>
+        </div>
+        <div class="metric-grid">
+          <div class="metric active">
+            <span>普通主题</span>
+            <strong id="standard-metric">等待测试</strong>
+            <small id="renderer-metric">官方 Appearance</small>
+          </div>
+          <div class="metric locked" aria-disabled="true">
+            <span>Pro 主题</span>
+            <strong>开发中</strong>
+            <small>壁纸 · 动画 · 布局</small>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>普通主题不修改官方 Codex，也不启用运行时视觉注入。</p>
+      <a href="https://github.com/413162826/moonsea-codex-theme">GitHub</a>
+    </footer>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

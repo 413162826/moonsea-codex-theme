@@ -35,10 +35,30 @@ export MOONSEA_SKIP_LAUNCH=1
 
 zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea.sh"
 ACTIVE_BUILD="$(plutil -extract activeBuild raw -o - "$INSTALL_ROOT/install.plist")"
+[[ "$(plutil -extract edition raw -o - "$INSTALL_ROOT/install.plist")" == "standard" ]]
+MANAGER_PATH="$(plutil -extract managerPath raw -o - "$INSTALL_ROOT/install.plist")"
+[[ -f "$MANAGER_PATH" ]]
+[[ -f "$INSTALL_ROOT/site/index.html" ]]
+if [[ "$MANAGER_PATH" == *.mjs ]]; then
+  node "$MANAGER_PATH" --install-root "$INSTALL_ROOT" --profile-path "$INSTALL_ROOT/BrowserProfile" >/dev/null 2>&1 &
+else
+  "$MANAGER_PATH" --install-root "$INSTALL_ROOT" --profile-path "$INSTALL_ROOT/BrowserProfile" >/dev/null 2>&1 &
+fi
+MANAGER_READY=0
+for _ in {1..30}; do
+  if /usr/bin/curl --silent --fail http://127.0.0.1:17321/api/themes >/dev/null; then
+    MANAGER_READY=1
+    break
+  fi
+  sleep 0.1
+done
+[[ $MANAGER_READY -eq 1 ]]
+zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea.sh"
 run_builder --verify "$ACTIVE_BUILD" >/dev/null
 
 MOONSEA_NONINTERACTIVE=1 zsh "$PACKAGE_ROOT/scripts/macos/uninstall-moonsea.sh"
 [[ ! -d "$INSTALL_ROOT/builds" ]]
+[[ ! -d "$INSTALL_ROOT/site" ]]
 [[ -d "$INSTALL_ROOT/BrowserProfile" ]]
 
 zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea.sh"
