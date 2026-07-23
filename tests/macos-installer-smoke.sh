@@ -46,6 +46,8 @@ UPDATER_PATH="$(plutil -extract updaterPath raw -o - "$INSTALL_ROOT/install.plis
 [[ -f "$MANAGER_PATH" ]]
 [[ -f "$UPDATER_PATH" ]]
 [[ -f "$RELEASE_PATH/site/index.html" ]]
+[[ -f "$RELEASE_PATH/admin/index.html" ]]
+[[ -f "$RELEASE_PATH/assets/admin-drafts/mint-academy.png" ]]
 if [[ "$MANAGER_PATH" == *.mjs ]]; then
   node "$MANAGER_PATH" --install-root "$INSTALL_ROOT" --profile-path "$INSTALL_ROOT/BrowserProfile" >/dev/null 2>&1 &
 else

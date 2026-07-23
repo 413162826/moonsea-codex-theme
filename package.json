@@ -1,7 +1,7 @@
 {
   "name": "moonsea-codex-theme",
-  "version": "1.4.2",
-  "description": "通过本地助手即时切换 Codex 普通主题与 Pro 运行时主题",
+  "version": "1.5.0",
+  "description": "通过本地助手即时切换 Codex 免费渐变壁纸与 Pro 精选壁纸",
   "type": "module",
   "scripts": {
     "wallpapers": "node ./scripts/sync-wallpapers.mjs",

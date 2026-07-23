@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="月海主题本机管理员创作台">
+    <title>月海主题创作台</title>
+    <link rel="stylesheet" href="./admin.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#preview-stage">跳到实时预览</a>
+
+    <header class="studio-header">
+      <a class="studio-brand" href="/" aria-label="返回月海主题墙">
+        <svg aria-hidden="true" viewBox="0 0 32 32"><path d="M23.8 22.8A11 11 0 0 1 9.2 8.2 11 11 0 1 0 23.8 22.8Z"/></svg>
+        <span>月海</span>
+      </a>
+      <div class="studio-title">
+        <span>主题创作台</span>
+        <small>仅本机管理员可见</small>
+      </div>
+      <a class="back-link" href="/">返回主题墙</a>
+    </header>
+
+    <main class="studio-layout">
+      <aside class="workbench" aria-labelledby="workbench-title">
+        <div class="workbench-intro">
+          <p class="eyebrow">ART DIRECTION DESK</p>
+          <h1 id="workbench-title">先让实际界面成立，再做封面。</h1>
+          <p>同一张原图、同一个视觉焦点和同一组界面参数，同时驱动 Codex 预览与主题封面。</p>
+        </div>
+
+        <section class="tool-section" aria-labelledby="source-title">
+          <div class="section-heading">
+            <span>01</span>
+            <div>
+              <h2 id="source-title">原始素材</h2>
+              <p>建议使用不低于 2560 × 1440 的横向图片</p>
+            </div>
+          </div>
+
+          <label class="drop-zone" id="drop-zone" for="wallpaper-input">
+            <input id="wallpaper-input" type="file" accept="image/png,image/jpeg,image/webp,image/avif">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+            <strong id="drop-title">导入壁纸原图</strong>
+            <span id="drop-note">PNG、JPEG、WebP 或 AVIF，最大 40 MB</span>
+          </label>
+
+          <div class="draft-library" id="draft-library" aria-label="管理员样稿">
+            <p>正在读取管理员样稿…</p>
+          </div>
+        </section>
+
+        <section class="tool-section" aria-labelledby="identity-title">
+          <div class="section-heading">
+            <span>02</span>
+            <div>
+              <h2 id="identity-title">主题身份</h2>
+              <p>这里保存的是草稿，不会进入公开主题墙</p>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>主题名称</span>
+              <input id="theme-name" type="text" maxlength="24" value="未命名壁纸">
+            </label>
+            <label class="field">
+              <span>主题 ID</span>
+              <input id="theme-id" type="text" maxlength="40" pattern="[a-z0-9-]+" value="untitled-wallpaper" aria-describedby="theme-id-error">
+              <small class="field-error" id="theme-id-error"></small>
+            </label>
+          </div>
+          <label class="field">
+            <span>一句话描述</span>
+            <input id="theme-description" type="text" maxlength="72" value="等待完成视觉校准的管理员草稿">
+          </label>
+          <label class="field">
+            <span>创作说明</span>
+            <textarea id="art-direction" rows="4" maxlength="500" placeholder="记录画面气质、色彩比例、需要避开的元素，以及下一轮生成要调整的方向。"></textarea>
+          </label>
+          <div class="inline-actions">
+            <button class="text-action" id="copy-prompt" type="button">复制生成提示词</button>
+            <span class="action-feedback" id="copy-feedback" role="status"></span>
+          </div>
+        </section>
+
+        <section class="tool-section" aria-labelledby="palette-title">
+          <div class="section-heading">
+            <span>03</span>
+            <div>
+              <h2 id="palette-title">界面配色</h2>
+              <p>四个基色控制预览，不用封面色掩盖实际效果</p>
+            </div>
+          </div>
+
+          <div class="color-grid">
+            <label class="color-field">
+              <span>正文</span>
+              <input id="color-ink" type="color" value="#27332d">
+              <output for="color-ink">#27332D</output>
+            </label>
+            <label class="color-field">
+              <span>主表面</span>
+              <input id="color-surface" type="color" value="#f5efe2">
+              <output for="color-surface">#F5EFE2</output>
+            </label>
+            <label class="color-field">
+              <span>侧栏</span>
+              <input id="color-sidebar" type="color" value="#9fc7b0">
+              <output for="color-sidebar">#9FC7B0</output>
+            </label>
+            <label class="color-field">
+              <span>强调</span>
+              <input id="color-accent" type="color" value="#b34f3c">
+              <output for="color-accent">#B34F3C</output>
+            </label>
+          </div>
+        </section>
+
+        <section class="tool-section" aria-labelledby="composition-title">
+          <div class="section-heading">
+            <span>04</span>
+            <div>
+              <h2 id="composition-title">构图与保护层</h2>
+              <p>拖动大预览也可以直接调整视觉焦点</p>
+            </div>
+          </div>
+
+          <div class="range-list">
+            <label class="range-field">
+              <span>水平焦点</span>
+              <input id="focal-x" type="range" min="0" max="100" value="50">
+              <output for="focal-x">50%</output>
+            </label>
+            <label class="range-field">
+              <span>垂直焦点</span>
+              <input id="focal-y" type="range" min="0" max="100" value="50">
+              <output for="focal-y">50%</output>
+            </label>
+            <label class="range-field">
+              <span>背景亮度</span>
+              <input id="brightness" type="range" min="55" max="115" value="94">
+              <output for="brightness">94%</output>
+            </label>
+            <label class="range-field">
+              <span>正文表面</span>
+              <input id="surface-opacity" type="range" min="18" max="96" value="78">
+              <output for="surface-opacity">78%</output>
+            </label>
+            <label class="range-field">
+              <span>侧栏表面</span>
+              <input id="sidebar-opacity" type="range" min="18" max="96" value="82">
+              <output for="sidebar-opacity">82%</output>
+            </label>
+            <label class="range-field">
+              <span>壁纸保护</span>
+              <input id="protection" type="range" min="0" max="72" value="24">
+              <output for="protection">24%</output>
+            </label>
+          </div>
+        </section>
+
+        <div class="workbench-actions">
+          <button class="primary-action" id="export-draft" type="button">导出主题草稿</button>
+          <button class="secondary-action" id="export-cover" type="button">导出封面 PNG</button>
+          <button class="reset-action" id="reset-draft" type="button">恢复初始参数</button>
+          <p id="export-feedback" role="status"></p>
+        </div>
+      </aside>
+
+      <section class="preview-stage" id="preview-stage" aria-labelledby="preview-title">
+        <header class="preview-header">
+          <div>
+            <p class="eyebrow">LIVE PARITY PREVIEW</p>
+            <h2 id="preview-title">实际界面与封面同源预览</h2>
+          </div>
+          <div class="preview-meta">
+            <span id="image-meta">尚未导入原图</span>
+            <strong id="focal-meta">焦点 50% 50%</strong>
+          </div>
+        </header>
+
+        <div class="codex-frame" id="codex-preview" tabindex="0" aria-label="Codex 主题实时预览，可拖动调整焦点">
+          <div class="wallpaper-layer"></div>
+          <div class="codex-titlebar">
+            <div class="window-tools"><span></span><span></span><span></span></div>
+            <strong>ChatGPT Codex</strong>
+            <div class="title-actions"><span></span><span></span></div>
+          </div>
+          <nav class="codex-sidebar" aria-label="模拟侧栏">
+            <strong>项目</strong>
+            <ul>
+              <li class="is-active">moonsea-codex-theme</li>
+              <li>设计审阅</li>
+              <li>主题可读性检查</li>
+              <li>管理员草稿</li>
+            </ul>
+            <small>国文 苏</small>
+          </nav>
+          <section class="codex-main">
+            <div class="thread-toolbar">
+              <span>主题实际效果审阅</span>
+              <button type="button" tabindex="-1">•••</button>
+            </div>
+            <article class="reading-surface">
+              <span class="message-label">视觉验收</span>
+              <h3>壁纸不能替代界面层级。</h3>
+              <p>正文、侧栏和控制区必须先满足阅读，再决定封面是否值得公开。</p>
+              <pre><code>cover.palette === runtime.palette</code></pre>
+            </article>
+            <div class="composer-preview">
+              <span>记录下一轮需要调整的地方…</span>
+              <button type="button" tabindex="-1">↑</button>
+            </div>
+          </section>
+          <aside class="codex-inspector">
+            <span>环境信息</span>
+            <strong>本地预览</strong>
+            <hr>
+            <small>封面与实际界面共用焦点和颜色参数</small>
+          </aside>
+          <span class="focal-marker" aria-hidden="true"></span>
+        </div>
+
+        <div class="review-row">
+          <figure class="cover-review">
+            <div class="cover-preview" id="cover-preview">
+              <span class="cover-edition">壁纸 · 草稿</span>
+            </div>
+            <figcaption>
+              <div>
+                <strong id="cover-name">未命名壁纸</strong>
+                <span id="cover-description">等待完成视觉校准的管理员草稿</span>
+              </div>
+              <span>4 : 3 封面裁切</span>
+            </figcaption>
+          </figure>
+
+          <section class="quality-panel" aria-labelledby="quality-title">
+            <div class="quality-heading">
+              <h3 id="quality-title">公开前检查</h3>
+              <strong id="quality-score">2 / 5</strong>
+            </div>
+            <ul id="quality-list">
+              <li data-check="image"><span></span>已导入可用原图</li>
+              <li data-check="identity"><span></span>名称、ID 与描述完整</li>
+              <li data-check="contrast"><span></span>正文与主表面对比达到 AA</li>
+              <li data-check="cover"><span></span>封面与实际界面使用同一焦点</li>
+              <li data-check="direction"><span></span>已记录下一轮创作说明</li>
+            </ul>
+            <p id="quality-note">草稿不会自动进入主题目录，需要人工审阅。</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <canvas id="cover-canvas" width="1200" height="900" hidden></canvas>
+    <script type="module" src="./admin.js"></script>
+  </body>
+</html>

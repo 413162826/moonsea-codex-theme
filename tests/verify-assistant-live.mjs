@@ -83,14 +83,14 @@ await waitFor(
 const standard = await evaluate(`(() => {
   const controls = document.querySelector("#codex-moonsea-controls");
   const panel = controls.querySelector(".moonsea-controls__panel");
-  const pro = controls.querySelector("[data-pro-settings]");
+  const settings = controls.querySelector("[data-wallpaper-settings]");
   const toggle = controls.querySelector(".moonsea-controls__toggle");
   const style = getComputedStyle(panel);
   return {
     label: toggle.textContent.trim(),
     updateDot: toggle.classList.contains("is-update-available"),
     edition: controls.querySelector("[data-assistant-edition]").textContent,
-    proHidden: pro.hidden,
+    settingsHidden: settings.hidden,
     updateMessage: controls.querySelector("[data-update-message]").textContent,
     panelBackground: style.backgroundColor,
     panelColor: style.color,
@@ -117,12 +117,12 @@ await waitFor(async () => {
   return response.ok;
 }, "Pro 主题切换");
 await waitFor(
-  () => evaluate(`document.querySelector("[data-pro-settings]")?.hidden === false`),
-  "Pro 设置",
+  () => evaluate(`document.querySelector("[data-wallpaper-settings]")?.hidden === false`),
+  "壁纸设置",
 );
 const pro = await evaluate(`(() => ({
   edition: document.querySelector("[data-assistant-edition]").textContent,
-  proHidden: document.querySelector("[data-pro-settings]").hidden,
+  settingsHidden: document.querySelector("[data-wallpaper-settings]").hidden,
   transparency: document.querySelector('[data-setting="transparency"]').value,
   motionControl: Boolean(document.querySelector('[data-setting="motion"]')),
   wallpaper: document.querySelector("[data-wallpaper-status]").value,
@@ -136,8 +136,8 @@ await fetch("http://127.0.0.1:17321/api/themes/apply", {
   body: JSON.stringify({ themeId: "moon-white" }),
 });
 await waitFor(
-  () => evaluate(`document.querySelector("[data-pro-settings]")?.hidden === true`),
-  "返回普通主题",
+  () => evaluate(`document.querySelector("[data-assistant-edition]")?.textContent === "渐变壁纸"`),
+  "返回普通渐变壁纸",
 );
 
 socket.close();

@@ -137,6 +137,8 @@ const updateService = new UpdateService({
 const server = http.createServer(createRequestHandler({
   profilePath,
   siteRoot: path.join(projectRoot, "site"),
+  adminRoot: path.join(projectRoot, "admin"),
+  draftRoot: path.join(projectRoot, "assets", "admin-drafts"),
   appVersion: APP_VERSION,
   updateService,
 }));

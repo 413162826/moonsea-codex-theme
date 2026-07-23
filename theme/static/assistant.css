@@ -6,6 +6,14 @@
   --moonsea-assistant-panel: var(--moonsea-panel-strong, var(--color-background-elevated-primary, oklch(98% 0.009 225)));
   --moonsea-assistant-soft: color-mix(in oklab, var(--moonsea-assistant-ink) 7%, transparent);
   --moonsea-assistant-accent: var(--moonsea-accent, var(--codex-base-accent, oklch(60% 0.12 216)));
+  display: contents;
+  color: var(--moonsea-assistant-ink);
+  font-family: system-ui, "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  text-shadow: none;
+}
+
+.moonsea-controls__dock {
   position: fixed;
   right: 18px;
   bottom: 74px;
@@ -13,10 +21,6 @@
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  color: var(--moonsea-assistant-ink);
-  font-family: system-ui, "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
-  font-size: 12px;
-  text-shadow: none;
 }
 
 #codex-moonsea-controls *,
@@ -26,7 +30,8 @@
 }
 
 #codex-moonsea-controls button,
-#codex-moonsea-controls input {
+#codex-moonsea-controls input,
+#codex-moonsea-controls select {
   font: inherit;
 }
 
@@ -205,6 +210,48 @@
 .moonsea-toggle-row input:checked + .moonsea-toggle-switch { background: var(--moonsea-assistant-accent); }
 .moonsea-toggle-row input:checked + .moonsea-toggle-switch::after { transform: translateX(16px); }
 
+.moonsea-motion-settings {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--moonsea-assistant-border);
+}
+
+.moonsea-motion-settings__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.moonsea-select-row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  align-items: center;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.moonsea-select-row select {
+  width: 100%;
+  min-height: 30px;
+  padding: 0 28px 0 9px;
+  border: 1px solid var(--moonsea-assistant-border);
+  border-radius: 8px;
+  color: var(--moonsea-assistant-ink);
+  background: var(--moonsea-assistant-soft);
+  cursor: pointer;
+}
+
+.moonsea-motion-settings__note {
+  margin: 9px 0 0;
+  color: var(--moonsea-assistant-muted);
+  line-height: 1.5;
+  font-size: 10px;
+}
+
+.moonsea-reduced-motion-row[hidden] {
+  display: none;
+}
+
 .moonsea-wallpaper-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 9px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--moonsea-assistant-border); }
 .moonsea-wallpaper-row input[type="file"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .moonsea-wallpaper-row output { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
@@ -216,7 +263,8 @@
 .moonsea-wallpaper-select:focus-visible,
 .moonsea-controls__reset:focus-visible,
 .moonsea-controls__toggle:focus-visible,
-.moonsea-assistant__update-action:focus-visible {
+.moonsea-assistant__update-action:focus-visible,
+.moonsea-select-row select:focus-visible {
   outline: 2px solid var(--moonsea-assistant-accent);
   outline-offset: 2px;
 }
@@ -228,7 +276,7 @@
 }
 
 @media (max-width: 720px) {
-  #codex-moonsea-controls { right: 12px; bottom: 64px; }
+  .moonsea-controls__dock { right: 12px; bottom: 64px; }
   .moonsea-controls__toggle { width: 38px; padding: 0; }
   .moonsea-controls__toggle > span { display: none; }
 }

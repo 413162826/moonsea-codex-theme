@@ -63,9 +63,11 @@ async function inspectAndCapture(name) {
   return withPage(async (client) => {
     const evaluation = await client.call("Runtime.evaluate", {
       expression: `(async () => ({
-        proClass: document.documentElement.classList.contains("codex-moonsea"),
+        runtimeClass: document.documentElement.classList.contains("codex-moonsea"),
         controls: Boolean(document.querySelector("#codex-moonsea-controls")),
         assistantLabel: document.querySelector(".moonsea-controls__toggle")?.textContent?.trim() ?? null,
+        assistantEdition: document.querySelector("[data-assistant-edition]")?.textContent?.trim() ?? null,
+        wallpaperSettingsHidden: document.querySelector("[data-wallpaper-settings]")?.hidden ?? null,
         ambient: Boolean(document.querySelector("#codex-moonsea-ambient")),
         runtimeStylesheet: Boolean(document.querySelector("#codex-moonsea-static-theme")),
         titlebarButtons: document.querySelectorAll(".draggable button[aria-label], [class*=\\"electron:h-toolbar\\"] button[aria-label]").length,
@@ -104,9 +106,14 @@ async function inspectAndCapture(name) {
 
 const results = [];
 results.push({
-  step: "standard-before",
+  step: "standard-light",
   timing: await applyThemeToCodex(profilePath, "moon-white"),
-  view: await inspectAndCapture("standard-before"),
+  view: await inspectAndCapture("standard-light"),
+});
+results.push({
+  step: "standard-dark",
+  timing: await applyThemeToCodex(profilePath, "deep-sea"),
+  view: await inspectAndCapture("standard-dark"),
 });
 results.push({
   step: "pro",
@@ -120,28 +127,61 @@ results.push({
 });
 
 const status = await getCodexStatus(profilePath);
-if (!results[1].view.proClass || !results[1].view.controls || results[1].view.ambient) {
+if (!results[0].view.runtimeClass || !results[0].view.controls || results[0].view.ambient) {
+  throw new Error("普通渐变壁纸运行时没有完整启用");
+}
+if (
+  results[0].view.assistantEdition !== "渐变壁纸"
+  || results[0].view.wallpaperSettingsHidden !== false
+) {
+  throw new Error("普通渐变壁纸没有获得完整助手设置");
+}
+for (const result of results.slice(0, 2)) {
+  if (
+    !result.view.wallpaperImage.includes("gradient(")
+    || result.view.wallpaperImage.includes("url(")
+    || !result.view.wallpaperGradient.includes("transparent")
+  ) {
+    throw new Error(`${result.step} 没有应用官网同源渐变`);
+  }
+}
+if (results[0].view.wallpaperImage === results[1].view.wallpaperImage) {
+  throw new Error("明暗普通壁纸没有切换实际渐变");
+}
+if (!results[2].view.runtimeClass || !results[2].view.controls || results[2].view.ambient) {
   throw new Error("Pro 运行时没有完整启用");
 }
-if (!results[1].view.wallpaperImage.includes("wallpapers/tide-dragon-realm.png") || !results[1].view.wallpaperGradient.includes("gradient(")) {
+if (
+  results[2].view.assistantEdition !== "Pro 壁纸"
+  || results[2].view.wallpaperSettingsHidden !== false
+) {
+  throw new Error("Pro 壁纸助手业务标识无效");
+}
+if (!results[2].view.wallpaperImage.includes("wallpapers/tide-dragon-realm.png") || !results[2].view.wallpaperGradient.includes("gradient(")) {
   throw new Error("Pro 壁纸目录或渐变层没有应用");
 }
 if (
-  !results[1].view.wallpaperResource?.ok
-  || results[1].view.wallpaperResource.size < 100_000
-  || !results[1].view.wallpaperBackground.includes("app://-/moonsea/wallpapers/tide-dragon-realm.png")
-  || results[1].view.wallpaperBackground.includes("/moonsea/moonsea/")
+  !results[2].view.wallpaperResource?.ok
+  || results[2].view.wallpaperResource.size < 100_000
+  || !results[2].view.wallpaperBackground.includes("app://-/moonsea/wallpapers/tide-dragon-realm.png")
+  || results[2].view.wallpaperBackground.includes("/moonsea/moonsea/")
 ) {
   throw new Error(`Codex 没有成功读取 Pro 壁纸资源：${JSON.stringify({
-    background: results[1].view.wallpaperBackground,
-    resource: results[1].view.wallpaperResource,
+    background: results[2].view.wallpaperBackground,
+    resource: results[2].view.wallpaperResource,
   })}`);
 }
-if (results[2].view.proClass || results[2].view.controls || results[2].view.ambient || results[2].view.runtimeStylesheet) {
-  throw new Error("切回普通主题后仍残留 Pro 运行时");
+if (
+  !results[3].view.runtimeClass
+  || !results[3].view.controls
+  || !results[3].view.runtimeStylesheet
+  || !results[3].view.wallpaperImage.includes("gradient(")
+  || results[3].view.wallpaperImage.includes("url(")
+) {
+  throw new Error("切回普通主题后没有恢复渐变壁纸运行时");
 }
-if (!status.connected || status.edition !== "standard" || status.proRuntimeActive) {
-  throw new Error("最终 Codex 状态不是纯普通主题");
+if (!status.connected || status.edition !== "standard" || !status.runtimeActive) {
+  throw new Error("最终 Codex 状态不是普通渐变壁纸");
 }
 
 console.log(JSON.stringify({ results, status }, null, 2));

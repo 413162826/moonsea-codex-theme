@@ -26,40 +26,32 @@ function contrastRatio(first, second) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-test("普通主题形成完整且克制的官方外观系统", () => {
+test("普通主题形成完整且克制的渐变壁纸系统", () => {
   assert.equal(STANDARD_THEMES.length, 16);
   assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "light").length, 8);
   assert.equal(STANDARD_THEMES.filter((theme) => theme.mode === "dark").length, 8);
   assert.equal(new Set(STANDARD_THEMES.map((theme) => theme.id)).size, STANDARD_THEMES.length);
 
   for (const theme of STANDARD_THEMES) {
-    const { patch } = theme;
+    const { runtime } = theme;
 
     assert.match(theme.previewGradient, /gradient\(/, `${theme.name} 官网预览必须使用渐变层次`);
-    assert.equal(patch.opaqueWindows, true, `${theme.name} 必须保持窗口不透明`);
-    assert.ok(patch.contrast >= 28 && patch.contrast <= 50, `${theme.name} 的面板层级不能泛白或过硬`);
-    assert.equal(patch.fonts.ui, null, `${theme.name} 应保留 Codex 官方 UI 字体`);
-    assert.match(patch.fonts.code, /ui-monospace/, `${theme.name} 需要跨平台等宽字体栈`);
-
+    assert.equal(Object.hasOwn(theme, "patch"), false, `${theme.name} 不应再传官方颜色 patch`);
+    assert.equal(runtime.backgroundGradient, theme.previewGradient, `${theme.name} 封面与实际渐变必须同源`);
+    assert.equal(runtime.tier, "standard");
+    assert.equal(runtime.layout, "immersive");
+    assert.equal(runtime.palette.scheme, theme.mode);
+    assert.match(runtime.palette.ink, /^#[0-9A-F]{6}$/);
+    assert.match(runtime.palette.accent, /^#[0-9A-F]{6}$/);
+    assert.match(runtime.palette.panel, /var\(--moonsea-main-alpha\)/);
     assert.ok(
-      contrastRatio(patch.ink, patch.surface) >= 9,
-      `${theme.name} 的正文与底色需要达到高可读性`,
+      contrastRatio(runtime.palette.ink, theme.preview[0]) >= 7,
+      `${theme.name} 的正文与主要底色需要保持高可读性`,
     );
-    assert.ok(
-      contrastRatio(patch.accent, patch.surface) >= 4.5,
-      `${theme.name} 的按钮与选中态需要达到 WCAG AA`,
-    );
-
-    for (const [role, color] of Object.entries(patch.semanticColors)) {
-      assert.ok(
-        contrastRatio(color, patch.surface) >= 4.5,
-        `${theme.name} 的 ${role} 状态色需要在主表面清晰可见`,
-      );
-    }
   }
 });
 
-test("新增普通主题用不同渐变构图忠实预览纯色调色盘", () => {
+test("新增普通主题用不同渐变构图忠实呈现实际壁纸", () => {
   const additions = STANDARD_THEMES.filter((theme) => [
     "tundra-green",
     "distant-ridge",
@@ -81,17 +73,16 @@ test("新增普通主题用不同渐变构图忠实预览纯色调色盘", () =>
   assert.ok(additions.some((theme) => theme.previewGradient.startsWith("radial-gradient(")));
 
   for (const theme of additions) {
-    assert.ok(theme.preview.includes(theme.patch.surface), `${theme.name} 预览必须包含真实底色`);
-    assert.ok(theme.preview.includes(theme.patch.accent), `${theme.name} 预览必须包含真实强调色`);
-    assert.ok(theme.preview.includes(theme.patch.ink), `${theme.name} 预览必须包含真实文字色`);
-    assert.match(theme.patch.surface, /^#[0-9A-F]{6}$/, `${theme.name} 官方表面必须保持纯色`);
+    assert.equal(theme.runtime.backgroundGradient, theme.previewGradient);
+    assert.ok(theme.preview.includes(theme.runtime.palette.accent), `${theme.name} 预览必须包含真实强调色`);
+    assert.ok(theme.preview.includes(theme.runtime.palette.ink), `${theme.name} 预览必须包含真实文字色`);
+    assert.equal(Object.hasOwn(theme.runtime, "wallpaper"), false);
   }
 });
 
-test("所有 Pro 壁纸共用全局表面交界渐变且普通主题目录不承担该逻辑", () => {
+test("普通与 Pro 壁纸共用交界算法并由各自调色板控制强度", () => {
   const themeCss = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.css"), "utf8");
   const runtime = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.js"), "utf8");
-  const standardCatalog = fs.readFileSync(path.join(projectRoot, "src", "theme-catalog.mjs"), "utf8");
 
   assert.match(themeCss, /--moonsea-sidebar-top-blend-height:\s*12px/);
   assert.match(themeCss, /--moonsea-main-top-blend-height:\s*32px/);
@@ -102,7 +93,17 @@ test("所有 Pro 壁纸共用全局表面交界渐变且普通主题目录不承
   assert.match(themeCss, /main\.main-surface\s*\{[\s\S]*box-shadow:\s*none\s*!important/);
   assert.match(themeCss, /header\.app-header-tint\s*\{[\s\S]*background:\s*transparent\s*!important/);
   assert.match(themeCss, /--elevation-prominent:[\s\S]*--moonsea-elevation-edge-tint/);
+  assert.match(themeCss, /body::before[\s\S]*--moonsea-wallpaper-vignette/);
+  assert.match(themeCss, /body::before[\s\S]*--moonsea-wallpaper-protection/);
+  assert.match(themeCss, /body::before[\s\S]*--moonsea-wallpaper-floor/);
+  assert.match(themeCss, /#codex-moonsea-motion-layer[\s\S]*pointer-events:\s*none/);
+  assert.match(themeCss, /#codex-moonsea-controls\s*\{[\s\S]*display:\s*contents/);
+  assert.match(themeCss, /\.moonsea-controls__dock[\s\S]*z-index:\s*2147483000/);
+  assert.match(themeCss, /\.moonsea-motion-soft[\s\S]*translate3d/);
+  assert.match(themeCss, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*:not\(\.moonsea-motion-override-reduced\)[\s\S]*transform:\s*none/);
   assert.match(runtime, /url\("app:\/\/-\/moonsea\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
-  assert.doesNotMatch(runtime, /--moonsea-(?:sidebar-top|main-top|surface-blend|surface-edge|elevation-edge)/);
-  assert.doesNotMatch(standardCatalog, /--moonsea-(?:sidebar-top|main-top|surface-blend|surface-edge|elevation-edge)/);
+  assert.match(runtime, /runtime\.backgroundGradient/);
+  assert.match(runtime, /surfaceEdgeTint:\s*"--moonsea-surface-edge-tint"/);
+  assert.match(runtime, /elevationEdgeTint:\s*"--moonsea-elevation-edge-tint"/);
+  assert.doesNotMatch(runtime, /--moonsea-(?:sidebar-top|main-top|surface-blend-width)/);
 });

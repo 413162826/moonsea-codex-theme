@@ -7,10 +7,11 @@ npm ci
 npm test
 ```
 
-## 两条主题路径
+## 一条运行时路径、两个业务层级
 
-- `standard`：只调用 Codex 的 `app.appearance.*` 动作，不启用运行时视觉样式；“月海助手”只显示版本与更新。
-- `pro`：先切到官方浅色基底，再按需加载壁纸、动画和沉浸布局；切回普通主题时完整卸载运行时样式。
+- `standard`：免费渐变壁纸，背景来自 `runtime.backgroundGradient`。
+- `pro`：精选图片壁纸，背景来自安装包内图片。
+- 两者统一调用 `applyRuntimeTheme`，共享完整月海 CSS/JS 运行时；只调用 Codex `app.appearance.set_mode` 同步明暗结构，禁止调用 `app.appearance.set_theme` 传颜色。
 
 本地助手只监听 `127.0.0.1:17321`。启动器给月海版 Codex 使用随机 DevTools 端口，助手通过用户目录里的 `DevToolsActivePort` 发现当前窗口。
 

@@ -19,6 +19,8 @@ MANIFEST_PATH="$INSTALL_ROOT/install.plist"
 START_SOURCE="$SCRIPT_DIR/Start-Moonsea-macOS.command"
 START_INSTALLED="$INSTALL_ROOT/Start-Moonsea-macOS.command"
 SITE_SOURCE="$PROJECT_ROOT/site"
+ADMIN_SOURCE="$PROJECT_ROOT/admin"
+DRAFT_SOURCE="$PROJECT_ROOT/assets/admin-drafts"
 if [[ "$MANAGER_PATH" == *.mjs ]]; then
   MANAGER_FILE_NAME="MoonseaManager.mjs"
 else
@@ -87,6 +89,8 @@ fi
 [[ -f "$START_SOURCE" ]] || fail "启动脚本缺失：$START_SOURCE"
 [[ -f "$MANAGER_PATH" ]] || fail "月海助手缺失：$MANAGER_PATH"
 [[ -f "$SITE_SOURCE/index.html" ]] || fail "月海网页资源缺失：$SITE_SOURCE"
+[[ -f "$ADMIN_SOURCE/index.html" ]] || fail "月海管理员资源缺失：$ADMIN_SOURCE"
+[[ -d "$DRAFT_SOURCE" ]] || fail "月海管理员样稿缺失：$DRAFT_SOURCE"
 [[ -f "$PACKAGE_METADATA" ]] || fail "月海安装包缺少版本信息：$PACKAGE_METADATA"
 [[ -f "$UPDATER_SOURCE" ]] || fail "月海更新程序缺失：$UPDATER_SOURCE"
 
@@ -169,6 +173,9 @@ if ! {
   /bin/cp "$MANAGER_PATH" "$RELEASE_STAGING/$MANAGER_FILE_NAME"
   [[ "$MANAGER_FILE_NAME" == *.mjs ]] || /bin/chmod +x "$RELEASE_STAGING/$MANAGER_FILE_NAME"
   /usr/bin/ditto "$SITE_SOURCE" "$RELEASE_STAGING/site"
+  /usr/bin/ditto "$ADMIN_SOURCE" "$RELEASE_STAGING/admin"
+  /bin/mkdir -p "$RELEASE_STAGING/assets"
+  /usr/bin/ditto "$DRAFT_SOURCE" "$RELEASE_STAGING/assets/admin-drafts"
   /bin/cp "$UPDATER_SOURCE" "$RELEASE_STAGING/scripts/macos/update-moonsea.sh"
   /bin/chmod +x "$RELEASE_STAGING/scripts/macos/update-moonsea.sh"
   /bin/mv "$RELEASE_STAGING" "$RELEASE_ROOT"

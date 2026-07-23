@@ -54,6 +54,8 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $legacyPackage "scripts\windows") -Force | Out-Null
     Copy-Item -Path (Join-Path $PackageRoot "scripts\windows\*") -Destination (Join-Path $legacyPackage "scripts\windows") -Force
     Copy-Item -LiteralPath (Join-Path $PackageRoot "site") -Destination $legacyPackage -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $PackageRoot "admin") -Destination $legacyPackage -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $PackageRoot "assets") -Destination $legacyPackage -Recurse -Force
     $legacyMetadata = Get-Content -LiteralPath (Join-Path $PackageRoot "package.json") -Raw -Encoding UTF8 | ConvertFrom-Json
     $legacyMetadata.version = "1.3.9"
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -75,6 +77,7 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $updatePackage "tools") -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PackageRoot "package.json") -Destination $updatePackage
     Copy-Item -LiteralPath (Join-Path $PackageRoot "site") -Destination $updatePackage -Recurse
+    Copy-Item -LiteralPath (Join-Path $PackageRoot "admin") -Destination $updatePackage -Recurse
     Copy-Item -LiteralPath (Join-Path $PackageRoot "theme") -Destination $updatePackage -Recurse
     Copy-Item -LiteralPath (Join-Path $PackageRoot "assets") -Destination $updatePackage -Recurse
     Copy-Item -Path (Join-Path $PackageRoot "scripts\windows\*") -Destination (Join-Path $updatePackage "scripts\windows")

@@ -3,6 +3,7 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { STANDARD_THEMES, toPublicTheme } from "./theme-catalog.mjs";
 import { PRO_THEMES, toPublicProTheme } from "./pro-theme-catalog.mjs";
+import { WALLPAPER_DRAFTS } from "./wallpaper-catalog.mjs";
 
 export const MANAGER_PORT = Number.parseInt(process.env.MOONSEA_MANAGER_PORT ?? "17321", 10);
 if (!Number.isInteger(MANAGER_PORT) || MANAGER_PORT < 1 || MANAGER_PORT > 65535) {
@@ -23,12 +24,17 @@ const MIME_TYPES = new Map([
   [".json", "application/json; charset=utf-8"],
   [".png", "image/png"],
   [".svg", "image/svg+xml"],
+  [".webp", "image/webp"],
 ]);
 
 export function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (LOCAL_ORIGINS.has(origin)) return true;
   return origin === PUBLIC_SITE_ORIGIN;
+}
+
+export function isLocalAdminOrigin(origin) {
+  return !origin || LOCAL_ORIGINS.has(origin);
 }
 
 export function parseDevToolsActivePort(content) {
@@ -143,13 +149,14 @@ export async function getCodexStatus(profilePath) {
     const value = await withCodexClient(profilePath, async (client) => {
       const result = await client.call("Runtime.evaluate", {
         expression: `(async () => {
-          const bridgeInstalled = typeof window.moonseaThemeBridge?.applyStandardTheme === "function";
+          const bridgeInstalled = typeof window.moonseaThemeBridge?.applyRuntimeTheme === "function";
           const bridgeStatus = bridgeInstalled ? await window.moonseaThemeBridge.getStatus() : null;
           return {
             bridgeInstalled,
             bridgeReady: bridgeStatus?.ready === true,
-            proCapable: typeof window.moonseaThemeBridge?.applyProTheme === "function",
-            proRuntimeActive: bridgeStatus?.proActive === true,
+            runtimeCapable: typeof window.moonseaThemeBridge?.applyRuntimeTheme === "function",
+            runtimeActive: bridgeStatus?.runtimeActive === true,
+            edition: bridgeStatus?.edition ?? null,
             themeId: bridgeStatus?.themeId ?? null,
             restoreError: bridgeStatus?.restoreError ?? null,
             assistantPresent: Array.from(document.querySelectorAll("button")).some((button) => button.textContent?.trim() === "月海助手")
@@ -163,9 +170,9 @@ export async function getCodexStatus(profilePath) {
     return value?.bridgeReady
       ? {
           connected: true,
-          edition: value.proRuntimeActive ? "pro" : "standard",
-          proCapable: value.proCapable,
-          proRuntimeActive: value.proRuntimeActive,
+          edition: value.edition,
+          runtimeCapable: value.runtimeCapable,
+          runtimeActive: value.runtimeActive,
           themeId: value.themeId,
           assistantPresent: value.assistantPresent,
           message: value.restoreError
@@ -189,9 +196,8 @@ export async function applyThemeToCodex(profilePath, themeId) {
   if (!theme) throw new Error(`没有这个主题：${themeId}`);
   const startedAt = performance.now();
   const bridgeResult = await withCodexClient(profilePath, async (client) => {
-    const method = theme.edition === "pro" ? "applyProTheme" : "applyStandardTheme";
     const result = await client.call("Runtime.evaluate", {
-      expression: `window.moonseaThemeBridge.${method}(${JSON.stringify(theme)})`,
+      expression: `window.moonseaThemeBridge.applyRuntimeTheme(${JSON.stringify(theme)})`,
       awaitPromise: true,
       returnByValue: true,
     });
@@ -256,9 +262,38 @@ function serveStatic(response, siteRoot, pathname) {
   return true;
 }
 
+function serveMountedStatic(response, root, pathname, mountPath) {
+  if (!root || (pathname !== mountPath && !pathname.startsWith(`${mountPath}/`))) {
+    return false;
+  }
+  if (pathname === mountPath) {
+    response.writeHead(308, {
+      "Cache-Control": "no-store",
+      Location: `${mountPath}/`,
+    });
+    response.end();
+    return true;
+  }
+  const relative = decodeURIComponent(pathname.slice(mountPath.length)).replace(/^\/+/, "")
+    || "index.html";
+  const filePath = path.resolve(root, relative);
+  const safeRoot = path.resolve(root) + path.sep;
+  if (!filePath.startsWith(safeRoot) || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    return false;
+  }
+  response.writeHead(200, {
+    "Cache-Control": "no-store",
+    "Content-Type": MIME_TYPES.get(path.extname(filePath)) ?? "application/octet-stream",
+  });
+  response.end(fs.readFileSync(filePath));
+  return true;
+}
+
 export function createRequestHandler({
   profilePath,
   siteRoot,
+  adminRoot = null,
+  draftRoot = null,
   appVersion = "0.0.0",
   updateService = null,
   status = getCodexStatus,
@@ -269,6 +304,15 @@ export function createRequestHandler({
     const host = request.headers.host ?? "";
     if (!new Set([`127.0.0.1:${MANAGER_PORT}`, `localhost:${MANAGER_PORT}`]).has(host)) {
       sendJson(response, 403, { ok: false, error: "无效的访问地址" }, origin);
+      return;
+    }
+    const url = new URL(request.url, `http://${host}`);
+    const adminRequest = url.pathname === "/admin"
+      || url.pathname.startsWith("/admin/")
+      || url.pathname.startsWith("/api/admin/")
+      || url.pathname.startsWith("/drafts/");
+    if (adminRequest && !isLocalAdminOrigin(origin)) {
+      sendJson(response, 403, { ok: false, error: "管理员创作台只允许本机访问" }, origin);
       return;
     }
     if (!isAllowedOrigin(origin)) {
@@ -287,13 +331,12 @@ export function createRequestHandler({
       return;
     }
 
-    const url = new URL(request.url, `http://${host}`);
     try {
       if (request.method === "GET" && url.pathname === "/api/status") {
         sendJson(response, 200, {
           ok: true,
           appVersion,
-          catalogVersion: 2,
+          catalogVersion: 3,
           ...(await status(profilePath)),
         }, origin);
         return;
@@ -301,12 +344,34 @@ export function createRequestHandler({
       if (request.method === "GET" && url.pathname === "/api/themes") {
         sendJson(response, 200, {
           ok: true,
-          catalogVersion: 2,
+          catalogVersion: 3,
           themes: [
             ...STANDARD_THEMES.map(toPublicTheme),
             ...PRO_THEMES.map(toPublicProTheme),
           ],
-          pro: { available: true },
+          tiers: {
+            standard: { available: true, kind: "gradient" },
+            pro: { available: true, kind: "image" },
+          },
+        }, origin);
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/admin/drafts") {
+        sendJson(response, 200, {
+          ok: true,
+          drafts: WALLPAPER_DRAFTS.map((draft) => ({
+            id: draft.id,
+            name: draft.name,
+            description: draft.description,
+            image: `/drafts/${draft.file}`,
+            scheme: draft.palette.scheme,
+            focalPoint: draft.wallpaperPosition,
+            palette: {
+              ink: draft.patch.ink,
+              surface: draft.patch.surface,
+              accent: draft.patch.accent,
+            },
+          })),
         }, origin);
         return;
       }
@@ -331,6 +396,8 @@ export function createRequestHandler({
         sendJson(response, 202, { ok: true, update: await updateService.startInstall() }, origin);
         return;
       }
+      if (request.method === "GET" && serveMountedStatic(response, adminRoot, url.pathname, "/admin")) return;
+      if (request.method === "GET" && serveMountedStatic(response, draftRoot, url.pathname, "/drafts")) return;
       if (request.method === "GET" && serveStatic(response, siteRoot, url.pathname)) return;
       sendJson(response, 404, { ok: false, error: "页面不存在" }, origin);
     } catch (error) {

@@ -50,6 +50,8 @@ $manifestPath = Join-Path $InstallRoot "install.json"
 $installedLauncherPath = Join-Path $InstallRoot "Start-Moonsea-Windows.ps1"
 $launcherSourcePath = Join-Path $scriptRoot "Start-Moonsea-Windows.ps1"
 $siteSourcePath = Join-Path $projectRoot "site"
+$adminSourcePath = Join-Path $projectRoot "admin"
+$draftSourcePath = Join-Path $projectRoot "assets\admin-drafts"
 $managerExtension = [System.IO.Path]::GetExtension($ManagerPath)
 $managerFileName = if ($managerExtension -eq ".mjs") { "MoonseaManager.mjs" } else { "MoonseaManager.exe" }
 $managerPidPath = Join-Path $InstallRoot "manager.pid"
@@ -67,6 +69,12 @@ if (-not (Test-Path -LiteralPath $ManagerPath -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath (Join-Path $siteSourcePath "index.html") -PathType Leaf)) {
     throw "Moonsea website resources are missing: $siteSourcePath"
+}
+if (-not (Test-Path -LiteralPath (Join-Path $adminSourcePath "index.html") -PathType Leaf)) {
+    throw "Moonsea admin resources are missing: $adminSourcePath"
+}
+if (-not (Test-Path -LiteralPath $draftSourcePath -PathType Container)) {
+    throw "Moonsea admin draft resources are missing: $draftSourcePath"
 }
 if (-not (Test-Path -LiteralPath $packageMetadataPath -PathType Leaf)) {
     throw "Moonsea package metadata is missing: $packageMetadataPath"
@@ -240,6 +248,9 @@ try {
     New-Item -ItemType Directory -Path $releaseStaging -Force | Out-Null
     Copy-Item -LiteralPath $ManagerPath -Destination (Join-Path $releaseStaging $managerFileName) -Force
     Copy-Item -LiteralPath $siteSourcePath -Destination (Join-Path $releaseStaging "site") -Recurse -Force
+    Copy-Item -LiteralPath $adminSourcePath -Destination (Join-Path $releaseStaging "admin") -Recurse -Force
+    New-Item -ItemType Directory -Path (Join-Path $releaseStaging "assets") -Force | Out-Null
+    Copy-Item -LiteralPath $draftSourcePath -Destination (Join-Path $releaseStaging "assets\admin-drafts") -Recurse -Force
     $updaterTargetDirectory = Join-Path $releaseStaging "scripts\windows"
     New-Item -ItemType Directory -Path $updaterTargetDirectory -Force | Out-Null
     Copy-Item -LiteralPath $updaterSourcePath -Destination (Join-Path $updaterTargetDirectory "Update-Moonsea-Windows.ps1") -Force

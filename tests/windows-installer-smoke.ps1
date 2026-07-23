@@ -47,6 +47,8 @@ try {
     if (-not (Test-Path -LiteralPath $manifest.managerPath -PathType Leaf)) { throw "Manager was not installed" }
     if (-not (Test-Path -LiteralPath $manifest.updaterPath -PathType Leaf)) { throw "Updater was not installed" }
     if (-not (Test-Path -LiteralPath (Join-Path $manifest.releasePath "site\index.html") -PathType Leaf)) { throw "Website was not installed" }
+    if (-not (Test-Path -LiteralPath (Join-Path $manifest.releasePath "admin\index.html") -PathType Leaf)) { throw "Admin studio was not installed" }
+    if (-not (Test-Path -LiteralPath (Join-Path $manifest.releasePath "assets\admin-drafts\mint-academy.png") -PathType Leaf)) { throw "Admin drafts were not installed" }
     $managerArguments = "--install-root `"$installRoot`" --profile-path `"$($manifest.profilePath)`""
     if ([System.IO.Path]::GetExtension([string]$manifest.managerPath) -eq ".mjs") {
         Start-Process -FilePath "node" -ArgumentList "`"$($manifest.managerPath)`" $managerArguments" -WindowStyle Hidden

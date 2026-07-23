@@ -5,19 +5,17 @@ const proThemes = WALLPAPERS.map((wallpaper) => ({
   name: wallpaper.name,
   description: wallpaper.description,
   edition: "pro",
-  mode: "light",
+  mode: wallpaper.palette.scheme,
   previewImage: `./wallpapers/${wallpaper.previewFile}`,
   previewGradient: wallpaper.previewGradient,
-  patch: {
-    ...wallpaper.patch,
-    opaqueWindows: true,
-  },
   runtime: {
     wallpaper: wallpaper.file,
     wallpaperName: wallpaper.name,
     wallpaperPosition: wallpaper.wallpaperPosition,
     wallpaperGradient: wallpaper.wallpaperGradient,
+    palette: wallpaper.palette,
     layout: "immersive",
+    tier: "pro",
   },
 }));
 

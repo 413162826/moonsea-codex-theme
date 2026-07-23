@@ -1,3 +1,5 @@
+import { createGradientPalette } from "./gradient-theme-palette.mjs";
+
 const CODE_FONT_STACK = 'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
 
 const standardThemes = [
@@ -405,6 +407,26 @@ const standardThemes = [
 
 const HEX_COLOR = /^#[0-9A-F]{6}$/;
 
+function toGradientTheme(theme) {
+  const { patch, ...publicTheme } = theme;
+  return {
+    ...publicTheme,
+    runtime: {
+      backgroundGradient: theme.previewGradient,
+      wallpaperName: theme.name,
+      wallpaperPosition: "50% 50%",
+      palette: createGradientPalette({
+        mode: theme.mode,
+        surface: patch.surface,
+        ink: patch.ink,
+        accent: patch.accent,
+      }),
+      layout: "immersive",
+      tier: "standard",
+    },
+  };
+}
+
 export function validateStandardTheme(theme) {
   if (!theme || theme.edition !== "standard") {
     throw new Error("只支持普通主题");
@@ -415,38 +437,31 @@ export function validateStandardTheme(theme) {
   if (!new Set(["light", "dark"]).has(theme.mode)) {
     throw new Error("主题模式无效");
   }
-  for (const key of ["accent", "surface", "ink"]) {
-    if (!HEX_COLOR.test(theme.patch?.[key] ?? "")) {
-      throw new Error(`主题颜色 ${key} 无效`);
-    }
-  }
-  if (!Number.isInteger(theme.patch.contrast) || theme.patch.contrast < 0 || theme.patch.contrast > 100) {
-    throw new Error("主题对比度无效");
-  }
-  if (theme.patch.fonts?.ui !== null || typeof theme.patch.fonts?.code !== "string") {
-    throw new Error("主题字体无效");
-  }
-  for (const key of ["diffAdded", "diffRemoved", "skill"]) {
-    if (!HEX_COLOR.test(theme.patch.semanticColors?.[key] ?? "")) {
-      throw new Error(`主题语义颜色 ${key} 无效`);
-    }
-  }
   if (!Array.isArray(theme.preview) || theme.preview.length !== 4 || theme.preview.some((color) => !HEX_COLOR.test(color))) {
     throw new Error("主题预览色无效");
   }
   if (typeof theme.previewGradient !== "string" || !theme.previewGradient.includes("gradient(") || /url\(|;/i.test(theme.previewGradient)) {
     throw new Error("主题预览渐变无效");
   }
-  if (theme.patch.opaqueWindows !== true) {
-    throw new Error("普通主题必须保持窗口不透明");
+  if (Object.hasOwn(theme, "patch")) {
+    throw new Error("普通主题不得再携带官方颜色 patch");
+  }
+  if (
+    theme.runtime?.backgroundGradient !== theme.previewGradient
+    || theme.runtime?.wallpaperName !== theme.name
+    || theme.runtime?.palette?.scheme !== theme.mode
+    || theme.runtime?.tier !== "standard"
+  ) {
+    throw new Error("普通主题封面与渐变运行时不一致");
   }
   return theme;
 }
 
-for (const theme of standardThemes) validateStandardTheme(theme);
+const gradientThemes = standardThemes.map(toGradientTheme);
+for (const theme of gradientThemes) validateStandardTheme(theme);
 
 export const STANDARD_THEMES = Object.freeze(
-  standardThemes.map((theme) => Object.freeze(theme)),
+  gradientThemes.map((theme) => Object.freeze(theme)),
 );
 
 export function getStandardTheme(themeId) {

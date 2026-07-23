@@ -207,6 +207,15 @@ a { color: inherit; }
   background: var(--ink);
   transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out);
 }
+
+.admin-link {
+  padding-block: 0.4rem;
+  border-block-end: 1px solid currentColor;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
 .download-link[aria-disabled="true"] { color: var(--ink-soft); background: var(--paper-deep); cursor: not-allowed; }
 
 main,
@@ -306,9 +315,9 @@ h1 {
 .result-message.error { color: var(--danger); }
 
 .theme-gallery {
-  column-width: 13.5rem;
-  column-count: 6;
-  column-gap: var(--space-lg);
+  column-width: 20rem;
+  column-count: 3;
+  column-gap: var(--space-xl);
   padding-block: var(--space-lg) var(--space-3xl);
 }
 .theme-card {
@@ -362,27 +371,148 @@ h1 {
 }
 
 .standard-preview {
-  grid-template-columns: 23% minmax(0, 1fr);
-  grid-template-rows: 14% minmax(0, 1fr) 19%;
-  gap: 0.55rem;
-  padding: clamp(0.8rem, 1.4vw, 1.25rem);
-}
-.standard-preview > span:not(.preview-badge):not(.active-badge) {
   display: block;
-  border-radius: 0.35rem;
+  padding: 0;
 }
-.preview-sidebar {
-  grid-row: 1 / 4;
-  background: oklch(15% 0.035 230 / 0.66);
+.standard-preview::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  background:
+    radial-gradient(circle at 84% 14%, color-mix(in oklab, var(--mock-accent, #7ca9b7) 24%, transparent), transparent 38%),
+    linear-gradient(180deg, transparent 58%, color-mix(in oklab, var(--mock-ink, #17272f) 10%, transparent));
+  pointer-events: none;
 }
-.preview-toolbar { background: oklch(98% 0.01 220 / 0.56); }
-.preview-content {
-  margin: 0.25rem 0.4rem;
-  background: repeating-linear-gradient(180deg, oklch(98% 0.01 220 / 0.64) 0 0.36rem, transparent 0.36rem 0.85rem);
+.standard-preview .preview-badge {
+  top: 0.65rem;
+  left: 0.75rem;
 }
-.preview-composer {
-  background: oklch(98% 0.01 220 / 0.76);
-  box-shadow: 0 0.35rem 1rem oklch(18% 0.025 228 / 0.12);
+.preview-window {
+  position: absolute;
+  z-index: 1;
+  inset: 2.65rem 0.72rem 0.72rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--mock-ink) 13%, transparent);
+  border-radius: 0.52rem;
+  color: var(--mock-ink);
+  background: color-mix(in oklab, var(--mock-surface) 94%, transparent);
+  box-shadow:
+    0 0.7rem 1.5rem color-mix(in oklab, var(--mock-ink) 18%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--mock-surface) 55%, transparent);
+}
+.preview-window__titlebar {
+  display: flex;
+  gap: 0.28rem;
+  align-items: center;
+  height: 18%;
+  min-height: 1.05rem;
+  padding-inline: 0.48rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--mock-ink) 9%, transparent);
+  background: color-mix(in oklab, var(--mock-surface) 86%, var(--mock-accent));
+}
+.preview-window__mark {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: var(--mock-accent);
+}
+.preview-window__titlebar strong {
+  overflow: hidden;
+  font-size: clamp(0.27rem, 0.42vw, 0.4rem);
+  font-weight: 760;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-window__shell {
+  display: grid;
+  grid-template-columns: 24% minmax(0, 1fr);
+  height: 82%;
+}
+.preview-window__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 0.6rem 0.42rem;
+  border-right: 1px solid color-mix(in oklab, var(--mock-ink) 9%, transparent);
+  background: color-mix(in oklab, var(--mock-surface-raised) 82%, var(--mock-surface));
+}
+.preview-window__sidebar span {
+  width: 72%;
+  height: 0.15rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--mock-ink) 24%, transparent);
+}
+.preview-window__sidebar span:nth-child(2) { width: 88%; }
+.preview-window__sidebar span:nth-child(3) { width: 64%; }
+.preview-window__sidebar span.is-active {
+  width: 82%;
+  height: 0.2rem;
+  background: var(--mock-accent);
+}
+.preview-window__workspace {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: clamp(0.22rem, 0.55vw, 0.5rem);
+  min-width: 0;
+  padding: clamp(0.48rem, 0.8vw, 0.78rem);
+}
+.preview-window__workspace b {
+  overflow: hidden;
+  font-size: clamp(0.32rem, 0.52vw, 0.5rem);
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-window__copy {
+  display: grid;
+  gap: 0.2rem;
+}
+.preview-window__copy span,
+.preview-window__code span {
+  display: block;
+  height: 0.14rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--mock-ink) 20%, transparent);
+}
+.preview-window__copy span:first-child { width: 76%; }
+.preview-window__copy span:last-child { width: 56%; }
+.preview-window__code {
+  display: grid;
+  align-content: center;
+  gap: 0.22rem;
+  padding: 0.4rem 0.48rem;
+  border: 1px solid color-mix(in oklab, var(--mock-ink) 8%, transparent);
+  border-radius: 0.3rem;
+  background: color-mix(in oklab, var(--mock-surface-raised) 62%, transparent);
+}
+.preview-window__code span {
+  width: 48%;
+  background: color-mix(in oklab, var(--mock-accent) 72%, transparent);
+}
+.preview-window__code span:last-child {
+  width: 66%;
+  opacity: 0.58;
+}
+.preview-window__composer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 1rem;
+  padding: 0.28rem 0.38rem;
+  border: 1px solid color-mix(in oklab, var(--mock-ink) 9%, transparent);
+  border-radius: 0.32rem;
+  color: color-mix(in oklab, var(--mock-ink) 52%, transparent);
+  font-size: clamp(0.25rem, 0.36vw, 0.34rem);
+  background: color-mix(in oklab, var(--mock-surface) 92%, transparent);
+}
+.preview-window__composer i {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  background: var(--mock-accent);
 }
 .pro-preview { aspect-ratio: var(--pin-ratio, 4 / 3); background: var(--sea-deep); }
 .pro-preview img {
@@ -502,6 +632,7 @@ input:focus-visible {
     transform: translateY(-0.2rem);
   }
   .download-link:hover { background: var(--sea-deep); transform: translateY(-0.1rem); }
+  .admin-link:hover { color: var(--sea-deep); }
 }
 
 @media (min-width: 45rem) {

@@ -44,7 +44,7 @@ try {
   fs.writeFileSync(
     catalogStagingPath,
     `${JSON.stringify({
-      catalogVersion: 2,
+      catalogVersion: 3,
       themes: [
         ...STANDARD_THEMES.map(toPublicTheme),
         ...PRO_THEMES.map(toPublicProTheme),

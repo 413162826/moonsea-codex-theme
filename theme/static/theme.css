@@ -15,11 +15,17 @@ html.codex-moonsea {
   --moonsea-faint: oklch(72% 0.035 225);
   --moonsea-panel: oklch(18% 0.045 243 / var(--moonsea-main-alpha));
   --moonsea-panel-strong: oklch(16% 0.045 244 / 0.94);
+  --moonsea-panel-opaque: oklch(19% 0.045 243);
   --moonsea-sidebar: oklch(14% 0.04 244 / var(--moonsea-sidebar-alpha));
   --moonsea-titlebar: var(--moonsea-panel);
   --moonsea-control: oklch(15% 0.045 243 / var(--moonsea-control-alpha));
   --moonsea-hover: oklch(72% 0.09 222 / 0.16);
   --moonsea-border: oklch(82% 0.055 225 / 0.22);
+  --moonsea-border-light: oklch(82% 0.055 225 / 0.17);
+  --moonsea-border-heavy: oklch(82% 0.055 225 / 0.29);
+  --moonsea-accent-soft: oklch(70% 0.08 220 / 0.16);
+  --moonsea-accent-hover: oklch(72% 0.09 220 / 0.21);
+  --moonsea-accent-active: oklch(68% 0.09 220 / 0.25);
   --moonsea-surface-edge-tint: oklch(7% 0.028 244 / 0.20);
   --moonsea-elevation-edge-tint: oklch(6% 0.025 245 / 0.38);
   --moonsea-accent: oklch(82% 0.12 155);
@@ -30,24 +36,35 @@ html.codex-moonsea {
   --moonsea-titlebar-button-border: oklch(94% 0.035 225 / 0.42);
   --moonsea-reading-surface: oklch(13% 0.035 244 / 0.72);
   --moonsea-reading-surface-strong: oklch(11% 0.035 244 / 0.94);
+  --moonsea-reading-detail: oklch(20% 0.04 240 / 0.76);
+  --moonsea-selection: oklch(73% 0.11 211 / 0.42);
+  --moonsea-toggle-track: oklch(50% 0.035 230 / 0.58);
+  --moonsea-highlight: oklch(100% 0 0 / 0.14);
+  --moonsea-wallpaper-vignette: radial-gradient(ellipse at 0 0, oklch(8% 0.025 245 / 0.72), transparent 22%);
+  --moonsea-wallpaper-protection: linear-gradient(90deg, oklch(10% 0.035 245 / 0.48), oklch(11% 0.03 245 / 0.09) 44%, oklch(10% 0.03 245 / 0.22));
+  --moonsea-wallpaper-floor: linear-gradient(0deg, oklch(9% 0.03 245 / 0.22), transparent 54%);
+  --moonsea-text-shadow: 0 1px 12px oklch(7% 0.025 245 / 0.24);
+  --moonsea-reading-text-shadow: 0 1px 7px oklch(5% 0.02 245 / 0.52);
+  --moonsea-shadow: 0 10px 30px oklch(4% 0.025 245 / 0.26);
+  --moonsea-shadow-deep: 0 18px 48px oklch(5% 0.025 245 / 0.46);
 
   --color-token-main-surface-primary: var(--moonsea-panel) !important;
   --color-token-side-bar-background: var(--moonsea-sidebar) !important;
-  --color-token-bg-primary: oklch(17% 0.04 243 / var(--moonsea-main-alpha)) !important;
+  --color-token-bg-primary: var(--moonsea-panel) !important;
   --color-background-panel: var(--moonsea-panel-strong) !important;
   --color-token-bg-fog: var(--moonsea-panel-strong) !important;
-  --color-background-elevated-primary-opaque: oklch(19% 0.045 243) !important;
+  --color-background-elevated-primary-opaque: var(--moonsea-panel-opaque) !important;
   --color-background-elevated-secondary: var(--moonsea-control) !important;
-  --color-background-accent: oklch(70% 0.08 220 / 0.16) !important;
-  --color-background-accent-hover: oklch(72% 0.09 220 / 0.21) !important;
-  --color-background-accent-active: oklch(68% 0.09 220 / 0.25) !important;
+  --color-background-accent: var(--moonsea-accent-soft) !important;
+  --color-background-accent-hover: var(--moonsea-accent-hover) !important;
+  --color-background-accent-active: var(--moonsea-accent-active) !important;
   --color-token-list-active-selection-background: var(--moonsea-hover) !important;
-  --color-token-toolbar-hover-background: oklch(78% 0.055 225 / 0.10) !important;
-  --color-token-button-secondary-hover-background: oklch(78% 0.055 225 / 0.13) !important;
-  --color-token-badge-background: oklch(78% 0.055 225 / 0.12) !important;
+  --color-token-toolbar-hover-background: var(--moonsea-hover) !important;
+  --color-token-button-secondary-hover-background: var(--moonsea-accent-soft) !important;
+  --color-token-badge-background: var(--moonsea-accent-soft) !important;
   --color-token-border-default: var(--moonsea-border) !important;
-  --color-token-input-border: oklch(82% 0.055 225 / 0.24) !important;
-  --color-border-heavy: oklch(82% 0.055 225 / 0.29) !important;
+  --color-token-input-border: var(--moonsea-border) !important;
+  --color-border-heavy: var(--moonsea-border-heavy) !important;
 
   --color-token-text-primary: var(--moonsea-ink) !important;
   --color-token-text-secondary: var(--moonsea-muted) !important;
@@ -65,21 +82,21 @@ html.codex-moonsea {
   --color-token-link: var(--moonsea-accent) !important;
   --color-token-foreground: var(--moonsea-ink) !important;
   --color-token-description-foreground: var(--moonsea-muted) !important;
-  --color-token-bg-secondary: oklch(16% 0.04 243 / 0.90) !important;
-  --color-token-border-light: oklch(82% 0.055 225 / 0.17) !important;
+  --color-token-bg-secondary: var(--moonsea-panel-strong) !important;
+  --color-token-border-light: var(--moonsea-border-light) !important;
   --color-token-text-code-block-background: var(--moonsea-reading-surface-strong) !important;
   --color-token-text-code-block-foreground: var(--moonsea-ink) !important;
   --codex-titlebar-tint: var(--moonsea-titlebar) !important;
 
-  --vscode-terminal-background: oklch(16% 0.04 243 / 0.94) !important;
+  --vscode-terminal-background: var(--moonsea-panel-strong) !important;
   --vscode-terminal-foreground: var(--moonsea-ink) !important;
-  --vscode-editor-background: oklch(17% 0.04 243 / 0.93) !important;
+  --vscode-editor-background: var(--moonsea-panel-strong) !important;
   --vscode-editor-foreground: var(--moonsea-ink) !important;
-  --vscode-menu-background: oklch(19% 0.045 243 / 0.98) !important;
+  --vscode-menu-background: var(--moonsea-panel-opaque) !important;
   --vscode-menu-foreground: var(--moonsea-ink) !important;
-  --vscode-dropdown-background: oklch(19% 0.045 243 / 0.98) !important;
+  --vscode-dropdown-background: var(--moonsea-panel-opaque) !important;
   --vscode-dropdown-foreground: var(--moonsea-ink) !important;
-  --vscode-input-background: oklch(23% 0.045 240 / 0.95) !important;
+  --vscode-input-background: var(--moonsea-control) !important;
   --vscode-input-foreground: var(--moonsea-ink) !important;
   --vscode-input-placeholderForeground: var(--moonsea-faint) !important;
   --vscode-descriptionForeground: var(--moonsea-muted) !important;
@@ -88,18 +105,18 @@ html.codex-moonsea {
   --vscode-titleBar-inactiveBackground: var(--moonsea-titlebar) !important;
   --vscode-titleBar-border: transparent !important;
   --vscode-sideBar-border: transparent !important;
-  --vscode-panel-border: oklch(82% 0.055 225 / 0.12) !important;
+  --vscode-panel-border: var(--moonsea-border-light) !important;
   --vscode-editorGroupHeader-tabsBackground: var(--moonsea-titlebar) !important;
-  --vscode-tab-unfocusedActiveBackground: oklch(24% 0.045 240 / 0.92) !important;
+  --vscode-tab-unfocusedActiveBackground: var(--moonsea-control) !important;
   --vscode-tab-unfocusedActiveForeground: var(--moonsea-ink) !important;
   --vscode-tab-inactiveForeground: var(--moonsea-faint) !important;
   --vscode-list-hoverBackground: var(--moonsea-hover) !important;
   --vscode-list-activeSelectionBackground: var(--moonsea-hover) !important;
-  --vscode-list-inactiveSelectionBackground: oklch(70% 0.07 220 / 0.12) !important;
+  --vscode-list-inactiveSelectionBackground: var(--moonsea-accent-soft) !important;
   --elevation-prominent:
-    0 0 0 0.5px oklch(82% 0.055 225 / 0.16),
+    0 0 0 0.5px var(--moonsea-border-light),
     -22px 0 42px -28px var(--moonsea-elevation-edge-tint),
-    0 12px 30px -22px oklch(5% 0.025 245 / 0.32) !important;
+    var(--moonsea-shadow) !important;
 }
 
 html.codex-moonsea,
@@ -122,9 +139,9 @@ html.codex-moonsea body::before {
   pointer-events: none;
   background:
     var(--moonsea-wallpaper-gradient),
-    radial-gradient(ellipse at 0 0, oklch(8% 0.025 245 / 0.72), transparent 22%),
-    linear-gradient(90deg, oklch(10% 0.035 245 / 0.48), oklch(11% 0.03 245 / 0.09) 44%, oklch(10% 0.03 245 / 0.22)),
-    linear-gradient(0deg, oklch(9% 0.03 245 / 0.22), transparent 54%),
+    var(--moonsea-wallpaper-vignette),
+    var(--moonsea-wallpaper-protection),
+    var(--moonsea-wallpaper-floor),
     var(--moonsea-wallpaper-image) var(--moonsea-wallpaper-position) / cover no-repeat;
   image-rendering: auto;
   filter:
@@ -132,11 +149,47 @@ html.codex-moonsea body::before {
     blur(var(--moonsea-wallpaper-blur));
 }
 
+#codex-moonsea-motion-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  contain: strict;
+  pointer-events: none;
+}
+
+.codex-moonsea-motion-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+html.codex-moonsea:is(.moonsea-motion-soft, .moonsea-motion-lively) body::before {
+  inset: calc((var(--moonsea-wallpaper-blur) * -2) - 8px);
+  transform: translate3d(
+    var(--moonsea-motion-x, 0px),
+    var(--moonsea-motion-y, 0px),
+    0
+  ) scale(1.008);
+  transform-origin: center;
+  will-change: transform;
+}
+
+html.codex-moonsea.moonsea-motion-lively body::before {
+  transform: translate3d(
+    var(--moonsea-motion-x, 0px),
+    var(--moonsea-motion-y, 0px),
+    0
+  ) scale(1.012);
+}
+
 html.codex-moonsea #root {
   position: relative;
   z-index: 1;
   color: var(--moonsea-ink) !important;
-  text-shadow: 0 1px 12px oklch(7% 0.025 245 / 0.24);
+  text-shadow: var(--moonsea-text-shadow);
 }
 
 html.codex-moonsea #root :where(
@@ -214,13 +267,13 @@ html.codex-moonsea header.app-header-tint {
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where([class*="_markdownContent_"], .markdown, .prose) {
   --text-primary: var(--moonsea-ink) !important;
-  --border-medium: oklch(84% 0.045 225 / 0.30) !important;
-  --border-light: oklch(82% 0.04 225 / 0.17) !important;
+  --border-medium: var(--moonsea-border-heavy) !important;
+  --border-light: var(--moonsea-border-light) !important;
   position: relative;
   z-index: 0;
   isolation: isolate;
   color: var(--moonsea-ink) !important;
-  text-shadow: 0 1px 7px oklch(5% 0.02 245 / 0.52);
+  text-shadow: var(--moonsea-reading-text-shadow);
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
@@ -230,48 +283,46 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   inset: -12px -16px;
   z-index: -1;
   pointer-events: none;
-  border: 1px solid oklch(86% 0.04 225 / 0.15);
+  border: 1px solid var(--moonsea-border-light);
   border-radius: 14px;
   background:
-    linear-gradient(135deg, oklch(20% 0.045 238 / 0.18), transparent 38%),
+    linear-gradient(135deg, var(--moonsea-accent-soft), transparent 38%),
     var(--moonsea-reading-surface);
-  box-shadow:
-    0 16px 42px oklch(5% 0.025 245 / 0.24),
-    inset 0 1px oklch(96% 0.02 225 / 0.06);
+  box-shadow: var(--moonsea-shadow), inset 0 1px var(--moonsea-highlight);
   backdrop-filter: blur(8px) saturate(0.88);
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where([class*="_markdownContent_"], .markdown, .prose)
   :where(h1, h2, h3, h4, h5, h6, strong) {
-  color: oklch(98% 0.012 225) !important;
-  text-shadow: 0 1px 8px oklch(4% 0.02 245 / 0.62);
+  color: var(--moonsea-ink) !important;
+  text-shadow: var(--moonsea-reading-text-shadow);
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where([class*="_markdownContent_"], .markdown, .prose)
   a {
-  color: oklch(88% 0.12 205) !important;
-  text-decoration-color: oklch(88% 0.12 205 / 0.55) !important;
+  color: var(--moonsea-accent) !important;
+  text-decoration-color: var(--moonsea-accent) !important;
   text-underline-offset: 3px;
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where([data-markdown-copy="code-block"], [class*="_codeBlockPlaceholder_"]) {
   overflow: hidden;
-  border: 1px solid oklch(82% 0.055 225 / 0.22);
+  border: 1px solid var(--moonsea-border);
   border-radius: 12px;
   color: var(--moonsea-ink) !important;
   background: var(--moonsea-reading-surface-strong) !important;
-  box-shadow: 0 10px 30px oklch(4% 0.025 245 / 0.26);
+  box-shadow: var(--moonsea-shadow);
   text-shadow: none;
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   [data-markdown-copy="code-block"] > :first-child {
   color: var(--moonsea-muted) !important;
-  background: oklch(20% 0.04 240 / 0.76) !important;
-  border-bottom: 1px solid oklch(82% 0.05 225 / 0.14);
+  background: var(--moonsea-reading-detail) !important;
+  border-bottom: 1px solid var(--moonsea-border-light);
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
@@ -281,9 +332,9 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where([data-markdown-copy="inline-code"], [class*="_inlineMarkdown_"]) {
-  border: 1px solid oklch(84% 0.05 225 / 0.16);
-  color: oklch(94% 0.07 198) !important;
-  background: oklch(11% 0.035 244 / 0.80) !important;
+  border: 1px solid var(--moonsea-border-light);
+  color: var(--moonsea-ink) !important;
+  background: var(--moonsea-reading-surface-strong) !important;
   text-shadow: none;
 }
 
@@ -291,26 +342,26 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where(blockquote, [class*="_blockquote_"]) {
   border-radius: 0 10px 10px 0;
   color: var(--moonsea-muted) !important;
-  background: oklch(24% 0.055 228 / 0.46) !important;
+  background: var(--moonsea-reading-detail) !important;
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where([data-markdown-table], table) {
   color: var(--moonsea-ink) !important;
-  background: oklch(12% 0.035 244 / 0.80) !important;
+  background: var(--moonsea-reading-surface-strong) !important;
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   [data-markdown-table] {
   overflow: hidden;
-  border: 1px solid oklch(82% 0.055 225 / 0.20);
+  border: 1px solid var(--moonsea-border);
   border-radius: 12px;
-  box-shadow: 0 10px 30px oklch(4% 0.025 245 / 0.20);
+  box-shadow: var(--moonsea-shadow);
 }
 
 html.codex-moonsea.moonsea-reading-enabled main.main-surface
   :where(hr, [class*="_horizontalRule_"]) {
-  border-color: oklch(86% 0.045 225 / 0.26) !important;
+  border-color: var(--moonsea-border-heavy) !important;
 }
 
 html.codex-moonsea nav[aria-label] {
@@ -344,9 +395,9 @@ html.codex-moonsea button.text-token-text-tertiary[aria-label] {
   background-color: var(--moonsea-titlebar-button-surface) !important;
   border-color: var(--moonsea-titlebar-button-border) !important;
   box-shadow:
-    inset 0 1px oklch(100% 0 0 / 0.14),
-    0 0 0 1px oklch(5% 0.025 245 / 0.22),
-    0 5px 16px oklch(5% 0.025 245 / 0.28);
+    inset 0 1px var(--moonsea-highlight),
+    0 0 0 1px var(--moonsea-border-light),
+    var(--moonsea-shadow);
   text-shadow: none !important;
   transition:
     color 160ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -360,7 +411,7 @@ html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
 html.codex-moonsea button.text-token-text-tertiary[aria-label] svg {
   color: inherit !important;
   opacity: 1 !important;
-  filter: drop-shadow(0 1px 3px oklch(4% 0.02 245 / 0.52));
+  filter: none;
 }
 
 html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
@@ -382,17 +433,17 @@ html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
 html.codex-moonsea button.text-token-text-tertiary[aria-label]:hover {
   color: var(--moonsea-titlebar-button-ink) !important;
   background-color: var(--moonsea-titlebar-button-surface-hover) !important;
-  border-color: oklch(92% 0.035 225 / 0.38) !important;
+  border-color: var(--moonsea-titlebar-button-border) !important;
   box-shadow:
-    inset 0 1px oklch(100% 0 0 / 0.12),
-    0 5px 16px oklch(5% 0.025 245 / 0.24);
+    inset 0 1px var(--moonsea-highlight),
+    var(--moonsea-shadow);
 }
 
 html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
   :where(button[aria-label]):active,
 html.codex-moonsea button.text-token-text-tertiary[aria-label]:active {
   background-color: var(--moonsea-titlebar-button-surface-active) !important;
-  box-shadow: inset 0 1px 4px oklch(4% 0.02 245 / 0.30);
+  box-shadow: inset 0 1px 4px var(--moonsea-elevation-edge-tint);
 }
 
 html.codex-moonsea :where(.draggable, [class*="electron:h-toolbar"])
@@ -444,10 +495,32 @@ html.codex-moonsea :where(
 
 html.codex-moonsea ::selection {
   color: var(--moonsea-ink);
-  background: oklch(73% 0.11 211 / 0.42);
+  background: var(--moonsea-selection);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.moonsea-motion-override-reduced) #codex-moonsea-motion-layer {
+    display: none !important;
+  }
+
+  html.codex-moonsea:not(.moonsea-motion-override-reduced):is(
+    .moonsea-motion-soft,
+    .moonsea-motion-lively
+  ) body::before {
+    inset: calc(var(--moonsea-wallpaper-blur) * -2);
+    transform: none;
+    will-change: auto;
+  }
 }
 
 #codex-moonsea-controls {
+  display: contents;
+  color: var(--moonsea-ink);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  text-shadow: none;
+}
+
+.moonsea-controls__dock {
   position: fixed;
   right: 18px;
   bottom: 74px;
@@ -455,13 +528,11 @@ html.codex-moonsea ::selection {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  color: var(--moonsea-ink);
-  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
-  text-shadow: none;
 }
 
 #codex-moonsea-controls button,
-#codex-moonsea-controls input {
+#codex-moonsea-controls input,
+#codex-moonsea-controls select {
   font: inherit;
 }
 
@@ -477,7 +548,7 @@ html.codex-moonsea ::selection {
   border-radius: 999px;
   color: var(--moonsea-ink);
   background: var(--moonsea-control);
-  box-shadow: 0 10px 28px oklch(6% 0.025 245 / 0.30);
+  box-shadow: var(--moonsea-shadow);
   backdrop-filter: blur(18px);
   cursor: pointer;
   transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -499,8 +570,8 @@ html.codex-moonsea ::selection {
   padding: 15px 16px;
   border: 1px solid var(--moonsea-border);
   border-radius: 15px;
-  background: oklch(14% 0.045 244 / 0.94);
-  box-shadow: 0 18px 48px oklch(5% 0.025 245 / 0.46);
+  background: var(--moonsea-panel-strong);
+  box-shadow: var(--moonsea-shadow-deep);
   backdrop-filter: blur(24px);
 }
 
@@ -562,7 +633,7 @@ html.codex-moonsea ::selection {
   width: 34px;
   height: 18px;
   border-radius: 999px;
-  background: oklch(50% 0.035 230 / 0.58);
+  background: var(--moonsea-toggle-track);
   transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -575,7 +646,7 @@ html.codex-moonsea ::selection {
   height: 12px;
   border-radius: 50%;
   background: var(--moonsea-ink);
-  box-shadow: 0 1px 5px oklch(6% 0.025 245 / 0.34);
+  box-shadow: var(--moonsea-shadow);
   transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -626,7 +697,7 @@ html.codex-moonsea ::selection {
   border: 1px solid var(--moonsea-border);
   border-radius: 8px;
   color: var(--moonsea-ink);
-  background: oklch(70% 0.08 220 / 0.13);
+  background: var(--moonsea-accent-soft);
   cursor: pointer;
   font-size: 11px;
   transition:
@@ -635,7 +706,7 @@ html.codex-moonsea ::selection {
 }
 
 .moonsea-wallpaper-select:hover {
-  background: oklch(74% 0.09 215 / 0.20);
+  background: var(--moonsea-accent-hover);
 }
 
 .moonsea-wallpaper-select:active {
@@ -687,7 +758,7 @@ html.codex-moonsea ::selection {
 }
 
 @media (max-width: 720px) {
-  #codex-moonsea-controls {
+  .moonsea-controls__dock {
     right: 12px;
     bottom: 64px;
   }

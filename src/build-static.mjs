@@ -248,8 +248,9 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
   const checks = [
     index.includes(`id="codex-moonsea-appearance-bridge"`) &&
       index.includes(`appearance-bridge.js${expectedVersion}`),
-    readUtf8(packedBridge).includes("app.appearance.set_theme"),
-    readUtf8(packedBridge).includes("applyProTheme"),
+    readUtf8(packedBridge).includes("app.appearance.set_mode"),
+    readUtf8(packedBridge).includes("applyRuntimeTheme"),
+    !readUtf8(packedBridge).includes("app.appearance.set_theme"),
     metadata.themeVersion === themeVersion,
   ];
   for (const [filePath, label] of [

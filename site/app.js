@@ -3,11 +3,9 @@ const DOWNLOADS = Object.freeze({
   windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip",
   macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
 });
-const PIN_RATIOS = Object.freeze(["4 / 5", "1 / 1", "5 / 6", "3 / 4", "6 / 7", "4 / 3"]);
-
 const state = {
   connected: false,
-  proCapable: false,
+  runtimeCapable: false,
   appVersion: null,
   catalogVersion: 0,
   activeThemeId: null,
@@ -24,6 +22,7 @@ const elements = {
   downloadLink: document.querySelector("#download-link"),
   filterButtons: [...document.querySelectorAll("[data-theme-filter]")],
   gallery: document.querySelector("#theme-gallery"),
+  headerActions: document.querySelector(".header-actions"),
   query: document.querySelector("#theme-search"),
   receiptTitle: document.querySelector("#receipt-title"),
   result: document.querySelector("#result-message"),
@@ -38,30 +37,40 @@ const elements = {
   themeCount: document.querySelector("#theme-count"),
 };
 
+function configureAdminLink() {
+  if (!["127.0.0.1", "localhost"].includes(window.location.hostname)) return;
+  const link = document.createElement("a");
+  link.className = "admin-link";
+  link.href = "/admin/";
+  link.textContent = "创作台";
+  link.setAttribute("aria-label", "打开仅本机可用的主题创作台");
+  elements.headerActions.prepend(link);
+}
+
 function updateCardActions() {
   for (const card of document.querySelectorAll(".theme-card")) {
     const theme = state.themes.find((item) => item.id === card.dataset.themeId);
     if (!theme) continue;
     const active = state.activeThemeId === theme.id;
     const applying = state.applyingThemeId === theme.id;
-    const proNeedsUpdate = theme.edition === "pro" && !state.proCapable;
+    const runtimeNeedsUpdate = !state.runtimeCapable;
     const action = card.querySelector("[data-theme-apply]");
     const activeLabel = card.querySelector("[data-theme-active]");
     card.classList.toggle("is-active", active);
     card.classList.toggle("is-applying", applying);
     card.setAttribute("aria-busy", String(applying));
     activeLabel.hidden = !active;
-    action.disabled = !state.connected || proNeedsUpdate || state.applyingThemeId !== null || active;
+    action.disabled = !state.connected || runtimeNeedsUpdate || state.applyingThemeId !== null || active;
     action.classList.toggle("loading", applying);
-    const isWallpaper = theme.edition === "pro";
+    const isPro = theme.edition === "pro";
     action.textContent = applying
       ? "正在应用…"
       : active
-        ? isWallpaper ? "当前壁纸" : "当前主题"
-        : proNeedsUpdate
+        ? "当前壁纸"
+        : runtimeNeedsUpdate
           ? "升级后应用"
           : state.connected
-            ? isWallpaper ? "应用壁纸" : "应用主题"
+            ? isPro ? "应用 Pro" : "应用渐变"
             : "连接后应用";
   }
 }
@@ -100,9 +109,9 @@ async function readCatalog() {
   return response.json();
 }
 
-function setConnection(connected, message, proCapable = false, appVersion = null) {
+function setConnection(connected, message, runtimeCapable = false, appVersion = null) {
   state.connected = connected;
-  state.proCapable = proCapable;
+  state.runtimeCapable = runtimeCapable;
   state.appVersion = appVersion;
   const legacyAssistant = connected && !appVersion;
   elements.connectionPill.classList.toggle("is-connected", connected && !legacyAssistant);
@@ -113,7 +122,7 @@ function setConnection(connected, message, proCapable = false, appVersion = null
     : connected ? "Codex 已连接" : "Codex 未连接";
   elements.statusMessage.textContent = legacyAssistant
     ? "安装新版后即可应用壁纸"
-    : connected ? "可直接应用主题" : message;
+    : connected ? "可直接应用渐变与 Pro 壁纸" : message;
   elements.retry.hidden = connected && !legacyAssistant;
   updateCardActions();
   if (legacyAssistant) {
@@ -158,19 +167,74 @@ function updateVisibleThemes() {
     : `找到 ${visibleCount} 个主题`;
 }
 
+function createStandardPreview(theme) {
+  const windowFrame = document.createElement("div");
+  windowFrame.className = "preview-window";
+  windowFrame.setAttribute("aria-hidden", "true");
+  windowFrame.style.setProperty("--mock-surface", theme.preview[0]);
+  windowFrame.style.setProperty("--mock-surface-raised", theme.preview[1]);
+  windowFrame.style.setProperty("--mock-accent", theme.preview[2]);
+  windowFrame.style.setProperty("--mock-ink", theme.preview[3]);
+
+  const titlebar = document.createElement("div");
+  titlebar.className = "preview-window__titlebar";
+  const appMark = document.createElement("span");
+  appMark.className = "preview-window__mark";
+  const appName = document.createElement("strong");
+  appName.textContent = `Codex · ${theme.name}`;
+  titlebar.append(appMark, appName);
+
+  const shell = document.createElement("div");
+  shell.className = "preview-window__shell";
+  const sidebar = document.createElement("div");
+  sidebar.className = "preview-window__sidebar";
+  for (let index = 0; index < 4; index += 1) {
+    const navItem = document.createElement("span");
+    if (index === 0) navItem.classList.add("is-active");
+    sidebar.append(navItem);
+  }
+
+  const workspace = document.createElement("div");
+  workspace.className = "preview-window__workspace";
+  const heading = document.createElement("b");
+  heading.textContent = "Build a product people remember";
+  const copy = document.createElement("div");
+  copy.className = "preview-window__copy";
+  copy.append(document.createElement("span"), document.createElement("span"));
+  const code = document.createElement("div");
+  code.className = "preview-window__code";
+  code.append(document.createElement("span"), document.createElement("span"));
+  const composer = document.createElement("div");
+  composer.className = "preview-window__composer";
+  const prompt = document.createElement("span");
+  prompt.textContent = "Ask Codex anything…";
+  const send = document.createElement("i");
+  composer.append(prompt, send);
+  workspace.append(heading, copy, code, composer);
+  shell.append(sidebar, workspace);
+  windowFrame.append(titlebar, shell);
+  return windowFrame;
+}
+
 function createThemeCard(theme, index) {
   const card = document.createElement("article");
   card.className = `theme-card ${theme.edition === "pro" ? "pro-card" : ""}`;
   card.dataset.themeId = theme.id;
   card.style.setProperty("--pin-index", Math.min(index, 8));
-  card.style.setProperty("--pin-ratio", theme.edition === "pro" ? "4 / 3" : PIN_RATIOS[index % PIN_RATIOS.length]);
+  card.style.setProperty("--pin-ratio", "4 / 3");
 
   const preview = document.createElement("div");
   preview.className = `theme-preview ${theme.edition === "pro" ? "pro-preview" : "standard-preview"}`;
   preview.style.setProperty("--preview-gradient", theme.previewGradient);
+  if (theme.edition === "standard") {
+    preview.style.setProperty("--mock-accent", theme.preview[2]);
+    preview.style.setProperty("--mock-ink", theme.preview[3]);
+  }
   const type = document.createElement("span");
   type.className = "preview-badge";
-  type.textContent = theme.edition === "pro" ? "壁纸 · Pro" : theme.mode === "dark" ? "深色" : "浅色";
+  type.textContent = theme.edition === "pro"
+    ? "精选 · Pro"
+    : `渐变 · ${theme.mode === "dark" ? "深色" : "浅色"}`;
   const active = document.createElement("span");
   active.className = "active-badge";
   active.dataset.themeActive = "";
@@ -186,11 +250,7 @@ function createThemeCard(theme, index) {
     image.decoding = "async";
     preview.prepend(image);
   } else {
-    for (const part of ["sidebar", "toolbar", "content", "composer"]) {
-      const element = document.createElement("span");
-      element.className = `preview-${part}`;
-      preview.insertBefore(element, type);
-    }
+    preview.prepend(createStandardPreview(theme));
   }
 
   const footer = document.createElement("div");
@@ -207,9 +267,7 @@ function createThemeCard(theme, index) {
   apply.className = "theme-card__apply";
   apply.type = "button";
   apply.dataset.themeApply = "";
-  apply.setAttribute("aria-label", theme.edition === "pro"
-    ? `应用${theme.name}壁纸到 Codex`
-    : `应用${theme.name}主题到 Codex`);
+  apply.setAttribute("aria-label", `应用${theme.name}壁纸到 Codex`);
   apply.textContent = "连接后应用";
   apply.disabled = true;
   apply.addEventListener("click", () => applyTheme(theme));
@@ -258,7 +316,7 @@ async function connect() {
     setConnection(
       status.connected,
       status.message,
-      status.proCapable === true && status.catalogVersion >= 2,
+      status.runtimeCapable === true && status.catalogVersion >= 3,
       status.appVersion ?? null,
     );
     state.activeThemeId = state.themes.find((theme) => theme.id === status.themeId)?.id ?? null;
@@ -279,8 +337,8 @@ async function connect() {
 
 async function applyTheme(theme) {
   if (!theme || !state.connected || state.applyingThemeId !== null) return;
-  if (theme.edition === "pro" && !state.proCapable) {
-    showResult("壁纸主题需要新版月海版，请先完成升级。", "error");
+  if (!state.runtimeCapable) {
+    showResult("渐变与 Pro 壁纸需要新版月海版，请先完成升级。", "error");
     return;
   }
   state.applyingThemeId = theme.id;
@@ -300,7 +358,7 @@ async function applyTheme(theme) {
     elements.receiptTitle.textContent = `“${theme.name}”已应用`;
     showResult(isPro
       ? `${theme.name}壁纸已应用，Codex 无需重启。`
-      : `${theme.name}主题已应用，Codex 无需重启。`, "success");
+      : `${theme.name}渐变壁纸已应用，Codex 无需重启。`, "success");
   } catch (error) {
     showResult(`${error.message}。请确认 Codex 月海版仍在运行。`, "error");
     await connect();
@@ -328,5 +386,6 @@ for (const button of elements.filterButtons) {
 }
 
 configureDownload();
+configureAdminLink();
 connect();
 setInterval(connect, 5000);
