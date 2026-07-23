@@ -101,7 +101,7 @@ test("Pro 运行时可以启用并完整退出", () => {
   assert.match(runtime, /moonseaProRuntime/);
   assert.match(runtime, /applyPackagedWallpaper/);
   assert.match(runtime, /--moonsea-wallpaper-gradient/);
-  assert.match(runtime, /url\("\.\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
+  assert.match(runtime, /url\("app:\/\/-\/moonsea\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
   assert.doesNotMatch(runtime, /\.\/moonsea\/wallpapers\//);
   assert.match(runtime, /savedWallpaperRecord/);
   assert.match(runtime, /await loadSavedWallpaper\(\)/);

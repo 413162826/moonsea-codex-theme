@@ -157,7 +157,7 @@
     }
     document.documentElement.style.setProperty(
       "--moonsea-wallpaper-image",
-      `url("./wallpapers/${runtime.wallpaper}")`,
+      `url("app://-/moonsea/wallpapers/${runtime.wallpaper}")`,
     );
     document.documentElement.style.setProperty(
       "--moonsea-wallpaper-position",

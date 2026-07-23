@@ -2,6 +2,9 @@ html.codex-moonsea {
   --moonsea-main-alpha: 0.30;
   --moonsea-sidebar-alpha: 0.46;
   --moonsea-control-alpha: 0.80;
+  --moonsea-sidebar-top-blend-height: 12px;
+  --moonsea-main-top-blend-height: 32px;
+  --moonsea-surface-blend-width: 32px;
   --moonsea-wallpaper-brightness: 0.94;
   --moonsea-wallpaper-blur: 0px;
   --moonsea-wallpaper-image: url("./wallpapers/tide-dragon-realm.png");
@@ -17,6 +20,8 @@ html.codex-moonsea {
   --moonsea-control: oklch(15% 0.045 243 / var(--moonsea-control-alpha));
   --moonsea-hover: oklch(72% 0.09 222 / 0.16);
   --moonsea-border: oklch(82% 0.055 225 / 0.22);
+  --moonsea-surface-edge-tint: oklch(7% 0.028 244 / 0.20);
+  --moonsea-elevation-edge-tint: oklch(6% 0.025 245 / 0.38);
   --moonsea-accent: oklch(82% 0.12 155);
   --moonsea-titlebar-button-ink: oklch(97% 0.016 225);
   --moonsea-titlebar-button-surface: oklch(32% 0.055 236 / 0.92);
@@ -81,6 +86,9 @@ html.codex-moonsea {
   --vscode-icon-foreground: var(--moonsea-ink) !important;
   --vscode-titleBar-activeBackground: var(--moonsea-titlebar) !important;
   --vscode-titleBar-inactiveBackground: var(--moonsea-titlebar) !important;
+  --vscode-titleBar-border: transparent !important;
+  --vscode-sideBar-border: transparent !important;
+  --vscode-panel-border: oklch(82% 0.055 225 / 0.12) !important;
   --vscode-editorGroupHeader-tabsBackground: var(--moonsea-titlebar) !important;
   --vscode-tab-unfocusedActiveBackground: oklch(24% 0.045 240 / 0.92) !important;
   --vscode-tab-unfocusedActiveForeground: var(--moonsea-ink) !important;
@@ -88,6 +96,10 @@ html.codex-moonsea {
   --vscode-list-hoverBackground: var(--moonsea-hover) !important;
   --vscode-list-activeSelectionBackground: var(--moonsea-hover) !important;
   --vscode-list-inactiveSelectionBackground: oklch(70% 0.07 220 / 0.12) !important;
+  --elevation-prominent:
+    0 0 0 0.5px oklch(82% 0.055 225 / 0.16),
+    -22px 0 42px -28px var(--moonsea-elevation-edge-tint),
+    0 12px 30px -22px oklch(5% 0.025 245 / 0.32) !important;
 }
 
 html.codex-moonsea,
@@ -158,11 +170,41 @@ html.codex-moonsea #root :where(
 
 html.codex-moonsea main.main-surface {
   background: var(--moonsea-panel) !important;
-  border-color: var(--moonsea-border) !important;
-  box-shadow:
-    0 0 0 1px oklch(84% 0.055 225 / 0.10),
-    -20px 0 70px oklch(8% 0.03 245 / 0.26) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
   backdrop-filter: none;
+}
+
+/*
+ * 内置与自定义 Pro 壁纸共用同一套表面交界处理。主区本身仍只上一次色，
+ * 这里只在侧栏交界内侧增加一条低强度过渡，避免重新制造第二层整面遮罩。
+ */
+html.codex-moonsea main.main-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  width: var(--moonsea-surface-blend-width);
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--moonsea-surface-edge-tint), transparent);
+}
+
+/* 对齐官方工具栏的真实高度，将头部末端的硬切线向正文内衰减。 */
+html.codex-moonsea main.main-surface::after {
+  content: "";
+  position: absolute;
+  inset: var(--height-toolbar) 0 auto;
+  z-index: 20;
+  height: var(--moonsea-main-top-blend-height);
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--moonsea-surface-edge-tint), transparent);
+}
+
+/* 主区已经拥有连续表面，线程工具栏不得再叠一次半透明标题栏色。 */
+html.codex-moonsea header.app-header-tint {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 /*
@@ -272,8 +314,21 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
 }
 
 html.codex-moonsea nav[aria-label] {
+  position: relative;
   background: var(--moonsea-sidebar) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
   backdrop-filter: blur(2px) saturate(1.02);
+}
+
+/* 填平应用顶栏与侧栏之间的原生留白，并把两种表面平滑过渡。 */
+html.codex-moonsea nav[aria-label]::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--moonsea-sidebar-top-blend-height) * -1) 0 auto;
+  height: var(--moonsea-sidebar-top-blend-height);
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--moonsea-titlebar), var(--moonsea-sidebar));
 }
 
 /*

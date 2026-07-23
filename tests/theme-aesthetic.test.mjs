@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
 import { STANDARD_THEMES } from "../src/theme-catalog.mjs";
+
+const projectRoot = path.resolve(import.meta.dirname, "..");
 
 function toRgb(hex) {
   return hex.slice(1).match(/../g).map((part) => Number.parseInt(part, 16) / 255);
@@ -82,4 +86,23 @@ test("新增普通主题用不同渐变构图忠实预览纯色调色盘", () =>
     assert.ok(theme.preview.includes(theme.patch.ink), `${theme.name} 预览必须包含真实文字色`);
     assert.match(theme.patch.surface, /^#[0-9A-F]{6}$/, `${theme.name} 官方表面必须保持纯色`);
   }
+});
+
+test("所有 Pro 壁纸共用全局表面交界渐变且普通主题目录不承担该逻辑", () => {
+  const themeCss = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.css"), "utf8");
+  const runtime = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.js"), "utf8");
+  const standardCatalog = fs.readFileSync(path.join(projectRoot, "src", "theme-catalog.mjs"), "utf8");
+
+  assert.match(themeCss, /--moonsea-sidebar-top-blend-height:\s*12px/);
+  assert.match(themeCss, /--moonsea-main-top-blend-height:\s*32px/);
+  assert.match(themeCss, /--moonsea-surface-blend-width:\s*32px/);
+  assert.match(themeCss, /main\.main-surface::before[\s\S]*linear-gradient\(90deg/);
+  assert.match(themeCss, /main\.main-surface::after[\s\S]*inset:\s*var\(--height-toolbar\)[\s\S]*linear-gradient\(180deg/);
+  assert.match(themeCss, /nav\[aria-label\]::before[\s\S]*linear-gradient\(180deg/);
+  assert.match(themeCss, /main\.main-surface\s*\{[\s\S]*box-shadow:\s*none\s*!important/);
+  assert.match(themeCss, /header\.app-header-tint\s*\{[\s\S]*background:\s*transparent\s*!important/);
+  assert.match(themeCss, /--elevation-prominent:[\s\S]*--moonsea-elevation-edge-tint/);
+  assert.match(runtime, /url\("app:\/\/-\/moonsea\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
+  assert.doesNotMatch(runtime, /--moonsea-(?:sidebar-top|main-top|surface-blend|surface-edge|elevation-edge)/);
+  assert.doesNotMatch(standardCatalog, /--moonsea-(?:sidebar-top|main-top|surface-blend|surface-edge|elevation-edge)/);
 });
