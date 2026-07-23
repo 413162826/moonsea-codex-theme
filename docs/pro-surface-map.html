@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>月海 Pro 表面校色台</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #09131b;
+      --page-2: #0c1b25;
+      --paper: #d9edf0;
+      --muted: #8eacb5;
+      --faint: #5e7b85;
+      --line: rgb(157 201 210 / 18%);
+      --accent: #8be0bd;
+      --warning: #efc77c;
+      --danger: #ed8f83;
+      --canvas-alpha: .30;
+      --sidebar-alpha: .46;
+      --strong-alpha: .90;
+      --canvas-surface: rgb(15 42 58 / var(--canvas-alpha));
+      --sidebar-surface: rgb(7 29 43 / var(--sidebar-alpha));
+      --strong-surface: rgb(7 26 38 / var(--strong-alpha));
+      --ease: cubic-bezier(.16, 1, .3, 1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      color: var(--paper);
+      background:
+        radial-gradient(circle at 14% 0%, rgb(54 102 118 / 22%), transparent 31rem),
+        linear-gradient(145deg, var(--page-2), var(--page) 58%);
+      font-family: "HarmonyOS Sans SC", "MiSans", "Noto Sans CJK SC", "Microsoft YaHei UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+
+    .page {
+      width: min(1540px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: clamp(22px, 3vw, 48px);
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: clamp(24px, 3vw, 42px);
+    }
+
+    .eyebrow {
+      margin: 0 0 11px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 720;
+      letter-spacing: .18em;
+    }
+
+    h1 {
+      max-width: 850px;
+      margin: 0;
+      color: #e9f6f5;
+      font-size: clamp(31px, 4.6vw, 68px);
+      font-weight: 660;
+      letter-spacing: -.055em;
+      line-height: .98;
+    }
+
+    .lead {
+      max-width: 640px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(14px, 1.25vw, 17px);
+      line-height: 1.75;
+    }
+
+    .verdict {
+      width: 250px;
+      padding: 0 0 8px 22px;
+      border-left: 1px solid var(--line);
+    }
+
+    .verdict strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 28px;
+      font-weight: 620;
+    }
+
+    .verdict span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage-shell {
+      min-width: 0;
+    }
+
+    .modebar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .segmented {
+      display: inline-flex;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgb(4 17 25 / 62%);
+    }
+
+    .segmented button {
+      min-height: 34px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 7px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .segmented button[aria-pressed="true"] {
+      color: #e9f7f3;
+      background: rgb(87 138 151 / 27%);
+      box-shadow: inset 0 0 0 1px rgb(176 223 227 / 15%);
+    }
+
+    .boundary-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .boundary-toggle input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .codex-window {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      min-height: 475px;
+      border: 1px solid rgb(188 224 229 / 24%);
+      border-radius: 13px;
+      background:
+        linear-gradient(90deg, rgb(4 20 31 / 45%), transparent 48%, rgb(4 17 27 / 18%)),
+        url("../assets/wallpapers/tide-dragon-realm.png") 50% 48% / cover no-repeat;
+      box-shadow: 0 28px 80px rgb(1 8 13 / 44%);
+      isolation: isolate;
+    }
+
+    .region {
+      position: absolute;
+      appearance: none;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      text-align: left;
+      background: transparent;
+      cursor: pointer;
+      transition: background-color 280ms var(--ease), box-shadow 280ms var(--ease), opacity 280ms var(--ease);
+    }
+
+    .region::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      box-shadow: inset 0 0 0 0 rgb(139 224 189 / 0%);
+      transition: box-shadow 220ms var(--ease), background-color 220ms var(--ease);
+    }
+
+    .region:hover::after,
+    .region:focus-visible::after {
+      background: rgb(139 224 189 / 5%);
+      box-shadow: inset 0 0 0 1px rgb(139 224 189 / 62%);
+      outline: none;
+    }
+
+    .region.is-selected::after {
+      background: rgb(139 224 189 / 7%);
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    .region:focus-visible { outline: none; }
+
+    .tag {
+      position: absolute;
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+      padding: 4px 8px;
+      border: 1px solid rgb(205 235 235 / 27%);
+      border-radius: 7px;
+      color: #effafa;
+      background: rgb(4 18 27 / 82%);
+      box-shadow: 0 6px 20px rgb(1 7 11 / 30%);
+      font-size: 11px;
+      font-weight: 620;
+      line-height: 1;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .tag b {
+      display: grid;
+      width: 16px;
+      height: 16px;
+      place-items: center;
+      border-radius: 50%;
+      color: #09201b;
+      background: var(--accent);
+      font-size: 9px;
+    }
+
+    .tag em {
+      color: var(--muted);
+      font-style: normal;
+      font-weight: 520;
+    }
+
+    .window-frame {
+      inset: 0 0 auto;
+      z-index: 7;
+      height: 7.4%;
+      background: var(--canvas-surface);
+    }
+
+    .window-frame .tag { top: 8px; left: 12px; }
+
+    .window-actions {
+      position: absolute;
+      z-index: 9;
+      top: 0;
+      right: 0;
+      display: flex;
+      height: 7.4%;
+      align-items: center;
+      padding: 0 12px;
+      gap: 18px;
+      color: rgb(225 241 242 / 75%);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .sidebar-head {
+      top: 7.4%;
+      left: 0;
+      z-index: 6;
+      width: 24%;
+      height: 10.8%;
+      background: var(--sidebar-surface);
+    }
+
+    .sidebar-head .tag { top: 12px; left: 12px; }
+
+    .sidebar-body {
+      top: 18.2%;
+      bottom: 0;
+      left: 0;
+      z-index: 4;
+      width: 24%;
+      padding: 16px 14px;
+      background: var(--sidebar-surface);
+      backdrop-filter: blur(2px);
+    }
+
+    .sidebar-body .tag { top: 12px; left: 12px; }
+
+    .main-toolbar {
+      top: 7.4%;
+      right: 0;
+      z-index: 5;
+      width: 76%;
+      height: 10.8%;
+      background: var(--canvas-surface);
+    }
+
+    .main-toolbar .tag { top: 12px; left: 12px; }
+
+    .main-canvas {
+      top: 18.2%;
+      right: 0;
+      bottom: 0;
+      z-index: 2;
+      width: 76%;
+      background: var(--canvas-surface);
+    }
+
+    .main-canvas .tag { top: 13px; left: 12px; }
+
+    .workspace-content {
+      position: absolute;
+      z-index: 8;
+      top: 34%;
+      left: 40%;
+      width: 46%;
+      color: rgb(235 247 247 / 86%);
+      pointer-events: none;
+    }
+
+    .workspace-content .question {
+      margin-bottom: 30px;
+      font-size: clamp(20px, 2.7vw, 39px);
+      font-weight: 560;
+      letter-spacing: -.045em;
+    }
+
+    .prompt-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+
+    .prompt-card {
+      min-height: 82px;
+      padding: 14px;
+      border: 1px solid rgb(190 225 228 / 17%);
+      border-radius: 12px;
+      background: rgb(4 22 34 / 78%);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .composer {
+      right: 16%;
+      bottom: 3.6%;
+      left: 34%;
+      z-index: 10;
+      height: 14.5%;
+      border: 1px solid rgb(196 230 231 / 22%);
+      border-radius: 18px;
+      background: var(--strong-surface);
+    }
+
+    .composer .tag { top: 9px; left: 10px; }
+
+    .right-panel {
+      top: 18.2%;
+      right: 0;
+      bottom: 0;
+      z-index: 12;
+      width: 31%;
+      border-left: 1px solid rgb(188 224 229 / 18%);
+      background: var(--strong-surface);
+      transform: translateX(0);
+      opacity: 1;
+      transition: transform 320ms var(--ease), opacity 220ms var(--ease), background-color 280ms var(--ease);
+    }
+
+    .right-panel .tag { top: 12px; left: 12px; }
+
+    .right-panel-content {
+      position: absolute;
+      inset: 62px 16px auto;
+      display: grid;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .right-panel-content span {
+      padding: 12px;
+      border: 1px solid rgb(188 224 229 / 12%);
+      border-radius: 8px;
+      color: rgb(230 244 245 / 84%);
+      background: rgb(2 14 24 / 70%);
+      font-size: 13px;
+    }
+
+    .codex-window:not(.has-right-panel) .right-panel {
+      transform: translateX(102%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .seams {
+      position: absolute;
+      inset: 0;
+      z-index: 15;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 240ms var(--ease);
+    }
+
+    .seam {
+      position: absolute;
+      display: block;
+      background: rgb(191 226 229 / 28%);
+      box-shadow: 0 1px 0 rgb(1 10 17 / 36%);
+    }
+
+    .seam-top { top: 7.4%; left: 0; right: 0; height: 1px; }
+    .seam-toolbar { top: 18.2%; left: 0; right: 0; height: 1px; }
+    .seam-sidebar { top: 7.4%; bottom: 0; left: 24%; width: 1px; }
+
+    .seam-tag {
+      position: absolute;
+      right: 10px;
+      top: calc(18.2% + 8px);
+      padding: 5px 8px;
+      border-radius: 6px;
+      color: #ffd9cf;
+      background: rgb(78 27 25 / 84%);
+      font-size: 10px;
+    }
+
+    .codex-window.hide-boundaries .tag,
+    .codex-window.hide-boundaries .seam-tag { opacity: 0; }
+
+    .codex-window.hide-boundaries .seams { opacity: 0; }
+
+    /* 当前：同一个半透明令牌被父层/工具栏重复覆盖，形成通用断层。 */
+    .codex-window[data-mode="current"] .window-frame,
+    .codex-window[data-mode="current"] .main-toolbar {
+      background-color: rgb(20 58 76 / 41%);
+      box-shadow: inset 0 -1px rgb(204 232 232 / 12%);
+    }
+
+    .codex-window[data-mode="current"] .sidebar-head {
+      background-color: rgb(12 39 54 / 54%);
+      box-shadow: inset 0 -1px rgb(207 232 233 / 17%);
+    }
+
+    .codex-window[data-mode="current"] .main-canvas {
+      box-shadow: inset 0 1px rgb(1 12 20 / 23%);
+    }
+
+    /* 建议：连续画布只有一层主遮罩，边界由结构而不是色差表达。 */
+    .codex-window[data-mode="recommended"] .window-frame,
+    .codex-window[data-mode="recommended"] .main-toolbar,
+    .codex-window[data-mode="recommended"] .main-canvas {
+      background-color: var(--canvas-surface);
+      box-shadow: none;
+    }
+
+    .codex-window[data-mode="recommended"] .sidebar-head,
+    .codex-window[data-mode="recommended"] .sidebar-body {
+      background-color: var(--sidebar-surface);
+      box-shadow: none;
+    }
+
+    .codex-window[data-mode="recommended"] .seams { opacity: 0; }
+
+    /* 强制：证明技术上能全一致，但右栏/输入区的可读性会下降。 */
+    .codex-window[data-mode="forced"] .region,
+    .codex-window[data-mode="forced"] .composer {
+      background-color: var(--canvas-surface);
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .codex-window[data-mode="forced"] .right-panel { border-left-color: transparent; }
+    .codex-window[data-mode="forced"] .seams { opacity: 0; }
+
+    .inspector {
+      position: sticky;
+      top: 18px;
+      border-top: 1px solid var(--line);
+      padding-top: 17px;
+    }
+
+    .inspector-kicker {
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 720;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .inspector h2 {
+      margin: 0;
+      color: #e8f5f4;
+      font-size: 25px;
+      font-weight: 620;
+      letter-spacing: -.03em;
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 13px 0 18px;
+    }
+
+    .pill {
+      padding: 5px 8px;
+      border: 1px solid rgb(139 224 189 / 22%);
+      border-radius: 999px;
+      color: var(--accent);
+      background: rgb(61 121 100 / 13%);
+      font-size: 11px;
+      font-weight: 620;
+    }
+
+    .pill.is-partial {
+      border-color: rgb(239 199 124 / 25%);
+      color: var(--warning);
+      background: rgb(117 86 35 / 13%);
+    }
+
+    .pill.is-no {
+      border-color: rgb(237 143 131 / 25%);
+      color: var(--danger);
+      background: rgb(117 48 42 / 13%);
+    }
+
+    .description {
+      min-height: 64px;
+      margin: 0 0 19px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .facts {
+      display: grid;
+      gap: 0;
+      margin: 0 0 21px;
+    }
+
+    .fact {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .fact dt { color: var(--faint); }
+    .fact dd { margin: 0; color: #c9dddd; }
+
+    .sliders {
+      display: grid;
+      gap: 14px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .slider-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 12px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .slider-row output { color: #e1f1ef; font-variant-numeric: tabular-nums; }
+
+    .slider-row input {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .panel-toggle {
+      width: 100%;
+      margin-top: 17px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #d9ebea;
+      background: rgb(49 91 105 / 15%);
+      cursor: pointer;
+    }
+
+    .panel-toggle:hover { background: rgb(66 116 128 / 20%); }
+
+    .matrix {
+      margin-top: clamp(34px, 5vw, 66px);
+      border-top: 1px solid var(--line);
+      padding-top: 23px;
+    }
+
+    .matrix-heading {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 550px);
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 17px;
+    }
+
+    .matrix h2 {
+      margin: 0;
+      color: #e8f5f4;
+      font-size: clamp(24px, 3vw, 40px);
+      font-weight: 620;
+      letter-spacing: -.04em;
+    }
+
+    .matrix-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .matrix-table th,
+    .matrix-table td {
+      padding: 13px 12px;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .matrix-table th {
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 720;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .matrix-table td { color: #bdd2d3; line-height: 1.55; }
+    .matrix-table td:first-child { color: #e2f0ef; font-weight: 620; }
+
+    .yes { color: var(--accent); }
+    .partial { color: var(--warning); }
+    .no { color: var(--danger); }
+
+    .group-mark {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .group-b { background: #7bb9e3; }
+    .group-c { background: var(--warning); }
+    .group-os { background: var(--danger); }
+
+    .bottom-note {
+      max-width: 930px;
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    @media (max-width: 1050px) {
+      .workbench { grid-template-columns: 1fr; }
+      .inspector { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+      .inspector .panel-toggle { grid-column: 2; }
+      .matrix-table { min-width: 850px; }
+      .table-scroll { overflow-x: auto; }
+    }
+
+    @media (max-width: 720px) {
+      .page { padding: 20px 14px 34px; }
+      .masthead, .matrix-heading { grid-template-columns: 1fr; }
+      .verdict { width: auto; padding: 14px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+      .inspector { display: block; }
+      .codex-window { width: 100%; height: 430px; min-height: 0; aspect-ratio: auto; }
+      .workspace-content { left: 33%; width: 57%; }
+      .prompt-cards { grid-template-columns: 1fr 1fr; }
+      .prompt-card:last-child { display: none; }
+      .composer { right: 6%; left: 29%; }
+      .tag em { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">MOONSEA · SURFACE MAP</p>
+        <h1>同一张壁纸，只该被盖一次。</h1>
+        <p class="lead">点击窗口中的任意色块，查看它由谁控制、能否与相邻区域渲染一致。这个校色台把“颜色令牌相同”和“最终看到的颜色相同”分开说明。</p>
+      </div>
+      <aside class="verdict" aria-label="结论摘要">
+        <strong>7 / 8 可控</strong>
+        <span>唯一不能完全接管的是 Windows 的 1px 外框与系统按钮绘制；其余断层都能通过单层遮罩、同组令牌和移除边框阴影收口。</span>
+      </aside>
+    </header>
+
+    <section class="workbench" aria-label="Codex 色彩区域交互图">
+      <div class="stage-shell">
+        <div class="modebar">
+          <div class="segmented" role="group" aria-label="渲染模式">
+            <button type="button" data-mode-button="current" aria-pressed="true">当前叠层</button>
+            <button type="button" data-mode-button="recommended" aria-pressed="false">建议统一</button>
+            <button type="button" data-mode-button="forced" aria-pressed="false">强制全统一</button>
+          </div>
+          <label class="boundary-toggle">
+            <input id="boundaryToggle" type="checkbox" checked>
+            显示可控边界
+          </label>
+        </div>
+
+        <div id="codexWindow" class="codex-window has-right-panel" data-mode="current">
+          <button class="region window-frame is-selected" type="button" data-region="window-frame" aria-label="查看 Windows 窗口框与原生按钮">
+            <span class="tag"><b>1</b> 窗口框 <em>部分可控</em></span>
+          </button>
+          <div class="window-actions" aria-hidden="true"><span>—</span><span>□</span><span>×</span></div>
+
+          <button class="region sidebar-head" type="button" data-region="sidebar-head" aria-label="查看左侧栏顶部">
+            <span class="tag"><b>2</b> 左栏顶部 <em>B 组</em></span>
+          </button>
+
+          <button class="region sidebar-body" type="button" data-region="sidebar-body" aria-label="查看左侧导航栏">
+            <span class="tag"><b>3</b> 左侧导航 <em>B 组</em></span>
+          </button>
+
+          <button class="region main-toolbar" type="button" data-region="main-toolbar" aria-label="查看主区工具栏">
+            <span class="tag"><b>4</b> 主区顶栏 <em>A 组</em></span>
+          </button>
+
+          <button class="region main-canvas" type="button" data-region="main-canvas" aria-label="查看正文工作区">
+            <span class="tag"><b>5</b> 正文工作区 <em>A 组</em></span>
+          </button>
+
+          <div class="workspace-content" aria-hidden="true">
+            <div class="question">我们该构建什么？</div>
+            <div class="prompt-cards">
+              <div class="prompt-card">探索并理解代码</div>
+              <div class="prompt-card">构建新功能</div>
+              <div class="prompt-card">审查并修改</div>
+            </div>
+          </div>
+
+          <button class="region composer" type="button" data-region="composer" aria-label="查看输入区">
+            <span class="tag"><b>6</b> 输入与控件 <em>C 组</em></span>
+          </button>
+
+          <button class="region right-panel" type="button" data-region="right-panel" aria-label="查看右侧工具面板">
+            <span class="tag"><b>7</b> 右侧工具面板 <em>C 组</em></span>
+            <span class="right-panel-content" aria-hidden="true">
+              <span>▣ 审阅</span>
+              <span>▧ 终端</span>
+              <span>◎ 浏览器</span>
+              <span>□ 文件</span>
+            </span>
+          </button>
+
+          <div class="seams" aria-hidden="true">
+            <span class="seam seam-top"></span>
+            <span class="seam seam-toolbar"></span>
+            <span class="seam seam-sidebar"></span>
+            <span class="seam-tag">8 · 边框 / 阴影也会制造色差</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="inspector" aria-live="polite">
+        <div>
+          <div class="inspector-kicker" id="regionNumber">区域 01</div>
+          <h2 id="regionTitle">Windows 窗口框</h2>
+          <div class="status-row" id="regionStatus"></div>
+          <p class="description" id="regionDescription"></p>
+          <dl class="facts">
+            <div class="fact"><dt>控制入口</dt><dd id="regionControl"></dd></div>
+            <div class="fact"><dt>一致分组</dt><dd id="regionGroup"></dd></div>
+            <div class="fact"><dt>处理建议</dt><dd id="regionAdvice"></dd></div>
+          </dl>
+        </div>
+
+        <div>
+          <div class="sliders">
+            <label class="slider-row">
+              <span>A 组 · 连续画布遮罩</span>
+              <output id="canvasAlphaOutput">30%</output>
+              <input id="canvasAlpha" type="range" min="12" max="78" value="30">
+            </label>
+            <label class="slider-row">
+              <span>B 组 · 左栏遮罩</span>
+              <output id="sidebarAlphaOutput">46%</output>
+              <input id="sidebarAlpha" type="range" min="20" max="90" value="46">
+            </label>
+          </div>
+          <button id="panelToggle" class="panel-toggle" type="button" aria-pressed="true">关闭右侧工具面板</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="matrix">
+      <div class="matrix-heading">
+        <h2>可以一致，不等于应该全部一致。</h2>
+        <p>A、B、C 三组分别承担“连续壁纸画布”“密集导航”“高可读控制面”。每组内部可以完全一致；跨组强行一致会牺牲结构或可读性。</p>
+      </div>
+      <div class="table-scroll">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>区域</th>
+              <th>技术上可控</th>
+              <th>应该和谁一致</th>
+              <th>不一致的真实原因</th>
+              <th>目标</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Windows 1px 外框 / 系统按钮</td>
+              <td><span class="partial">部分</span></td>
+              <td><span class="group-mark group-os"></span>OS 组</td>
+              <td>系统负责最终绘制，主题只能影响承载它的标题栏底色。</td>
+              <td>视觉接近，不承诺像素一致</td>
+            </tr>
+            <tr>
+              <td>左栏顶部 + 左侧导航</td>
+              <td><span class="yes">可以</span></td>
+              <td><span class="group-mark group-b"></span>B 组内部一致</td>
+              <td>两个 DOM 表面分别叠色，并夹着边框。</td>
+              <td>同一侧栏令牌、各只盖一层</td>
+            </tr>
+            <tr>
+              <td>主区顶栏 + 正文工作区</td>
+              <td><span class="yes">可以</span></td>
+              <td><span class="group-mark"></span>A 组内部一致</td>
+              <td>同一半透明令牌在父层、工具栏、主区重复叠加，最终颜色仍不同。</td>
+              <td>共用一张连续遮罩，移除分隔线和环境阴影</td>
+            </tr>
+            <tr>
+              <td>右侧工具面板</td>
+              <td><span class="yes">可以</span></td>
+              <td><span class="group-mark group-c"></span>C 组强表面</td>
+              <td>面板本来就使用更高不透明度，打开时自然出现明显断层。</td>
+              <td>与输入区/菜单统一；不要与正文强行同色</td>
+            </tr>
+            <tr>
+              <td>输入区 / 菜单 / 弹层</td>
+              <td><span class="yes">可以</span></td>
+              <td><span class="group-mark group-c"></span>C 组内部一致</td>
+              <td>为可读性主动使用强表面，不是渲染错误。</td>
+              <td>保留层级，但用同一强表面令牌</td>
+            </tr>
+            <tr>
+              <td>边框 / 阴影 / backdrop-filter</td>
+              <td><span class="yes">可以</span></td>
+              <td>跟随所属表面</td>
+              <td>1px 浅线、暗影和模糊会让相同底色看起来不同。</td>
+              <td>连续区域归零；交互控件才保留</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="bottom-note">根治标准：同一连续平面只允许一个半透明背景拥有者。不能只把几个 CSS 颜色值写成相同，因为半透明层的最终颜色取决于叠加次数、下方壁纸像素、边框、阴影与模糊。先收敛“谁负责上色”，再统一令牌。</p>
+    </section>
+  </main>
+
+  <script>
+    const regions = {
+      "window-frame": {
+        number: "区域 01",
+        title: "Windows 窗口框",
+        capability: "partial",
+        status: ["承载层可控", "系统绘制不可控"],
+        description: "顶部承载面的底色可以改，但最外侧 1px 边框和最小化、最大化、关闭按钮的最终绘制仍由 Windows / Electron 决定。",
+        control: "--codex-titlebar-tint、--vscode-titleBar-*",
+        group: "OS 边界；只能与 A 组视觉接近",
+        advice: "让标题栏承载层复用 A 组；接受系统边框存在轻微差异。"
+      },
+      "sidebar-head": {
+        number: "区域 02",
+        title: "左栏顶部",
+        capability: "yes",
+        status: ["完全可控", "B 组"],
+        description: "这里应该和左侧导航连成一块。当前细线通常来自标题区自身背景、下边框或与侧栏不同的透明叠加次数。",
+        control: "侧栏标题容器 + --moonsea-sidebar",
+        group: "B 组：左栏顶部、左侧导航",
+        advice: "两块都只使用一次 --moonsea-sidebar，并清掉接缝边框。"
+      },
+      "sidebar-body": {
+        number: "区域 03",
+        title: "左侧导航",
+        capability: "yes",
+        status: ["完全可控", "B 组"],
+        description: "侧栏允许比主画布更深，因为文字密度高。但它自身从顶部到底部应该是一个完整表面。",
+        control: "nav[aria-label]、--color-token-side-bar-background",
+        group: "B 组：左栏顶部、左侧导航",
+        advice: "保留独立侧栏透明度；不要让父容器和 nav 同时叠半透明色。"
+      },
+      "main-toolbar": {
+        number: "区域 04",
+        title: "主区顶栏",
+        capability: "yes",
+        status: ["完全可控", "A 组"],
+        description: "它应当和下方正文工作区共享一张连续画布。相同变量并不够，父层与工具栏重复叠色仍会产生第二层色带。",
+        control: ".draggable / toolbar、--codex-titlebar-tint",
+        group: "A 组：窗口承载层、主区顶栏、正文工作区",
+        advice: "只保留一个背景拥有者，工具栏自身透明，移除下边框和阴影。"
+      },
+      "main-canvas": {
+        number: "区域 05",
+        title: "正文工作区",
+        capability: "yes",
+        status: ["完全可控", "A 组"],
+        description: "这是壁纸上的连续工作画布，不应再有额外环境阴影把顶部、左边或右边压暗。正文阅读增强应只包裹文字内容。",
+        control: "main.main-surface、--color-token-main-surface-primary",
+        group: "A 组：窗口承载层、主区顶栏、正文工作区",
+        advice: "主画布只盖一次 --moonsea-panel；移除外轮廓与环境阴影。"
+      },
+      "composer": {
+        number: "区域 06",
+        title: "输入与控件",
+        capability: "yes",
+        status: ["完全可控", "建议保留层级"],
+        description: "输入区技术上可以和正文完全一致，但这样会让输入文字、语音与发送按钮失去稳定底色。它的差异属于功能层级。",
+        control: "composer 语义结构、--moonsea-control",
+        group: "C 组：输入区、菜单、弹层、右侧工具面板",
+        advice: "与 C 组共用强表面令牌，不与 A 组强行一致。"
+      },
+      "right-panel": {
+        number: "区域 07",
+        title: "右侧工具面板",
+        capability: "yes",
+        status: ["完全可控", "建议保留层级"],
+        description: "打开审阅、终端、浏览器或文件后，右侧使用高不透明表面，所以会明显分区。可以消除，但不建议牺牲工具内容的可读性。",
+        control: "右侧面板背景、--moonsea-panel-strong / VS Code 变量",
+        group: "C 组：右侧面板、输入区、菜单、弹层",
+        advice: "统一 C 组的色相与透明度；只弱化分隔线，不抹掉功能层级。"
+      }
+    };
+
+    const codexWindow = document.querySelector("#codexWindow");
+    const modeButtons = [...document.querySelectorAll("[data-mode-button]")];
+    const regionButtons = [...document.querySelectorAll("[data-region]")];
+    const statusEl = document.querySelector("#regionStatus");
+
+    function renderRegion(regionId) {
+      const data = regions[regionId];
+      if (!data) return;
+      regionButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.region === regionId));
+      document.querySelector("#regionNumber").textContent = data.number;
+      document.querySelector("#regionTitle").textContent = data.title;
+      document.querySelector("#regionDescription").textContent = data.description;
+      document.querySelector("#regionControl").textContent = data.control;
+      document.querySelector("#regionGroup").textContent = data.group;
+      document.querySelector("#regionAdvice").textContent = data.advice;
+      statusEl.replaceChildren(...data.status.map((label, index) => {
+        const span = document.createElement("span");
+        span.className = `pill ${data.capability === "partial" && index === 1 ? "is-partial" : ""}`;
+        span.textContent = label;
+        return span;
+      }));
+    }
+
+    regionButtons.forEach((button) => button.addEventListener("click", () => renderRegion(button.dataset.region)));
+
+    modeButtons.forEach((button) => button.addEventListener("click", () => {
+      codexWindow.dataset.mode = button.dataset.modeButton;
+      modeButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+    }));
+
+    document.querySelector("#boundaryToggle").addEventListener("change", (event) => {
+      codexWindow.classList.toggle("hide-boundaries", !event.target.checked);
+    });
+
+    const panelToggle = document.querySelector("#panelToggle");
+    panelToggle.addEventListener("click", () => {
+      const opened = codexWindow.classList.toggle("has-right-panel");
+      panelToggle.setAttribute("aria-pressed", String(opened));
+      panelToggle.textContent = opened ? "关闭右侧工具面板" : "打开右侧工具面板";
+    });
+
+    function bindAlpha(inputId, outputId, property) {
+      const input = document.querySelector(`#${inputId}`);
+      const output = document.querySelector(`#${outputId}`);
+      input.addEventListener("input", () => {
+        const value = Number(input.value);
+        document.documentElement.style.setProperty(property, String(value / 100));
+        output.value = `${value}%`;
+      });
+    }
+
+    bindAlpha("canvasAlpha", "canvasAlphaOutput", "--canvas-alpha");
+    bindAlpha("sidebarAlpha", "sidebarAlphaOutput", "--sidebar-alpha");
+    renderRegion("window-frame");
+  </script>
+</body>
+</html>
