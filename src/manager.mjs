@@ -42,6 +42,7 @@ const profilePath = path.resolve(
 );
 const projectRoot = findProjectRoot();
 const pidPath = path.join(installRoot, "manager.pid");
+const adminAccess = fs.existsSync(path.join(installRoot, "admin-access.enabled"));
 const updaterPath = process.platform === "win32"
   ? path.join(projectRoot, "scripts", "windows", "Update-Moonsea-Windows.ps1")
   : path.join(projectRoot, "scripts", "macos", "update-moonsea.sh");
@@ -145,6 +146,7 @@ const server = http.createServer(createRequestHandler({
   adminRoot: path.join(projectRoot, "admin"),
   draftRoot: path.join(projectRoot, "assets", "admin-drafts"),
   appVersion: APP_VERSION,
+  adminAccess,
   updateService,
 }));
 

@@ -103,6 +103,27 @@ test("本地助手只接受官网和本机页面", () => {
   assert.equal(isLocalAdminOrigin(PUBLIC_SITE_ORIGIN), false);
 });
 
+test("管理员入口仅在本机授权标记存在时向官网公开", async () => {
+  const hiddenHandler = createRequestHandler({
+    profilePath: "fixture",
+    siteRoot: path.join(projectRoot, "site"),
+    status: async () => ({ connected: false, message: "fixture" }),
+  });
+  const hidden = await requestLocalPage(hiddenHandler, "/api/status", PUBLIC_SITE_ORIGIN);
+  assert.equal(hidden.statusCode, 200);
+  assert.equal(JSON.parse(hidden.body).adminAccess, false);
+
+  const ownerHandler = createRequestHandler({
+    profilePath: "fixture",
+    siteRoot: path.join(projectRoot, "site"),
+    adminAccess: true,
+    status: async () => ({ connected: false, message: "fixture" }),
+  });
+  const owner = await requestLocalPage(ownerHandler, "/api/status", PUBLIC_SITE_ORIGIN);
+  assert.equal(owner.statusCode, 200);
+  assert.equal(JSON.parse(owner.body).adminAccess, true);
+});
+
 test("主题创作台只由本机助手提供且实验壁纸不进入公开目录", async () => {
   const handler = createRequestHandler({
     profilePath: "fixture",

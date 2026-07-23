@@ -6,7 +6,7 @@ import { chatGPTSignOutPath, requireChatGPTUser } from "../chatgpt-auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "使用统计",
+  title: "管理员数据",
   description: "月海匿名安装与活跃数据",
 };
 
@@ -114,8 +114,8 @@ export default async function AdminPage() {
       <header className="admin-header">
         <div>
           <p className="section-kicker">MOONSEA ADMIN</p>
-          <h1>使用统计</h1>
-          <p>仅统计主动授权的匿名安装，不包含 Codex 账号或工作内容。</p>
+          <h1>管理员数据</h1>
+          <p>匿名安装与活跃趋势</p>
         </div>
         <div className="admin-account">
           <span>{user.displayName}</span>

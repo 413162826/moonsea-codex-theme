@@ -44,10 +44,24 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>月海 Codex 主题<\/title>/i);
-  assert.match(html, /给 Codex 换一张/);
-  assert.match(html, /统计使用量，不读取 Codex 账号/);
+  assert.match(html, /给 Codex/);
+  assert.match(html, /一片月海/);
   assert.match(html, /下载 Windows 版/);
+  assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
+});
+
+test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {
+  const gallery = await readFile(new URL("../app/theme-gallery.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(gallery, /function ProCodexPreview/);
+  assert.match(gallery, /className="pro-codex-window"/);
+  assert.match(gallery, /className="pro-codex-body"/);
+  assert.match(gallery, /url\("\$\{wallpaper\}"\)/);
+  assert.doesNotMatch(gallery, /theme\.previewImage\s*\?\s*<img/);
+  assert.match(styles, /\.pro-codex-window\s*\{/);
+  assert.match(styles, /\.pro-codex-sidebar\s*\{/);
+  assert.match(styles, /\.pro-codex-composer\s*\{/);
 });
 
 test("未知页面返回 404", async () => {

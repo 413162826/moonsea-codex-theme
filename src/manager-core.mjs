@@ -299,6 +299,7 @@ export function createRequestHandler({
   adminRoot = null,
   draftRoot = null,
   appVersion = "0.0.0",
+  adminAccess = false,
   updateService = null,
   status = getCodexStatus,
   apply = applyThemeToCodex,
@@ -340,6 +341,7 @@ export function createRequestHandler({
         sendJson(response, 200, {
           ok: true,
           appVersion,
+          adminAccess,
           catalogVersion: 3,
           ...(await status(profilePath)),
         }, origin);

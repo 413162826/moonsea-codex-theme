@@ -31,8 +31,65 @@ const initialConnection: Connection = {
   connected: false,
   runtimeCapable: false,
   activeThemeId: null,
-  message: "打开月海版后会自动连接",
+  message: "打开月海版",
 };
+
+function StandardCodexPreview({ theme }: { theme: Theme }) {
+  return (
+    <div className={`mock-window ${theme.mode}`} aria-hidden="true">
+      <div className="mock-titlebar"><i />Codex · {theme.name}</div>
+      <div className="mock-shell">
+        <aside><span /><span /><span /></aside>
+        <div><b>Build a product people remember</b><span /><span /><em /></div>
+      </div>
+    </div>
+  );
+}
+
+function ProCodexPreview({ theme }: { theme: Theme }) {
+  const wallpaper = theme.previewImage?.replace("./", "/");
+  return (
+    <div className="pro-codex-window" aria-hidden="true">
+      <div className="pro-codex-titlebar">
+        <div className="pro-codex-menu">
+          <i />
+          <span>Codex</span>
+          <span>文件</span>
+          <span>编辑</span>
+        </div>
+        <div className="pro-codex-window-actions"><i /><i /><i /></div>
+      </div>
+      <div
+        className="pro-codex-body"
+        style={{
+          backgroundImage: wallpaper
+            ? `linear-gradient(110deg, rgba(5, 19, 28, .28), rgba(5, 19, 28, .06)), url("${wallpaper}")`
+            : theme.previewGradient,
+        }}
+      >
+        <aside className="pro-codex-sidebar">
+          <strong><i />Codex</strong>
+          <div className="pro-codex-nav"><span /><span /><span /><span /></div>
+          <div className="pro-codex-project">
+            <small>项目</small>
+            <span /><span /><span />
+          </div>
+        </aside>
+        <div className="pro-codex-workspace">
+          <div className="pro-codex-thread"><span /><span /></div>
+          <div className="pro-codex-welcome">
+            <i />
+            <strong>我们该构建什么？</strong>
+          </div>
+          <div className="pro-codex-composer">
+            <span>随心输入</span>
+            <i>↑</i>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ThemeGallery() {
   const [themes, setThemes] = useState<Theme[]>([]);
@@ -78,7 +135,7 @@ export function ThemeGallery() {
           connected: true,
           runtimeCapable: body.runtimeCapable === true && (body.catalogVersion ?? 0) >= 3,
           activeThemeId: body.themeId ?? null,
-          message: "Codex 已连接，可立即应用",
+          message: "可立即应用",
         });
       } catch {
         if (active) setConnection(initialConnection);
@@ -132,7 +189,7 @@ export function ThemeGallery() {
       <div className="gallery-toolbar">
         <div>
           <p className="section-kicker">主题墙</p>
-          <h2 id="themes-title">找到适合今天的工作氛围。</h2>
+          <h2 id="themes-title">选一张，立即应用。</h2>
         </div>
         <div className={`connection-status ${connection.connected ? "is-connected" : ""}`}>
           <span aria-hidden="true" />
@@ -143,7 +200,7 @@ export function ThemeGallery() {
       <div className="gallery-controls">
         <label className="theme-search">
           <span className="visually-hidden">搜索主题</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="搜索主题或使用场景" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="搜索主题" />
         </label>
         <div className="filter-list" aria-label="筛选主题">
           {(["all", "light", "dark", "pro"] as const).map((value) => (
@@ -170,16 +227,11 @@ export function ThemeGallery() {
           const isApplying = applyingId === theme.id;
           return (
             <article className="theme-card" key={theme.id}>
-              <div className="theme-preview" style={{ background: theme.previewGradient }}>
-                {theme.previewImage ? <img src={theme.previewImage.replace("./", "/")} alt="" /> : null}
+              <div className={`theme-preview ${theme.edition === "pro" ? "is-pro" : ""}`} style={{ background: theme.previewGradient }}>
                 <span className="theme-edition">{theme.edition === "pro" ? "精选 · Pro" : `渐变 · ${theme.mode === "dark" ? "深色" : "浅色"}`}</span>
-                <div className={`mock-window ${theme.mode}`} aria-hidden="true">
-                  <div className="mock-titlebar"><i />Codex · {theme.name}</div>
-                  <div className="mock-shell">
-                    <aside><span /><span /><span /></aside>
-                    <div><b>Build a product people remember</b><span /><span /><em /></div>
-                  </div>
-                </div>
+                {theme.edition === "pro"
+                  ? <ProCodexPreview theme={theme} />
+                  : <StandardCodexPreview theme={theme} />}
               </div>
               <div className="theme-card__footer">
                 <div><h3>{theme.name}</h3><p>{theme.description}</p></div>
