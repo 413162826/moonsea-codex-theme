@@ -67,6 +67,7 @@
     motionMode: "soft",
     clickRipple: true,
     motionOverrideReduced: false,
+    telemetryConsent: false,
   };
   const WALLPAPER_SOURCES = new Set(["theme", "custom"]);
   const MOTION_MODES = new Set(["off", "soft", "lively"]);
@@ -124,6 +125,9 @@
         motionOverrideReduced: typeof saved.motionOverrideReduced === "boolean"
           ? saved.motionOverrideReduced
           : defaults.motionOverrideReduced,
+        telemetryConsent: typeof saved.telemetryConsent === "boolean"
+          ? saved.telemetryConsent
+          : defaults.telemetryConsent,
       };
     } catch {
       return { ...defaults };
@@ -838,8 +842,18 @@
             <span class="moonsea-assistant__version" data-update-version>正在读取版本</span>
           </div>
           <p class="moonsea-assistant__message" data-update-message aria-live="polite">正在检查更新…</p>
-          <div class="moonsea-assistant__progress" data-update-progress hidden aria-hidden="true"><span></span></div>
+          <div class="moonsea-assistant__progress" data-update-progress hidden role="progressbar" aria-label="更新下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
           <button class="moonsea-assistant__update-action" data-update-action type="button" hidden></button>
+        </div>
+        <div class="moonsea-telemetry-settings">
+          <div class="moonsea-telemetry-settings__title">匿名使用统计</div>
+          <label class="moonsea-toggle-row">
+            <span>帮助改进月海</span>
+            <input data-setting="telemetryConsent" type="checkbox">
+            <span class="moonsea-toggle-switch" aria-hidden="true"></span>
+            <output data-output="telemetryConsent"></output>
+          </label>
+          <p>默认关闭。开启后仅上报随机安装标识、版本、系统与最近活跃时间，不读取 Codex 账号和工作内容。</p>
         </div>
         <p class="moonsea-assistant__standard-note" data-inactive-note>当前未启用月海壁纸。应用任意渐变或 Pro 壁纸后，可在这里继续调整。</p>
         <div data-wallpaper-settings hidden>
@@ -926,6 +940,9 @@
     const motionOverrideReducedInput = controls.querySelector(
       '[data-setting="motionOverrideReduced"]',
     );
+    const telemetryConsentInput = controls.querySelector(
+      '[data-setting="telemetryConsent"]',
+    );
     const reducedMotionControl = controls.querySelector(
       "[data-reduced-motion-control]",
     );
@@ -943,6 +960,9 @@
     const motionOverrideReducedOutput = controls.querySelector(
       '[data-output="motionOverrideReduced"]',
     );
+    const telemetryConsentOutput = controls.querySelector(
+      '[data-output="telemetryConsent"]',
+    );
     const motionNote = controls.querySelector("[data-motion-note]");
     const wallpaperInput = controls.querySelector("[data-wallpaper-input]");
     const wallpaperSelect = controls.querySelector(".moonsea-wallpaper-select");
@@ -953,12 +973,28 @@
     let updateState = null;
     let pendingUpdateCommand = null;
 
+    const formatUpdateBytes = (bytes) => {
+      if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
+      const megabytes = bytes / (1024 * 1024);
+      return `${megabytes >= 10 ? megabytes.toFixed(0) : megabytes.toFixed(1)} MB`;
+    };
+
+    const downloadDetails = (update) => {
+      if (!update.totalBytes) return `${update.progress || 0}%`;
+      const transferred = `${formatUpdateBytes(update.downloadedBytes)} / ${formatUpdateBytes(update.totalBytes)}`;
+      const speed = update.speedBytesPerSecond > 0
+        ? ` · ${formatUpdateBytes(update.speedBytesPerSecond)}/s`
+        : "";
+      return `${update.progress || 0}% · ${transferred}${speed}`;
+    };
+
     const renderUpdate = (update) => {
       updateState = update;
       updateVersion.textContent = update.currentVersion ? `v${update.currentVersion}` : "版本未知";
       updateMessage.classList.toggle("is-error", update.status === "error" || Boolean(update.error));
       updateProgress.hidden = update.status !== "downloading";
       updateProgress.style.setProperty("--moonsea-update-progress", String((update.progress || 0) / 100));
+      updateProgress.setAttribute("aria-valuenow", String(update.progress || 0));
       toggle.classList.toggle("is-update-available", ["available", "ready"].includes(update.status));
       updateAction.hidden = false;
       updateAction.disabled = false;
@@ -969,11 +1005,22 @@
         updateMessage.textContent = "已经是最新版本。";
         updateAction.hidden = true;
       } else if (update.status === "available") {
-        updateMessage.textContent = `发现 v${update.latestVersion}。${update.notes || ""}`.trim();
-        updateAction.textContent = "立即更新";
+        const savedProgress = update.downloadedBytes > 0
+          ? ` 已保留 ${update.progress || 0}% 下载进度。`
+          : "";
+        updateMessage.textContent = `发现 v${update.latestVersion}。${update.notes || ""}${savedProgress}`.trim();
+        updateAction.textContent = update.downloadedBytes > 0 ? "继续更新" : "立即更新";
       } else if (update.status === "downloading") {
-        updateMessage.textContent = `正在下载更新… ${update.progress || 0}%`;
-        updateAction.textContent = "正在下载";
+        if (update.phase === "retrying") {
+          updateMessage.textContent = `网络有波动，正在自动续传（${update.retryAttempt}/${update.maxRetryAttempts}）… ${downloadDetails(update)}`;
+          updateAction.textContent = "正在重连";
+        } else if (update.phase === "verifying") {
+          updateMessage.textContent = "下载完成，正在校验安装包…";
+          updateAction.textContent = "正在校验";
+        } else {
+          updateMessage.textContent = `正在下载更新… ${downloadDetails(update)}`;
+          updateAction.textContent = "正在下载";
+        }
         updateAction.disabled = true;
       } else if (update.status === "ready") {
         updateMessage.textContent = update.error
@@ -989,7 +1036,7 @@
         updateAction.disabled = true;
       } else {
         updateMessage.textContent = update.error || "暂时无法检查更新。";
-        updateAction.textContent = "重试";
+        updateAction.textContent = update.downloadedBytes > 0 ? "继续下载" : "重试";
       }
     };
 
@@ -1001,6 +1048,7 @@
       motionModeInput.value = settings.motionMode;
       clickRippleInput.checked = settings.clickRipple;
       motionOverrideReducedInput.checked = settings.motionOverrideReduced;
+      telemetryConsentInput.checked = settings.telemetryConsent;
       reducedMotionControl.hidden = !reducedMotionQuery.matches;
       transparencyOutput.value = `${settings.transparency}%`;
       brightnessOutput.value = `${settings.brightness}%`;
@@ -1010,6 +1058,7 @@
       motionOverrideReducedOutput.value = settings.motionOverrideReduced
         ? "开启"
         : "关闭";
+      telemetryConsentOutput.value = settings.telemetryConsent ? "已授权" : "关闭";
       motionNote.textContent = motionDescription();
     };
 
@@ -1085,6 +1134,12 @@
       syncControls();
     });
 
+    telemetryConsentInput.addEventListener("change", () => {
+      settings.telemetryConsent = telemetryConsentInput.checked;
+      applySettings();
+      syncControls();
+    });
+
     reducedMotionQuery.addEventListener("change", syncControls);
 
     wallpaperSelect.addEventListener("click", () => wallpaperInput.click());
@@ -1156,6 +1211,7 @@
           pendingUpdateCommand = null;
           return command;
         },
+        getTelemetryConsent: () => settings.telemetryConsent === true,
       }),
     });
   };

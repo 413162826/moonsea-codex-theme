@@ -6,6 +6,15 @@ export const DEFAULT_UPDATE_MANIFEST_URL =
   "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/update.json";
 
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
+const MANIFEST_MAX_ATTEMPTS = 3;
+const DEFAULT_DOWNLOAD_POLICY = Object.freeze({
+  maxAttempts: 5,
+  connectTimeoutMs: 30_000,
+  idleTimeoutMs: 45_000,
+  retryBaseDelayMs: 1_000,
+  retryMaxDelayMs: 8_000,
+});
+const RETRYABLE_HTTP_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 const PLATFORM_KEYS = new Map([
   ["win32", "windows"],
   ["darwin", "macos"],
@@ -41,12 +50,51 @@ function assertHttpsUrl(value, label) {
 }
 
 function readableUpdateError(error, action) {
+  if (error?.userMessage) return error.userMessage;
   const message = error?.message || "未知错误";
   if (/\p{Script=Han}/u.test(message)) return message;
   if (error?.name === "AbortError" || error?.name === "TimeoutError" || error instanceof TypeError) {
     return `${action}失败：网络连接异常，请稍后重试`;
   }
   return `${action}失败：${message}`;
+}
+
+function updateError(message, options = {}) {
+  const error = new Error(message, options.cause ? { cause: options.cause } : undefined);
+  Object.assign(error, {
+    code: options.code ?? null,
+    retryable: options.retryable === true,
+    invalidatePartial: options.invalidatePartial === true,
+    retryAfterMs: options.retryAfterMs ?? null,
+    userMessage: options.userMessage ?? null,
+  });
+  return error;
+}
+
+function parseRetryAfter(value, now) {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1_000, 30_000);
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  return Math.min(Math.max(0, timestamp - now()), 30_000);
+}
+
+function isRetryableNetworkError(error) {
+  return error?.retryable === true
+    || error?.name === "AbortError"
+    || error?.name === "TimeoutError"
+    || error instanceof TypeError;
+}
+
+function validateContentRange(value, expectedStart, expectedSize) {
+  const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(value ?? "");
+  if (!match) return false;
+  const [, start, end, total] = match.map(Number);
+  return start === expectedStart
+    && end >= start
+    && end < total
+    && total === expectedSize;
 }
 
 export function validateUpdateManifest(manifest, platform, currentVersion) {
@@ -77,6 +125,13 @@ function publicSnapshot(state, currentVersion) {
     latestVersion: state.latestVersion,
     notes: state.notes,
     progress: state.progress,
+    phase: state.phase,
+    downloadedBytes: state.downloadedBytes,
+    totalBytes: state.totalBytes,
+    speedBytesPerSecond: state.speedBytesPerSecond,
+    retryAttempt: state.retryAttempt,
+    maxRetryAttempts: state.maxRetryAttempts,
+    nextRetryAt: state.nextRetryAt,
     error: state.error,
     checkedAt: state.checkedAt,
   };
@@ -99,6 +154,8 @@ export class UpdateService {
     launchUpdater,
     requestShutdown,
     now = () => Date.now(),
+    sleep = (duration) => new Promise((resolve) => setTimeout(resolve, duration)),
+    downloadPolicy = {},
   }) {
     this.currentVersion = currentVersion;
     this.platform = platform;
@@ -109,6 +166,14 @@ export class UpdateService {
     this.launchUpdater = launchUpdater;
     this.requestShutdown = requestShutdown;
     this.now = now;
+    this.sleep = sleep;
+    this.downloadPolicy = {
+      ...DEFAULT_DOWNLOAD_POLICY,
+      ...downloadPolicy,
+    };
+    if (!Number.isInteger(this.downloadPolicy.maxAttempts) || this.downloadPolicy.maxAttempts < 1) {
+      throw new Error("下载最大尝试次数必须是正整数");
+    }
     this.selectedUpdate = null;
     this.packagePath = null;
     this.downloadPromise = null;
@@ -117,6 +182,13 @@ export class UpdateService {
       latestVersion: currentVersion,
       notes: "",
       progress: 0,
+      phase: null,
+      downloadedBytes: 0,
+      totalBytes: 0,
+      speedBytesPerSecond: 0,
+      retryAttempt: 0,
+      maxRetryAttempts: this.downloadPolicy.maxAttempts - 1,
+      nextRetryAt: null,
       error: null,
       checkedAt: null,
     };
@@ -134,6 +206,29 @@ export class UpdateService {
       "updates",
       `Moonsea-Codex-${update.version}-${extension}`,
     );
+  }
+
+  partialPathFor(update = this.selectedUpdate) {
+    const packagePath = this.packagePathFor(update);
+    return packagePath ? `${packagePath}.partial` : null;
+  }
+
+  appendDownloadLog(event, details = {}) {
+    try {
+      const updatesRoot = path.join(this.installRoot, "updates");
+      fs.mkdirSync(updatesRoot, { recursive: true });
+      fs.appendFileSync(
+        path.join(updatesRoot, "download.log"),
+        `${JSON.stringify({
+          timestamp: new Date(this.now()).toISOString(),
+          event,
+          currentVersion: this.currentVersion,
+          targetVersion: this.selectedUpdate?.version ?? null,
+          ...details,
+        })}\n`,
+        "utf8",
+      );
+    } catch { }
   }
 
   async restoreDownloadedPackage() {
@@ -182,12 +277,7 @@ export class UpdateService {
   async check() {
     this.state = { ...this.state, status: "checking", error: null };
     try {
-      const response = await this.fetchImpl(this.manifestUrl, {
-        cache: "no-store",
-        redirect: "follow",
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`检查更新失败（${response.status}）`);
+      const response = await this.fetchUpdateManifest();
       const selected = validateUpdateManifest(
         await response.json(),
         this.platform,
@@ -196,12 +286,28 @@ export class UpdateService {
       this.selectedUpdate = selected;
       const available = compareVersions(selected.version, this.currentVersion) > 0;
       const ready = available && await this.restoreDownloadedPackage();
+      const partialPath = this.partialPathFor(selected);
+      const partialSize = available
+        && !ready
+        && partialPath
+        && fs.existsSync(partialPath)
+        ? Math.min(fs.statSync(partialPath).size, selected.package.size)
+        : 0;
       const previousFailure = ready ? this.readPreviousFailure(selected.version) : null;
       this.state = {
         status: ready ? "ready" : available ? "available" : "current",
         latestVersion: selected.version,
         notes: selected.notes,
-        progress: ready || !available ? 100 : 0,
+        progress: ready || !available
+          ? 100
+          : Math.round((partialSize / selected.package.size) * 100),
+        phase: null,
+        downloadedBytes: ready ? selected.package.size : partialSize,
+        totalBytes: available ? selected.package.size : 0,
+        speedBytesPerSecond: 0,
+        retryAttempt: 0,
+        maxRetryAttempts: this.downloadPolicy.maxAttempts - 1,
+        nextRetryAt: null,
         error: previousFailure,
         checkedAt: this.now(),
       };
@@ -214,6 +320,43 @@ export class UpdateService {
       };
     }
     return this.snapshot();
+  }
+
+  async fetchUpdateManifest() {
+    let lastError = null;
+    for (let attempt = 1; attempt <= MANIFEST_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        const response = await this.fetchImpl(this.manifestUrl, {
+          cache: "no-store",
+          redirect: "follow",
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!response.ok) {
+          throw updateError(`检查更新失败（${response.status}）`, {
+            code: `HTTP_${response.status}`,
+            retryable: RETRYABLE_HTTP_STATUS.has(response.status),
+            retryAfterMs: parseRetryAfter(response.headers.get("retry-after"), this.now),
+          });
+        }
+        return response;
+      } catch (error) {
+        lastError = error;
+        const retryable = isRetryableNetworkError(error);
+        this.appendDownloadLog("update_check_attempt_failed", {
+          attempt,
+          retryable,
+          errorName: error?.name ?? "Error",
+          errorCode: error?.code ?? error?.cause?.code ?? null,
+          errorMessage: error?.message ?? String(error),
+        });
+        if (!retryable || attempt >= MANIFEST_MAX_ATTEMPTS) throw error;
+        const delay = error.retryAfterMs === null
+          ? 500 * (2 ** (attempt - 1))
+          : Math.min(error.retryAfterMs, 5_000);
+        await this.sleep(delay);
+      }
+    }
+    throw lastError;
   }
 
   async startDownload({ autoInstall = false } = {}) {
@@ -245,6 +388,13 @@ export class UpdateService {
       ...this.state,
       status: "downloading",
       progress: Math.min(99, Math.round((resumeSize / this.selectedUpdate.package.size) * 100)),
+      phase: "downloading",
+      downloadedBytes: resumeSize,
+      totalBytes: this.selectedUpdate.package.size,
+      speedBytesPerSecond: 0,
+      retryAttempt: 0,
+      maxRetryAttempts: this.downloadPolicy.maxAttempts - 1,
+      nextRetryAt: null,
       error: null,
     };
     this.downloadPromise = this.downloadPackage(temporaryPath, packagePath)
@@ -258,8 +408,18 @@ export class UpdateService {
           progress: fs.existsSync(temporaryPath)
             ? Math.min(99, Math.round((fs.statSync(temporaryPath).size / this.selectedUpdate.package.size) * 100))
             : 0,
+          phase: null,
+          downloadedBytes: fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0,
+          speedBytesPerSecond: 0,
+          nextRetryAt: null,
           error: readableUpdateError(error, "下载更新"),
         };
+        this.appendDownloadLog("download_failed", {
+          downloadedBytes: this.state.downloadedBytes,
+          errorName: error?.name ?? "Error",
+          errorCode: error?.code ?? error?.cause?.code ?? null,
+          errorMessage: error?.message ?? String(error),
+        });
       })
       .finally(() => {
         this.downloadPromise = null;
@@ -269,82 +429,285 @@ export class UpdateService {
 
   async downloadPackage(temporaryPath, packagePath) {
     const expectedSize = this.selectedUpdate.package.size;
-    let received = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
-    if (received === expectedSize) {
+    const existingSize = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
+    if (existingSize === expectedSize) {
       if (await hashFile(temporaryPath) === this.selectedUpdate.package.sha256) {
         fs.rmSync(packagePath, { force: true });
         fs.renameSync(temporaryPath, packagePath);
         this.packagePath = packagePath;
-        this.state = { ...this.state, status: "ready", progress: 100, error: null };
+        this.state = {
+          ...this.state,
+          status: "ready",
+          progress: 100,
+          phase: null,
+          downloadedBytes: expectedSize,
+          speedBytesPerSecond: 0,
+          retryAttempt: 0,
+          nextRetryAt: null,
+          error: null,
+        };
         return;
       }
       fs.rmSync(temporaryPath, { force: true });
-      received = 0;
     }
 
-    const response = await this.fetchImpl(this.selectedUpdate.package.url, {
-      redirect: "follow",
-      headers: received > 0 ? { Range: `bytes=${received}-` } : undefined,
-      signal: AbortSignal.timeout(10 * 60 * 1000),
+    this.appendDownloadLog("download_started", {
+      downloadedBytes: fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0,
+      totalBytes: expectedSize,
     });
-    if (!response.ok || !response.body) throw new Error(`更新包下载失败（${response.status}）`);
-    const hash = crypto.createHash("sha256");
-    let append = received > 0 && response.status === 206;
-    if (append) {
-      const contentRange = response.headers.get("content-range") ?? "";
-      if (!contentRange.startsWith(`bytes ${received}-`)) {
-        throw new Error("更新服务器返回的断点位置无效");
-      }
-      for await (const chunk of fs.createReadStream(temporaryPath)) hash.update(chunk);
-    } else if (received > 0) {
-      received = 0;
-      append = false;
-    }
-    const output = fs.createWriteStream(temporaryPath, { flags: append ? "a" : "w" });
-    try {
-      for await (const chunk of response.body) {
-        const buffer = Buffer.from(chunk);
-        received += buffer.length;
-        if (received > expectedSize) {
-          const error = new Error("更新包大小与清单不一致");
-          error.invalidatePartial = true;
+
+    for (let attempt = 1; attempt <= this.downloadPolicy.maxAttempts; attempt += 1) {
+      try {
+        this.state = {
+          ...this.state,
+          phase: "downloading",
+          retryAttempt: attempt - 1,
+          nextRetryAt: null,
+        };
+        await this.downloadAttempt(temporaryPath, expectedSize);
+        const received = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
+        if (received !== expectedSize) {
+          throw updateError("下载连接提前结束", {
+            code: "DOWNLOAD_INCOMPLETE",
+            retryable: true,
+          });
+        }
+        this.state = {
+          ...this.state,
+          phase: "verifying",
+          progress: 100,
+          downloadedBytes: expectedSize,
+          speedBytesPerSecond: 0,
+          nextRetryAt: null,
+        };
+        if (await hashFile(temporaryPath) !== this.selectedUpdate.package.sha256) {
+          fs.rmSync(temporaryPath, { force: true });
+          throw updateError("更新包完整性校验失败，准备重新下载", {
+            code: "PACKAGE_INTEGRITY_FAILED",
+            retryable: true,
+            userMessage: "安装包多次校验失败，请检查网络或安全软件后重新下载。",
+          });
+        }
+        break;
+      } catch (error) {
+        if (error.invalidatePartial) fs.rmSync(temporaryPath, { force: true });
+        const downloadedBytes = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
+        const retryable = isRetryableNetworkError(error);
+        this.appendDownloadLog("download_attempt_failed", {
+          attempt,
+          downloadedBytes,
+          retryable,
+          errorName: error?.name ?? "Error",
+          errorCode: error?.code ?? error?.cause?.code ?? null,
+          errorMessage: error?.message ?? String(error),
+        });
+        if (!retryable || attempt >= this.downloadPolicy.maxAttempts) {
+          if (retryable && !error.userMessage) {
+            error.userMessage = downloadedBytes > 0
+              ? `下载多次中断，已保留 ${Math.round((downloadedBytes / expectedSize) * 100)}% 进度。请检查网络后继续下载。`
+              : "暂时无法连接更新服务器，请检查网络后重试。";
+          }
           throw error;
         }
-        hash.update(buffer);
-        if (!output.write(buffer)) await new Promise((resolve) => output.once("drain", resolve));
-        this.state.progress = Math.min(
-          99,
-          Math.round((received / expectedSize) * 100),
+        const exponentialDelay = Math.min(
+          this.downloadPolicy.retryBaseDelayMs * (2 ** (attempt - 1)),
+          this.downloadPolicy.retryMaxDelayMs,
         );
+        const delay = error.retryAfterMs === null
+          ? exponentialDelay
+          : Math.min(error.retryAfterMs, this.downloadPolicy.retryMaxDelayMs);
+        this.state = {
+          ...this.state,
+          phase: "retrying",
+          downloadedBytes,
+          progress: Math.min(99, Math.round((downloadedBytes / expectedSize) * 100)),
+          speedBytesPerSecond: 0,
+          retryAttempt: attempt,
+          nextRetryAt: this.now() + delay,
+        };
+        await this.sleep(delay);
       }
-      await new Promise((resolve, reject) => {
-        output.end(resolve);
-        output.once("error", reject);
+    }
+
+    const received = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
+    if (received !== expectedSize) throw new Error("网络中断，已保留下载进度，请重试");
+    fs.rmSync(packagePath, { force: true });
+    fs.renameSync(temporaryPath, packagePath);
+    this.packagePath = packagePath;
+    this.state = {
+      ...this.state,
+      status: "ready",
+      progress: 100,
+      phase: null,
+      downloadedBytes: expectedSize,
+      speedBytesPerSecond: 0,
+      retryAttempt: 0,
+      nextRetryAt: null,
+      error: null,
+    };
+    this.appendDownloadLog("download_completed", {
+      downloadedBytes: expectedSize,
+      totalBytes: expectedSize,
+    });
+  }
+
+  async downloadAttempt(temporaryPath, expectedSize) {
+    let received = fs.existsSync(temporaryPath) ? fs.statSync(temporaryPath).size : 0;
+    const requestedStart = received;
+    const controller = new AbortController();
+    let timeout = null;
+    let timeoutCode = null;
+    const armTimeout = (duration, code) => {
+      clearTimeout(timeout);
+      timeoutCode = code;
+      timeout = setTimeout(() => controller.abort(), duration);
+      timeout.unref?.();
+    };
+    armTimeout(this.downloadPolicy.connectTimeoutMs, "DOWNLOAD_CONNECT_TIMEOUT");
+
+    let response;
+    try {
+      response = await this.fetchImpl(this.selectedUpdate.package.url, {
+        redirect: "follow",
+        headers: requestedStart > 0 ? { Range: `bytes=${requestedStart}-` } : undefined,
+        signal: controller.signal,
       });
     } catch (error) {
-      if (error.invalidatePartial) {
-        await new Promise((resolve) => {
-          output.once("close", resolve);
-          output.destroy();
-        });
-        fs.rmSync(temporaryPath, { force: true });
-      } else {
-        await new Promise((resolve) => {
-          output.once("error", resolve);
-          output.end(resolve);
+      clearTimeout(timeout);
+      if (controller.signal.aborted) {
+        throw updateError("连接更新服务器超时", {
+          code: timeoutCode,
+          retryable: true,
+          cause: error,
         });
       }
       throw error;
     }
-    if (received !== expectedSize) throw new Error("网络中断，已保留下载进度，请重试");
-    if (hash.digest("hex") !== this.selectedUpdate.package.sha256) {
-      fs.rmSync(temporaryPath, { force: true });
-      throw new Error("更新包完整性校验失败");
+
+    if (response.status === 416 && requestedStart > 0) {
+      clearTimeout(timeout);
+      throw updateError("更新服务器拒绝了当前断点，准备重新下载", {
+        code: "RANGE_NOT_SATISFIABLE",
+        retryable: true,
+        invalidatePartial: true,
+      });
     }
-    fs.rmSync(packagePath, { force: true });
-    fs.renameSync(temporaryPath, packagePath);
-    this.packagePath = packagePath;
-    this.state = { ...this.state, status: "ready", progress: 100, error: null };
+    if (!response.ok || !response.body) {
+      clearTimeout(timeout);
+      throw updateError(`更新包下载失败（${response.status}）`, {
+        code: `HTTP_${response.status}`,
+        retryable: RETRYABLE_HTTP_STATUS.has(response.status),
+        retryAfterMs: parseRetryAfter(response.headers.get("retry-after"), this.now),
+      });
+    }
+
+    if (
+      response.status === 206
+      && !validateContentRange(
+        response.headers.get("content-range"),
+        requestedStart,
+        expectedSize,
+      )
+    ) {
+      clearTimeout(timeout);
+      throw updateError("更新服务器返回的断点位置无效", {
+        code: "INVALID_CONTENT_RANGE",
+        retryable: true,
+      });
+    }
+    clearTimeout(timeout);
+
+    const append = requestedStart > 0 && response.status === 206;
+    if (!append) received = 0;
+    const attemptStartedAt = Date.now();
+    const attemptStartedBytes = received;
+    let output;
+    try {
+      output = await fs.promises.open(temporaryPath, append ? "a" : "w");
+    } catch (error) {
+      throw updateError("无法创建更新文件，请检查磁盘空间和目录权限", {
+        code: error?.code ?? "DOWNLOAD_OPEN_FAILED",
+        cause: error,
+      });
+    }
+    const reader = response.body.getReader();
+    let writeError = null;
+    let completed = false;
+    try {
+      while (true) {
+        let readTimeout = null;
+        const result = await Promise.race([
+          reader.read(),
+          new Promise((resolve, reject) => {
+            readTimeout = setTimeout(() => {
+              timeoutCode = "DOWNLOAD_IDLE_TIMEOUT";
+              controller.abort();
+              reject(updateError("下载连接长时间没有响应", {
+                code: timeoutCode,
+                retryable: true,
+              }));
+            }, this.downloadPolicy.idleTimeoutMs);
+            readTimeout.unref?.();
+          }),
+        ]).finally(() => clearTimeout(readTimeout));
+        if (result.done) {
+          completed = true;
+          break;
+        }
+        const chunk = Buffer.from(result.value);
+        received += chunk.length;
+        if (received > expectedSize) {
+          throw updateError("更新包大小与清单不一致", {
+            code: "PACKAGE_SIZE_MISMATCH",
+            invalidatePartial: true,
+          });
+        }
+        const elapsedSeconds = Math.max((Date.now() - attemptStartedAt) / 1_000, 0.001);
+        this.state = {
+          ...this.state,
+          phase: "downloading",
+          progress: Math.min(99, Math.round((received / expectedSize) * 100)),
+          downloadedBytes: received,
+          totalBytes: expectedSize,
+          speedBytesPerSecond: Math.round((received - attemptStartedBytes) / elapsedSeconds),
+          nextRetryAt: null,
+        };
+        try {
+          await output.write(chunk);
+        } catch (error) {
+          writeError = error;
+          throw error;
+        }
+      }
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw updateError("下载连接长时间没有响应", {
+          code: timeoutCode,
+          retryable: true,
+          cause: error,
+        });
+      }
+      if (writeError) {
+        throw updateError("无法写入更新包，请检查磁盘空间和目录权限", {
+          code: writeError.code ?? "DOWNLOAD_WRITE_FAILED",
+          cause: writeError,
+        });
+      }
+      if (error?.invalidatePartial) throw error;
+      throw updateError(error?.message || "下载连接中断", {
+        code: error?.code ?? "DOWNLOAD_STREAM_INTERRUPTED",
+        retryable: error instanceof TypeError
+          || error?.name === "AbortError"
+          || error?.code === "ECONNRESET"
+          || error?.code === "ETIMEDOUT"
+          || error?.code === "UND_ERR_SOCKET",
+        cause: error,
+      });
+    } finally {
+      clearTimeout(timeout);
+      await output.close();
+      if (!completed) void reader.cancel().catch(() => {});
+    }
   }
 
   async startInstall() {

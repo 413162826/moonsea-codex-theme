@@ -248,6 +248,26 @@
   font-size: 10px;
 }
 
+.moonsea-telemetry-settings {
+  margin-block: 12px;
+  padding-block: 12px;
+  border-block: 1px solid var(--moonsea-assistant-border);
+}
+
+.moonsea-telemetry-settings__title {
+  margin-block-end: 8px;
+  color: var(--moonsea-assistant-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.moonsea-telemetry-settings p {
+  margin: 8px 0 0;
+  color: var(--moonsea-assistant-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .moonsea-reduced-motion-row[hidden] {
   display: none;
 }

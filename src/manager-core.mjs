@@ -9,7 +9,7 @@ export const MANAGER_PORT = Number.parseInt(process.env.MOONSEA_MANAGER_PORT ?? 
 if (!Number.isInteger(MANAGER_PORT) || MANAGER_PORT < 1 || MANAGER_PORT > 65535) {
   throw new Error("月海助手端口无效");
 }
-export const PUBLIC_SITE_ORIGIN = "https://413162826.github.io";
+export const PUBLIC_SITE_ORIGIN = "https://moonsea-codex-theme.suguowen5.chatgpt.site";
 
 const LOCAL_ORIGINS = new Set([
   `http://127.0.0.1:${MANAGER_PORT}`,
@@ -214,10 +214,14 @@ export async function exchangeAssistantUpdate(profilePath, update) {
     const result = await client.call("Runtime.evaluate", {
       expression: `(() => {
         const bridge = window.moonseaAssistantUpdateBridge;
-        if (!bridge) return { ready: false, command: null };
+        if (!bridge) return { ready: false, command: null, telemetryConsent: false };
         const command = bridge.takeCommand();
         if (!command) bridge.setStatus(${JSON.stringify(update)});
-        return { ready: true, command };
+        return {
+          ready: true,
+          command,
+          telemetryConsent: bridge.getTelemetryConsent?.() === true,
+        };
       })()`,
       returnByValue: true,
     });

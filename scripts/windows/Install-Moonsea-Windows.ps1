@@ -10,6 +10,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+try {
+    [Console]::InputEncoding = $utf8NoBom
+    [Console]::OutputEncoding = $utf8NoBom
+}
+catch { }
+$OutputEncoding = $utf8NoBom
 
 function Get-FullPath([string]$Path) {
     return [System.IO.Path]::GetFullPath($Path)
@@ -285,7 +292,6 @@ $manifest = [ordered]@{
     installedAt = $installedAt
     updatedAt = (Get-Date).ToUniversalTime().ToString("o")
 }
-$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $manifestStagingPath = "$manifestPath.tmp"
 [System.IO.File]::WriteAllText($manifestStagingPath, ($manifest | ConvertTo-Json -Depth 4), $utf8NoBom)
 Move-Item -LiteralPath $manifestStagingPath -Destination $manifestPath -Force

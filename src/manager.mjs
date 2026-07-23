@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequestHandler, exchangeAssistantUpdate, MANAGER_PORT } from "./manager-core.mjs";
 import { UpdateService } from "./update-service.mjs";
+import { TelemetryService } from "./telemetry-service.mjs";
 import { APP_VERSION } from "./version.mjs";
 
 function readArgument(name) {
@@ -134,6 +135,10 @@ const updateService = new UpdateService({
     setTimeout(shutdown, 350);
   },
 });
+const telemetryService = new TelemetryService({
+  installRoot,
+  appVersion: APP_VERSION,
+});
 const server = http.createServer(createRequestHandler({
   profilePath,
   siteRoot: path.join(projectRoot, "site"),
@@ -166,6 +171,7 @@ async function syncAssistantUpdate() {
     }
     if (exchange?.command === "download") await updateService.startDownload({ autoInstall: true });
     if (exchange?.command === "install") await updateService.startInstall();
+    await telemetryService.sync(exchange?.telemetryConsent === true);
   } catch {
     // Codex 可能还没有打开，下一轮会重新连接活动窗口。
   } finally {

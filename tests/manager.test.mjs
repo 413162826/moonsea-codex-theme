@@ -237,6 +237,9 @@ test("普通与 Pro 壁纸共用完整月海助手和交互特效", () => {
   assert.match(runtime, /pendingUpdateCommand = "download"/);
   assert.match(runtime, /重新打开并更新/);
   assert.match(runtime, /正在启动更新程序/);
+  assert.match(runtime, /网络有波动，正在自动续传/);
+  assert.match(runtime, /formatUpdateBytes/);
+  assert.match(runtime, /aria-valuenow/);
   assert.match(manager, /exchange\?\.command === "check"/);
   assert.match(manager, /getStatus\(\{ force: true \}\)/);
   assert.match(manager, /updater-\$\{targetVersion\}\.ready/);
@@ -246,6 +249,13 @@ test("普通与 Pro 壁纸共用完整月海助手和交互特效", () => {
   assert.match(runtime, /data-setting="motionMode"/);
   assert.match(runtime, /data-setting="clickRipple"/);
   assert.match(runtime, /data-setting="motionOverrideReduced"/);
+  assert.match(runtime, /data-setting="telemetryConsent"/);
+  assert.match(runtime, /默认关闭。开启后仅上报随机安装标识/);
+  assert.match(runtime, /getTelemetryConsent: \(\) => settings\.telemetryConsent === true/);
+  assert.match(manager, /telemetryService\.sync\(exchange\?\.telemetryConsent === true\)/);
+  assert.match(managerCore, /telemetryConsent: bridge\.getTelemetryConsent\?\.\(\) === true/);
+  assert.match(managerCore, /https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site/);
+  assert.match(assistantCss, /\.moonsea-telemetry-settings/);
   assert.match(runtime, /moonsea-motion-override-reduced/);
   assert.match(runtime, /Windows 已关闭动画/);
   assert.match(runtime, /moonsea-controls__dock/);
@@ -324,6 +334,13 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
 
 test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () => {
   const scriptsRoot = path.join(projectRoot, "scripts", "windows");
+  const installCommand = fs.readFileSync(path.join(projectRoot, "Install.cmd"));
+  assert.equal(
+    installCommand.every((byte) => byte < 0x80),
+    true,
+    "Install.cmd 必须保持纯 ASCII，所有中文由已明确设置 UTF-8 的 PowerShell 入口输出",
+  );
+  assert.match(installCommand.toString("ascii"), /Invoke-Moonsea-Install\.ps1/);
   for (const entry of fs.readdirSync(scriptsRoot).filter((name) => name.endsWith(".ps1"))) {
     const script = fs.readFileSync(path.join(scriptsRoot, entry));
     assert.equal(
@@ -332,4 +349,12 @@ test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () =>
       `${entry} 必须保持纯 ASCII，避免 Windows PowerShell 5.1 按本地代码页误读`,
     );
   }
+  const installEntry = fs.readFileSync(
+    path.join(scriptsRoot, "Invoke-Moonsea-Install.ps1"),
+    "ascii",
+  );
+  assert.match(installEntry, /\[Console\]::OutputEncoding = \$utf8NoBom/);
+  assert.match(installEntry, /Start-Transcript/);
+  assert.match(installEntry, /install-result\.json/);
+  assert.match(installEntry, /technicalError/);
 });

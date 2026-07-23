@@ -1,0 +1,238 @@
+{
+  "catalogVersion": 3,
+  "themes": [
+    {
+      "id": "moon-white",
+      "name": "月白",
+      "description": "冷白底与深青字，适合长时间阅读",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#F7F9FA",
+        "#E2EAED",
+        "#176E83",
+        "#17272F"
+      ],
+      "previewGradient": "radial-gradient(circle at 22% 18%, #FFFFFF 0 16%, transparent 46%), linear-gradient(145deg, #F7FAFB 0%, #D7E6E9 58%, #8AB5BE 100%)"
+    },
+    {
+      "id": "mist-blue",
+      "name": "潮雾",
+      "description": "蓝灰层次更明确，适合多面板工作",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#E3EDF2",
+        "#CADAE2",
+        "#2A678B",
+        "#132934"
+      ],
+      "previewGradient": "radial-gradient(circle at 78% 18%, #F4FBFD 0 12%, transparent 44%), linear-gradient(145deg, #E7F2F6 0%, #B6D1DB 55%, #568AA1 100%)"
+    },
+    {
+      "id": "deep-sea",
+      "name": "深海",
+      "description": "深蓝底与海青强调，适合夜间专注",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#0D1A21",
+        "#19303A",
+        "#60B2C1",
+        "#E5EEF1"
+      ],
+      "previewGradient": "radial-gradient(circle at 78% 20%, #397687 0 8%, transparent 42%), linear-gradient(145deg, #122A34 0%, #0A1820 58%, #040B10 100%)"
+    },
+    {
+      "id": "ink-night",
+      "name": "夜航",
+      "description": "中性墨黑与月蓝强调，适合低光环境",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#171D24",
+        "#282F39",
+        "#8BA9D6",
+        "#E9EEF2"
+      ],
+      "previewGradient": "radial-gradient(circle at 20% 20%, #405A7B 0 10%, transparent 40%), linear-gradient(145deg, #28313E 0%, #151B23 60%, #090D12 100%)"
+    },
+    {
+      "id": "tundra-green",
+      "name": "苔原",
+      "description": "灰绿底与松针色，适合长时间编排",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#EEF2EC",
+        "#D6E1D7",
+        "#376B58",
+        "#1E2A24"
+      ],
+      "previewGradient": "radial-gradient(circle at 18% 78%, #AFC7B7 0 14%, transparent 46%), linear-gradient(158deg, #F5F7F3 0%, #D6E1D7 54%, #6D927F 100%)"
+    },
+    {
+      "id": "distant-ridge",
+      "name": "远岫",
+      "description": "蓝紫灰与鸢尾色，适合文档审阅",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#EEF0F5",
+        "#D7DBE8",
+        "#5A648B",
+        "#222936"
+      ],
+      "previewGradient": "conic-gradient(from 214deg at 78% 28%, #F7F6FA 0 18%, #D7DBE8 18% 42%, #9AA3BF 42% 56%, #EEF0F5 56% 100%)"
+    },
+    {
+      "id": "morning-frost",
+      "name": "晨霜",
+      "description": "冷灰底与雾蓝色，适合明亮环境",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#F1F3F4",
+        "#D7DEE3",
+        "#4D6879",
+        "#252C30"
+      ],
+      "previewGradient": "radial-gradient(ellipse at 76% 82%, #AABDC8 0 13%, transparent 39%), linear-gradient(12deg, #CBD6DC 0 26%, #F1F3F4 27% 66%, #E1E7EA 67% 100%)"
+    },
+    {
+      "id": "pine-shadow",
+      "name": "松影",
+      "description": "墨绿底与玉青色，适合持续专注",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#13201C",
+        "#263B34",
+        "#72B49A",
+        "#E7F0EB"
+      ],
+      "previewGradient": "linear-gradient(112deg, #2C4A40 0 18%, #172A24 18% 43%, #4F7D6B 43% 46%, #13201C 46% 74%, #0D1714 74% 100%)"
+    },
+    {
+      "id": "star-ink",
+      "name": "星墨",
+      "description": "紫黑底与灰紫色，适合低光创作",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#1B1822",
+        "#31273B",
+        "#B69ACB",
+        "#EFEAF2"
+      ],
+      "previewGradient": "radial-gradient(ellipse at 18% 24%, #665273 0 7%, #31273B 27%, transparent 61%), radial-gradient(circle at 82% 76%, #44354E 0 8%, transparent 42%), linear-gradient(154deg, #211B28 0%, #141119 100%)"
+    },
+    {
+      "id": "dusk-harbor",
+      "name": "暮港",
+      "description": "石墨蓝与潮蓝色，适合夜间排查",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#1D2229",
+        "#303944",
+        "#7FAFC0",
+        "#E8EEF0"
+      ],
+      "previewGradient": "radial-gradient(circle at 82% 16%, #68788A 0 5%, transparent 31%), linear-gradient(180deg, #303944 0 53%, #7FAFC0 54% 57%, #242A31 58% 73%, #171B20 74% 100%)"
+    },
+    {
+      "id": "glacier-cyan",
+      "name": "冰川",
+      "description": "冰蓝底与深青色，适合高亮度屏幕",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#E9F2F3",
+        "#C8DEE1",
+        "#176E75",
+        "#152B2F"
+      ],
+      "previewGradient": "conic-gradient(from 198deg at 74% 26%, #F7FBFC 0 20%, #C8DEE1 20% 38%, #75AEB4 38% 46%, #E9F2F3 46% 100%)"
+    },
+    {
+      "id": "rain-slate",
+      "name": "雨巷",
+      "description": "雨灰底与靛蓝色，适合资料整理",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#E8EDF1",
+        "#CED8E0",
+        "#3E6078",
+        "#1E2A33"
+      ],
+      "previewGradient": "linear-gradient(166deg, #F6F8FA 0 28%, #D6E0E6 28% 52%, #8BA4B5 52% 55%, #E8EDF1 55% 82%, #BCCBD5 82% 100%)"
+    },
+    {
+      "id": "celadon-mist",
+      "name": "青瓷",
+      "description": "青瓷底与黛绿色，适合安静阅读",
+      "edition": "standard",
+      "mode": "light",
+      "preview": [
+        "#E7F0ED",
+        "#CADDD7",
+        "#2F6B62",
+        "#1A2C29"
+      ],
+      "previewGradient": "radial-gradient(ellipse at 22% 24%, #F8FBFA 0 14%, transparent 42%), radial-gradient(circle at 78% 74%, #8FB6AA 0 11%, transparent 39%), linear-gradient(142deg, #D7E6E1 0%, #E7F0ED 62%, #B4CEC6 100%)"
+    },
+    {
+      "id": "polar-night",
+      "name": "极夜",
+      "description": "深靛底与冰蓝色，适合长夜编码",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#111B26",
+        "#223449",
+        "#73A8D1",
+        "#E8EFF5"
+      ],
+      "previewGradient": "radial-gradient(ellipse at 76% 18%, #365E82 0 9%, transparent 40%), linear-gradient(152deg, #1D3145 0 31%, #111B26 31% 72%, #080E15 100%)"
+    },
+    {
+      "id": "violet-tide",
+      "name": "紫潮",
+      "description": "紫墨底与藤紫色，适合创意工作",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#1B1827",
+        "#342A48",
+        "#A89AD8",
+        "#F0ECF7"
+      ],
+      "previewGradient": "conic-gradient(from 228deg at 26% 72%, #17131F 0 24%, #342A48 24% 43%, #695D86 43% 50%, #211C2D 50% 78%, #17131F 78% 100%)"
+    },
+    {
+      "id": "storm-cobalt",
+      "name": "风暴",
+      "description": "钴灰底与霁蓝色，适合密集排查",
+      "edition": "standard",
+      "mode": "dark",
+      "preview": [
+        "#161D2A",
+        "#2A354A",
+        "#8099CF",
+        "#EDF1F8"
+      ],
+      "previewGradient": "linear-gradient(118deg, #0D121B 0 20%, #2A354A 20% 42%, #8099CF 42% 45%, #1B2434 45% 73%, #111722 73% 100%)"
+    },
+    {
+      "id": "tide-dragon-realm",
+      "name": "潮汐龙境",
+      "description": "月海壁纸、透明表面与沉浸式布局",
+      "edition": "pro",
+      "mode": "dark",
+      "previewImage": "./wallpapers/tide-dragon-realm.webp",
+      "previewGradient": "radial-gradient(circle at 18% 18%, rgba(190, 239, 244, 0.34), transparent 36%), linear-gradient(135deg, rgba(11, 32, 48, 0.08), rgba(7, 24, 43, 0.52))"
+    }
+  ]
+}
