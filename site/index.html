@@ -3,87 +3,96 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="description" content="一键切换 Codex 月海主题">
+    <meta name="description" content="浏览并一键应用 Codex 月海主题">
     <title>月海主题</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <a class="skip-link" href="#theme-picker">跳到主题选择</a>
+    <a class="skip-link" href="#theme-picker">跳到主题墙</a>
+
     <header class="site-header">
-      <a class="brand" href="./" aria-label="月海主题首页">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32"><path d="M23.8 22.8A11 11 0 0 1 9.2 8.2 11 11 0 1 0 23.8 22.8Z"/></svg>
-        </span>
-        <span>月海主题</span>
-      </a>
-      <a class="download-link" id="download-link" href="https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip" download>
-        <span id="download-label">下载 Windows 版</span>
-      </a>
+      <div class="site-header__inner">
+        <a class="brand" href="./" aria-label="月海主题首页">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M23.8 22.8A11 11 0 0 1 9.2 8.2 11 11 0 1 0 23.8 22.8Z"/></svg>
+          </span>
+          <span>月海</span>
+        </a>
+
+        <label class="theme-search" for="theme-search">
+          <span class="visually-hidden">搜索主题</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+          <input id="theme-search" type="search" autocomplete="off" placeholder="搜索主题、色调或使用场景">
+        </label>
+
+        <div class="header-actions">
+          <div class="connection-pill" id="connection-pill" aria-live="polite">
+            <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+            <span class="connection-copy">
+              <strong id="status-title">正在连接</strong>
+              <small id="status-message">确认 Codex 是否已打开</small>
+            </span>
+            <button class="retry-button" id="retry-button" type="button">重试</button>
+          </div>
+          <a class="download-link" id="download-link" href="https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip" download>
+            <span id="download-label">下载 Windows 版</span>
+          </a>
+        </div>
+      </div>
     </header>
 
-    <main>
-      <section class="hero" aria-labelledby="hero-title">
-        <p class="eyebrow">MOONSEA FOR CODEX</p>
-        <h1 id="hero-title">选一个主题，Codex 马上换好。</h1>
-        <p class="hero-copy">普通主题调用 Codex 官方外观，Pro 主题增加壁纸、透明表面与沉浸布局。安装一次，以后都在这里即时切换。</p>
-        <div class="connection-card" aria-live="polite">
-          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-          <div>
-            <strong id="status-title">正在连接月海助手</strong>
-            <p id="status-message">确认本机 Codex 是否已经就绪…</p>
-          </div>
-          <button class="quiet-button" id="retry-button" type="button">重新连接</button>
+    <main id="main-content">
+      <section class="intro" aria-labelledby="hero-title">
+        <div>
+          <p class="eyebrow">MOONSEA FOR CODEX</p>
+          <h1 id="hero-title">给 Codex 换个顺眼的工作环境。</h1>
         </div>
+        <p>浏览喜欢的配色或壁纸，点一下“应用”就会同步到已经打开的 Codex，不需要重启。</p>
       </section>
 
       <section class="picker" id="theme-picker" aria-labelledby="picker-title">
-        <div class="section-heading">
+        <div class="gallery-toolbar">
           <div>
-            <p class="section-kicker">普通主题</p>
-            <h2 id="picker-title">官方外观，轻量切换</h2>
+            <h2 id="picker-title">主题墙</h2>
+            <p id="theme-count" aria-live="polite">正在准备主题…</p>
           </div>
-          <span class="edition-badge">STANDARD</span>
-        </div>
-        <div class="theme-grid" id="standard-theme-grid" aria-live="polite">
-          <div class="empty-state">连接月海助手后会显示可用主题。</div>
-        </div>
-        <div class="pro-heading">
-          <div>
-            <p class="section-kicker">Pro 主题</p>
-            <h2>壁纸、透明表面与沉浸布局</h2>
+          <div class="filter-list" role="group" aria-label="筛选主题">
+            <button class="filter-chip is-active" type="button" data-theme-filter="all" aria-pressed="true">全部</button>
+            <button class="filter-chip" type="button" data-theme-filter="light" aria-pressed="false">浅色</button>
+            <button class="filter-chip" type="button" data-theme-filter="dark" aria-pressed="false">深色</button>
+            <button class="filter-chip" type="button" data-theme-filter="pro" aria-pressed="false">壁纸</button>
           </div>
-          <span class="edition-badge pro">PRO</span>
         </div>
-        <div class="theme-grid pro-grid" id="pro-theme-grid" aria-live="polite">
-          <div class="empty-state">连接月海助手后会显示可用主题。</div>
-        </div>
+
         <p class="result-message" id="result-message" role="status"></p>
+        <div class="theme-gallery" id="theme-gallery" aria-live="polite">
+          <div class="empty-state">正在加载主题预览…</div>
+        </div>
       </section>
 
-      <section class="performance" aria-labelledby="performance-title">
+      <section class="apply-receipt" id="apply-receipt" aria-labelledby="receipt-title">
         <div>
-          <p class="section-kicker">真实切换耗时</p>
-          <h2 id="performance-title">普通与 Pro，速度当场看</h2>
-          <p>计时从网页请求开始，到 Codex 当前窗口完成界面更新为止。</p>
+          <p class="section-kicker">最近一次切换</p>
+          <h2 id="receipt-title">还没有应用主题</h2>
         </div>
-        <div class="metric-grid">
-          <div class="metric active">
-            <span>普通主题</span>
-            <strong id="standard-metric">等待测试</strong>
-            <small id="standard-renderer-metric">官方 Appearance</small>
+        <dl class="receipt-metrics">
+          <div>
+            <dt>普通主题</dt>
+            <dd id="standard-metric">—</dd>
+            <small id="standard-renderer-metric">官方外观</small>
           </div>
-          <div class="metric active pro-metric">
-            <span>Pro 主题</span>
-            <strong id="pro-metric">等待测试</strong>
-            <small id="pro-renderer-metric">壁纸 · 透明表面 · 布局</small>
+          <div>
+            <dt>壁纸主题</dt>
+            <dd id="pro-metric">—</dd>
+            <small id="pro-renderer-metric">壁纸与透明表面</small>
           </div>
-        </div>
+        </dl>
       </section>
     </main>
 
     <footer>
-      <p>普通主题保持原生；Pro 主题可随时一键切回，Codex 无需重启。</p>
-      <a href="https://github.com/413162826/moonsea-codex-theme">GitHub</a>
+      <p>普通主题保持 Codex 原生交互；壁纸主题可随时切回。</p>
+      <a href="https://github.com/413162826/moonsea-codex-theme">查看 GitHub</a>
     </footer>
     <script type="module" src="./app.js"></script>
   </body>

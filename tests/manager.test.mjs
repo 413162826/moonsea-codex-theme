@@ -166,6 +166,7 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
 
 test("官网按系统直下安装包且入口使用通用命名", () => {
   const website = fs.readFileSync(path.join(projectRoot, "site", "app.js"), "utf8");
+  const page = fs.readFileSync(path.join(projectRoot, "site", "index.html"), "utf8");
   assert.match(website, /Moonsea-Codex-Windows-x64\.zip/);
   assert.match(website, /Moonsea-Codex-macOS\.zip/);
   assert.doesNotMatch(website, /releases\/latest["']/);
@@ -173,12 +174,22 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
   assert.match(website, /status\.catalogVersion >= 2/);
   assert.match(website, /\.\/catalog\.json/);
   assert.match(website, /theme\.previewImage/);
-  assert.match(website, /Pro 主题需要新版月海版/);
-  assert.match(website, /月海助手需要升级/);
+  assert.match(website, /壁纸主题需要新版月海版/);
+  assert.match(website, /\? "需要升级"/);
   assert.match(website, /最后一次手动安装/);
   assert.match(website, /dataset\.themeApply/);
   assert.match(website, /applyTheme\(theme\)/);
+  assert.match(website, /应用壁纸/);
+  assert.match(website, /当前壁纸/);
+  assert.match(website, /壁纸已应用/);
+  assert.match(website, /await ensureCatalog\(\)/);
+  assert.match(website, /dataset\.themeFilter/);
   assert.doesNotMatch(website, /applySelectedTheme/);
+  assert.doesNotMatch(website, /Promise\.all\(\[\s*request\("\/api\/status"\)/);
+  assert.match(page, /id="theme-search"/);
+  assert.match(page, /data-theme-filter="all"/);
+  assert.match(page, /id="theme-gallery"/);
+  assert.doesNotMatch(page, /class="performance"/);
 
   for (const entry of ["Install.cmd", "Uninstall.cmd", "Install.command", "Uninstall.command"]) {
     assert.equal(fs.existsSync(path.join(projectRoot, entry)), true, `${entry} 应存在`);
