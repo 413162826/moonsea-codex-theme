@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ProCodexPreview, StandardCodexPreview, type PreviewTheme } from "./codex-preview";
+import { MoonseaRipple } from "./moonsea-ripple";
 import { SiteFooter, SiteHeader, WINDOWS_DOWNLOAD_URL } from "./site-chrome";
 
 const heroTheme: PreviewTheme = {
@@ -46,6 +47,7 @@ export default function Home() {
       <SiteHeader />
 
       <main className="landing-main">
+        <MoonseaRipple />
         <section className="landing-hero">
           <div className="landing-hero__copy">
             <p className="eyebrow">MOONSEA / CURATED CODEX THEMES</p>

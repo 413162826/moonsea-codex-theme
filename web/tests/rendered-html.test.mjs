@@ -73,6 +73,22 @@ test("Windows 下载按钮悬浮时文字保持可见", async () => {
   );
 });
 
+test("首页使用全页 WebGL 月光波纹并移除椭圆壁纸容器", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const ripple = await readFile(new URL("../app/moonsea-ripple.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const stage = styles.match(/\.landing-stage\s*\{([^}]+)\}/)?.[1] ?? "";
+
+  assert.match(page, /<MoonseaRipple \/>/);
+  assert.match(ripple, /getContext\("webgl"/);
+  assert.match(ripple, /pointermove/);
+  assert.match(ripple, /pointerdown/);
+  assert.match(ripple, /prefers-reduced-motion/);
+  assert.match(ripple, /window\.innerWidth < 720 \? 1\.15 : 1\.5/);
+  assert.match(styles, /\.moonsea-backdrop\s*\{[^}]*position:\s*fixed/s);
+  assert.doesNotMatch(stage, /border-radius|url\(/);
+});
+
 test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {
   const gallery = await readFile(new URL("../app/codex-preview.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
