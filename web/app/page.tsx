@@ -1,39 +1,39 @@
 import Link from "next/link";
-import { ProCodexPreview, type PreviewTheme } from "./codex-preview";
+import { ProCodexPreview } from "./codex-preview";
 import { MoonseaRipple } from "./moonsea-ripple";
 import { SiteHeader, WINDOWS_DOWNLOAD_URL } from "./site-chrome";
-
-const heroTheme: PreviewTheme = {
-  name: "潮汐龙境",
-  mode: "dark" as const,
-  previewGradient: "linear-gradient(135deg, #9fb8c2, #d4d7cb)",
-  previewImage: "./wallpapers/tide-dragon-realm.webp",
-};
 
 export default function Home() {
   return (
     <>
-      <SiteHeader tone="moonsea" />
+      <SiteHeader tone="moonsea" revealOnHover />
 
       <main className="landing-main">
         <MoonseaRipple />
         <section className="landing-hero">
           <div className="landing-hero__copy">
-            <p className="eyebrow">MOONSEA / CURATED CODEX THEMES</p>
+            <p className="eyebrow">MOONSEA / THE TWILIGHT ZONE</p>
             <h1>为你的 Codex，<br />选一片海。</h1>
-            <p>免费的渐变主题与精制 Pro 壁纸。先看见喜欢的，再决定今天如何工作。</p>
+            <p>让微光沉进工作界面。掠过深海，鱼群会从你的指针旁散开，再慢慢游回幽蓝。</p>
             <div className="landing-actions">
               <Link className="primary-action" href="/themes">进入主题墙 <span aria-hidden="true">↗</span></Link>
               <a className="text-action" href={WINDOWS_DOWNLOAD_URL}>下载 Windows 版</a>
             </div>
           </div>
-          <div className="landing-stage">
-            <div className="landing-stage__meta">
-              <span>FEATURED / PRO 01</span>
-              <span>潮汐龙境</span>
+          <div className="landing-hero__showcase">
+            <ProCodexPreview
+              className="landing-codex-preview"
+              theme={{
+                name: "潮汐龙境",
+                mode: "dark",
+                previewGradient: "linear-gradient(145deg, #123a4b, #061722)",
+                previewImage: "./wallpapers/tide-dragon-realm.webp",
+              }}
+            />
+            <div className="landing-hero__interaction" aria-hidden="true">
+              <span className="landing-hero__signal" />
+              <p>MOVE THROUGH THE DEEP<br />鱼群会让出你的方向</p>
             </div>
-            <ProCodexPreview theme={heroTheme} className="landing-codex-window" />
-            <p>壁纸、界面与阅读层<br />在同一套色彩里工作。</p>
           </div>
         </section>
       </main>

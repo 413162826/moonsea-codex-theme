@@ -9,12 +9,12 @@ export const metadata: Metadata = {
 
 export default function ThemesPage() {
   return (
-    <>
-      <SiteHeader />
+    <div className="themes-shell">
+      <SiteHeader tone="moonsea" />
       <main className="themes-page">
         <ThemeGallery />
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }
