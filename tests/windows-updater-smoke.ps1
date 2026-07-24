@@ -41,6 +41,25 @@ function Stop-TestManager {
     if ($pidText -match "^\d+$") { Stop-Process -Id ([int]$pidText) -Force -ErrorAction SilentlyContinue }
 }
 
+function Stop-TestProcesses {
+    $testPrefix = [System.IO.Path]::GetFullPath($testRoot)
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        ($_.ExecutablePath -and
+            [System.IO.Path]::GetFullPath($_.ExecutablePath).StartsWith(
+                $testPrefix,
+                [System.StringComparison]::OrdinalIgnoreCase
+            )) -or
+        ($_.CommandLine -and
+            $_.CommandLine.IndexOf(
+                $testPrefix,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -ge 0)
+    } | ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Stop-TestProcesses
 if (Test-Path -LiteralPath $testRoot) { Remove-Item -LiteralPath $testRoot -Recurse -Force }
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 try {
@@ -137,6 +156,7 @@ try {
 }
 finally {
     Stop-TestManager
+    Stop-TestProcesses
     Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
         $_.ExecutablePath -and $_.ExecutablePath.StartsWith($testRoot, [System.StringComparison]::OrdinalIgnoreCase)
     } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }

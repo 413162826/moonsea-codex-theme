@@ -179,12 +179,13 @@ test("普通壁纸封面使用受约束的完整 Codex 窗口缩略图", () => {
   assert.doesNotMatch(website, /preview-content/);
 });
 
-test("控制桥通过 Codex 公开应用服务调用官方动作", () => {
+test("控制桥通过构建期识别的本地动作执行器调用官方动作", () => {
   const bridge = fs.readFileSync(
     path.join(projectRoot, "theme", "runtime", "appearance-bridge.template.js"),
     "utf8",
   );
-  assert.match(bridge, /services\?\.appActions/);
+  assert.match(bridge, /module\[APP_ACTIONS_EXPORT\]/);
+  assert.doesNotMatch(bridge, /services\?\.appActions/);
   assert.match(bridge, /ready:\s*true/);
   assert.match(bridge, /getStatus/);
   assert.match(bridge, /applyRuntimeTheme/);
