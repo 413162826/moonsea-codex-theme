@@ -104,16 +104,25 @@ export function validateUpdateManifest(manifest, platform, currentVersion) {
   compareVersions(manifest.version, currentVersion);
   const entry = manifest.platforms?.[platformKey];
   if (!entry) throw new Error("更新清单缺少当前系统安装包");
-  if (!/^[a-f0-9]{64}$/.test(entry.sha256 ?? "")) throw new Error("更新包校验值无效");
-  if (!Number.isSafeInteger(entry.size) || entry.size <= 0) throw new Error("更新包大小无效");
+  const packageEntry = platformKey === "windows" && entry.installer
+    ? entry.installer
+    : entry;
+  const kind = platformKey === "windows" && entry.installer ? "installer" : "archive";
+  if (!/^[a-f0-9]{64}$/.test(packageEntry.sha256 ?? "")) throw new Error("更新包校验值无效");
+  if (!Number.isSafeInteger(packageEntry.size) || packageEntry.size <= 0) throw new Error("更新包大小无效");
+  const packageUrl = assertHttpsUrl(packageEntry.url, "更新包地址");
+  if (kind === "installer" && !new URL(packageUrl).pathname.toLowerCase().endsWith(".exe")) {
+    throw new Error("Windows 更新安装器必须是 EXE 文件");
+  }
   return {
     version: manifest.version,
     notes: typeof manifest.notes === "string" ? manifest.notes.slice(0, 500) : "月海助手体验更新",
     publishedAt: typeof manifest.publishedAt === "string" ? manifest.publishedAt : null,
     package: {
-      url: assertHttpsUrl(entry.url, "更新包地址"),
-      sha256: entry.sha256,
-      size: entry.size,
+      kind,
+      url: packageUrl,
+      sha256: packageEntry.sha256,
+      size: packageEntry.size,
     },
   };
 }
@@ -200,7 +209,11 @@ export class UpdateService {
 
   packagePathFor(update = this.selectedUpdate) {
     if (!update) return null;
-    const extension = this.platform === "darwin" ? "macOS.zip" : "Windows-x64.zip";
+    const extension = this.platform === "darwin"
+      ? "macOS.zip"
+      : update.package.kind === "installer"
+        ? "Windows-x64-Setup.exe"
+        : "Windows-x64.zip";
     return path.join(
       this.installRoot,
       "updates",
@@ -715,12 +728,18 @@ export class UpdateService {
       if (this.state.status !== "ready" || !this.packagePath || !this.selectedUpdate) {
         throw new Error("更新包还没有准备好");
       }
-      if (!fs.existsSync(this.updaterPath)) throw new Error("月海更新程序缺失，请重新安装月海版");
+      if (
+        this.selectedUpdate.package.kind !== "installer"
+        && !fs.existsSync(this.updaterPath)
+      ) {
+        throw new Error("月海更新程序缺失，请重新安装月海版");
+      }
       this.state = { ...this.state, status: "starting", error: null };
       await this.launchUpdater({
         updaterPath: this.updaterPath,
         installRoot: this.installRoot,
         packagePath: this.packagePath,
+        packageKind: this.selectedUpdate.package.kind,
         currentVersion: this.currentVersion,
         targetVersion: this.selectedUpdate.version,
       });

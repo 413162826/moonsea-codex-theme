@@ -1,3 +1,8 @@
+[CmdletBinding()]
+param(
+    [switch]$ForceRestart
+)
+
 $ErrorActionPreference = "Stop"
 
 $installRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -35,16 +40,18 @@ $staleMain = @($runningMain | Where-Object {
     $_.CommandLine -notmatch "--remote-debugging-port=0"
 })
 if ($staleMain.Count -gt 0) {
-    Add-Type -AssemblyName PresentationFramework
-    $restartMessage = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("5qOA5rWL5Yiw5pen54mIIENvZGV4IOaciOa1t+eJiOato+WcqOi/kOihjOOAggoK5YWz6Zet5pen54mI5ZCO5omN6IO95ZCv5Yqo5paw55qE5Li76aKY6L+e5o6l44CC5pyq5L+d5a2Y55qE5Lu75Yqh6K+35YWI5L+d5a2Y44CCCgrmmK/lkKbnjrDlnKjlhbPpl63ml6fniYjlubbmiZPlvIDmlrDniYjvvJ8="))
-    $restartTitle = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("Q29kZXgg5pyI5rW354mI6ZyA6KaB6YeN5ZCv"))
-    $choice = [System.Windows.MessageBox]::Show(
-        $restartMessage,
-        $restartTitle,
-        [System.Windows.MessageBoxButton]::YesNo,
-        [System.Windows.MessageBoxImage]::Information
-    )
-    if ($choice -ne [System.Windows.MessageBoxResult]::Yes) { exit 0 }
+    if (-not $ForceRestart) {
+        Add-Type -AssemblyName PresentationFramework
+        $restartMessage = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("5qOA5rWL5Yiw5pen54mIIENvZGV4IOaciOa1t+eJiOato+WcqOi/kOihjOOAggoK5YWz6Zet5pen54mI5ZCO5omN6IO95ZCv5Yqo5paw55qE5Li76aKY6L+e5o6l44CC5pyq5L+d5a2Y55qE5Lu75Yqh6K+35YWI5L+d5a2Y44CCCgrmmK/lkKbnjrDlnKjlhbPpl63ml6fniYjlubbmiZPlvIDmlrDniYjvvJ8="))
+        $restartTitle = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("Q29kZXgg5pyI5rW354mI6ZyA6KaB6YeN5ZCv"))
+        $choice = [System.Windows.MessageBox]::Show(
+            $restartMessage,
+            $restartTitle,
+            [System.Windows.MessageBoxButton]::YesNo,
+            [System.Windows.MessageBoxImage]::Information
+        )
+        if ($choice -ne [System.Windows.MessageBoxResult]::Yes) { exit 0 }
+    }
     foreach ($process in $runningMoonsea) {
         Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
     }
@@ -60,6 +67,10 @@ if ($staleMain.Count -gt 0) {
 $devToolsPortPath = Join-Path $profilePath "DevToolsActivePort"
 if (Test-Path -LiteralPath $devToolsPortPath) {
     Remove-Item -LiteralPath $devToolsPortPath -Force
+}
+
+if ($env:MOONSEA_SKIP_LAUNCH) {
+    exit 0
 }
 
 Start-Process -FilePath $app -ArgumentList @(

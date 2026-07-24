@@ -5,7 +5,7 @@
 ## 使用
 
 1. 打开[月海主题官网](https://moonsea-codex-theme.suguowen5.chatgpt.site)，点击下载。
-2. 解压后，Windows 双击 `Install.cmd`；macOS 右键打开 `Install.command`。
+2. Windows 运行 `Moonsea-Codex-Windows-x64-Setup.exe`；macOS 解压后右键打开 `Install.command`。
 3. 打开桌面的“Codex 月海版”，回到官网选择主题。
 
 - 普通壁纸：免费的渐变壁纸。
@@ -23,17 +23,15 @@
 
 打开 Codex 里的“月海助手”。发现新版后，点击“立即更新”即可。
 
-- 更新包会下载到 `%LOCALAPPDATA%\MoonseaCodex\updates`，不用重新选择目录。
-- 下载中断会保留进度；重新打开助手后会继续下载或直接复用已经校验完成的安装包。
-- 下载完成后会自动启动更新。更新器确认接管成功后，月海版才会关闭并自动重新打开。
-- 启动失败或新版本健康检查失败时，助手会保留错误信息并自动恢复上一版本。
-- 从旧版升级到带更新功能的版本，需要最后手动安装一次。登录、设置和自定义壁纸都会保留。
+- 助手下载与官网相同的 Windows 安装程序，完成 SHA-256 校验后静默升级。
+- 下载中断会保留进度；重新打开助手后会继续下载或复用已经校验完成的安装程序。
+- 安装程序接管后关闭旧版，完成升级并自动重新打开月海 Codex。
+- 登录、设置、自定义壁纸与浏览器资料均保留。
+- 仍在使用 ZIP 版的用户只需最后手动安装一次新版 `Setup.exe`，之后都在助手内更新。
 
 ## 卸载
 
-运行压缩包里的 `Uninstall.cmd` 或 `Uninstall.command`。官方 Codex 不受影响。
-
-> 官方 Codex 更新后，再运行一次当前安装包里的安装脚本即可。
+Windows 打开“设置 → 应用 → 已安装的应用”，找到“月海 Codex”并点击卸载。macOS 运行安装包里的 `Uninstall.command`。官方 Codex、登录资料和用户设置不受影响。
 
 ## 添加 Pro 壁纸
 

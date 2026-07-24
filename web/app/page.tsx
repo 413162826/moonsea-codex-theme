@@ -1,43 +1,66 @@
 import Link from "next/link";
-import { OwnerAdminLink } from "./owner-admin-link";
-import { ThemeGallery } from "./theme-gallery";
+import { ProCodexPreview } from "./codex-preview";
+import { SiteFooter, SiteHeader, WINDOWS_DOWNLOAD_URL } from "./site-chrome";
+
+const heroTheme = {
+  name: "潮汐龙境",
+  mode: "dark" as const,
+  previewGradient: "linear-gradient(135deg, #9fb8c2, #d4d7cb)",
+  previewImage: "./wallpapers/tide-dragon-realm.webp",
+};
 
 export default function Home() {
   return (
     <>
-      <header className="site-header">
-        <div className="site-header__inner">
-          <Link className="brand" href="/" aria-label="月海主题首页">
-            <span className="brand-mark" aria-hidden="true">◐</span>
-            <span>月海</span>
-          </Link>
-          <nav className="site-nav" aria-label="主要导航">
-            <a href="#themes">主题墙</a>
-            <OwnerAdminLink />
-            <a className="download-link" href="https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip">
-              下载 Windows 版
-            </a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
-      <main>
-        <section className="hero">
-          <p className="eyebrow">MOONSEA FOR CODEX</p>
-          <h1>给 Codex<br />一片月海。</h1>
-          <p className="hero-copy">渐变与 Pro 壁纸，一键应用。</p>
-          <div className="hero-actions">
-            <a className="primary-action" href="#themes">浏览主题</a>
+      <main className="landing-main">
+        <section className="landing-hero">
+          <div className="landing-hero__copy">
+            <p className="eyebrow">MOONSEA / VISUAL LAYER FOR CODEX</p>
+            <h1>让 Codex，<br />看起来终于像你的。</h1>
+            <p>从安静的渐变到精制壁纸，让每天打开的工作界面拥有自己的气质。</p>
+            <div className="landing-actions">
+              <Link className="primary-action" href="/themes">浏览主题 <span aria-hidden="true">↗</span></Link>
+              <a className="text-action" href={WINDOWS_DOWNLOAD_URL}>下载 Windows 版</a>
+            </div>
+          </div>
+          <div className="landing-stage">
+            <div className="landing-stage__meta">
+              <span>01 / PRO EDITION</span>
+              <span>TIDE DRAGON REALM</span>
+            </div>
+            <ProCodexPreview theme={heroTheme} className="landing-codex-window" />
+            <p>壁纸不是界面后面的一张图。<br />它应该成为界面的一部分。</p>
           </div>
         </section>
 
-        <ThemeGallery />
+        <section className="landing-manifesto">
+          <p className="section-kicker">A VISUAL SYSTEM, NOT A SKIN</p>
+          <h2>不是换一张背景。<br />是让壁纸、界面与阅读层成为同一个空间。</h2>
+          <div className="manifesto-notes">
+            <p><strong>即时应用</strong><span>在主题页挑选，Codex 无需重启。</span></p>
+            <p><strong>完整界面</strong><span>顶栏、侧栏、正文和输入区一起适配。</span></p>
+            <p><strong>免费与 Pro</strong><span>同一套渲染技术，不同的视觉收藏。</span></p>
+          </div>
+        </section>
+
+        <section className="landing-themes">
+          <div>
+            <p className="section-kicker">THE COLLECTION</p>
+            <h2>为不同的工作状态，<br />留一片合适的氛围。</h2>
+          </div>
+          <div className="theme-ribbons" aria-hidden="true">
+            <i /><i /><i /><i />
+          </div>
+          <Link className="collection-link" href="/themes">
+            <span>浏览全部主题</span>
+            <b aria-hidden="true">↗</b>
+          </Link>
+        </section>
       </main>
 
-      <footer>
-        <p>月海 · Codex 主题与壁纸</p>
-        <a href="https://github.com/413162826/moonsea-codex-theme">GitHub</a>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

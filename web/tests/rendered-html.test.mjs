@@ -44,18 +44,37 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>月海 Codex 主题<\/title>/i);
-  assert.match(html, /给 Codex/);
-  assert.match(html, /一片月海/);
+  assert.match(html, /让 Codex/);
+  assert.match(html, /看起来终于像你的/);
+  assert.match(html, /href="\/themes"/);
   assert.match(html, /下载 Windows 版/);
+  assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据|找到适合今天的工作氛围/);
+  assert.doesNotMatch(html, /react-loading-skeleton|Your site is taking shape/);
+});
+
+test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
+  const response = await fetch(`${origin}/themes`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /选一张，立即应用/);
+  assert.match(html, /搜索主题/);
+  assert.match(html, /Codex 未连接/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
-  assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
+});
+
+test("Windows 下载按钮悬浮时文字保持可见", async () => {
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(
+    styles,
+    /\.site-nav\s+\.download-link:hover\s*\{[^}]*color:\s*var\(--paper\)/s,
+  );
 });
 
 test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {
-  const gallery = await readFile(new URL("../app/theme-gallery.tsx", import.meta.url), "utf8");
+  const gallery = await readFile(new URL("../app/codex-preview.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(gallery, /function ProCodexPreview/);
-  assert.match(gallery, /className="pro-codex-window"/);
+  assert.match(gallery, /className=\{`pro-codex-window/);
   assert.match(gallery, /className="pro-codex-body"/);
   assert.match(gallery, /url\("\$\{wallpaper\}"\)/);
   assert.doesNotMatch(gallery, /theme\.previewImage\s*\?\s*<img/);

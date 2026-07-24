@@ -321,7 +321,7 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
 test("官网按系统直下安装包且入口使用通用命名", () => {
   const website = fs.readFileSync(path.join(projectRoot, "site", "app.js"), "utf8");
   const page = fs.readFileSync(path.join(projectRoot, "site", "index.html"), "utf8");
-  assert.match(website, /Moonsea-Codex-Windows-x64\.zip/);
+  assert.match(website, /Moonsea-Codex-Windows-x64-Setup\.exe/);
   assert.match(website, /Moonsea-Codex-macOS\.zip/);
   assert.doesNotMatch(website, /releases\/latest["']/);
   assert.match(website, /status\.runtimeCapable === true/);
@@ -351,6 +351,17 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
   for (const entry of ["Install.cmd", "Uninstall.cmd", "Install.command", "Uninstall.command"]) {
     assert.equal(fs.existsSync(path.join(projectRoot, entry)), true, `${entry} 应存在`);
   }
+});
+
+test("Windows 新版更新由同一 Setup.exe 静默接管", () => {
+  const manager = fs.readFileSync(path.join(projectRoot, "src", "manager.mjs"), "utf8");
+  assert.match(manager, /packageKind === "installer"/);
+  assert.match(manager, /launchWindowsInstaller\(packagePath, targetVersion\)/);
+  assert.match(manager, /"\/VERYSILENT"/);
+  assert.match(manager, /"\/SUPPRESSMSGBOXES"/);
+  assert.match(manager, /"\/NORESTART"/);
+  assert.match(manager, /"\/CLOSEAPPLICATIONS"/);
+  assert.match(manager, /"\/MOONSEAUPDATE"/);
 });
 
 test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () => {

@@ -1,5 +1,9 @@
 [CmdletBinding()]
-param()
+param(
+    [string]$InstallRoot,
+    [switch]$SkipShortcut,
+    [switch]$SkipLaunch
+)
 
 $ErrorActionPreference = "Stop"
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -33,7 +37,10 @@ function Get-FriendlyError([string]$TechnicalError) {
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $packageRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
 $installerPath = Join-Path $scriptRoot "Install-Moonsea-Windows.ps1"
-$installRoot = if ($env:MOONSEA_INSTALL_ROOT) {
+$installRoot = if (-not [string]::IsNullOrWhiteSpace($InstallRoot)) {
+    [System.IO.Path]::GetFullPath($InstallRoot)
+}
+elseif ($env:MOONSEA_INSTALL_ROOT) {
     [System.IO.Path]::GetFullPath($env:MOONSEA_INSTALL_ROOT)
 }
 else {
@@ -87,7 +94,7 @@ try {
     if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
         throw "Installer script is missing: $installerPath"
     }
-    & $installerPath -SkipLaunch
+    & $installerPath -InstallRoot $installRoot -SkipShortcut:$SkipShortcut -SkipLaunch:$SkipLaunch
     Write-InstallResult "succeeded" $null $null
     Write-Host ""
     Write-Host (Decode-Text "5a6J6KOF5a6M5oiQ") -ForegroundColor Green

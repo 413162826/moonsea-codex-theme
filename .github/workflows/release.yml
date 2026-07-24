@@ -17,28 +17,36 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-dotnet@v5.0.0
+        with:
+          dotnet-version: 8.0.x
       - run: npm ci
+      - name: 校验发布标签与产品版本
+        shell: pwsh
+        run: |
+          $packageVersion = [string](Get-Content package.json -Raw -Encoding UTF8 | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "v$packageVersion") {
+            throw "Release tag $env:GITHUB_REF_NAME does not match package version v$packageVersion"
+          }
       - run: npm test
+      - name: 安装 Windows 安装器编译器
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
       - name: 生成 Windows 安装包
         shell: pwsh
         run: |
-          $stage = Join-Path $PWD ".build/Moonsea-Codex-Windows-x64"
-          New-Item -ItemType Directory -Path "$stage/tools" -Force | Out-Null
-          New-Item -ItemType Directory -Path "$stage/scripts/windows" -Force | Out-Null
-          Copy-Item README.md,LICENSE,ASSET-LICENSE.md,package.json,Install.cmd,Uninstall.cmd -Destination $stage
-          Copy-Item theme,assets,site,admin -Destination $stage -Recurse
-          Copy-Item scripts/windows/* -Destination "$stage/scripts/windows"
-          bun build ./src/build-static.mjs --compile --target=bun-windows-x64 --outfile "$stage/tools/moonsea-builder.exe"
-          bun build ./src/manager.mjs --compile --target=bun-windows-x64 --outfile "$stage/tools/moonsea-manager.exe"
-          $env:MOONSEA_PROJECT_ROOT = $stage
-          & "$stage/tools/moonsea-builder.exe" --theme-version
-          ./tests/windows-installer-smoke.ps1 -PackageRoot $stage -BuilderPath "$stage/tools/moonsea-builder.exe"
+          $releaseRoot = Join-Path $PWD ".build/windows-release"
+          $setupPath = (& ./scripts/windows/Build-Moonsea-Setup.ps1 -OutputDirectory $releaseRoot | Select-Object -Last 1)
+          $stage = Join-Path $releaseRoot "Moonsea-Codex-Windows-x64"
           ./tests/windows-updater-smoke.ps1 -PackageRoot $stage
           Compress-Archive -Path "$stage/*" -DestinationPath "$PWD/Moonsea-Codex-Windows-x64.zip"
+          Copy-Item -LiteralPath $setupPath -Destination "$PWD/Moonsea-Codex-Windows-x64-Setup.exe"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: windows-package
-          path: Moonsea-Codex-Windows-x64.zip
+          path: |
+            Moonsea-Codex-Windows-x64.zip
+            Moonsea-Codex-Windows-x64-Setup.exe
 
   macos:
     runs-on: macos-latest
@@ -98,10 +106,13 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           windows_file="artifacts/Moonsea-Codex-Windows-x64.zip"
+          windows_installer="artifacts/Moonsea-Codex-Windows-x64-Setup.exe"
           macos_file="artifacts/Moonsea-Codex-macOS.zip"
           windows_sha="$(sha256sum "$windows_file" | cut -d' ' -f1)"
+          windows_installer_sha="$(sha256sum "$windows_installer" | cut -d' ' -f1)"
           macos_sha="$(sha256sum "$macos_file" | cut -d' ' -f1)"
           windows_size="$(stat -c%s "$windows_file")"
+          windows_installer_size="$(stat -c%s "$windows_installer")"
           macos_size="$(stat -c%s "$macos_file")"
           jq -n \
             --arg version "$version" \
@@ -110,6 +121,9 @@ jobs:
             --arg windowsUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-Windows-x64.zip" \
             --arg windowsSha "$windows_sha" \
             --argjson windowsSize "$windows_size" \
+            --arg windowsInstallerUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-Windows-x64-Setup.exe" \
+            --arg windowsInstallerSha "$windows_installer_sha" \
+            --argjson windowsInstallerSize "$windows_installer_size" \
             --arg macosUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-macOS.zip" \
             --arg macosSha "$macos_sha" \
             --argjson macosSize "$macos_size" \
@@ -119,11 +133,20 @@ jobs:
               publishedAt: $publishedAt,
               notes: $notes,
               platforms: {
-                windows: { url: $windowsUrl, sha256: $windowsSha, size: $windowsSize },
+                windows: {
+                  url: $windowsUrl,
+                  sha256: $windowsSha,
+                  size: $windowsSize,
+                  installer: {
+                    url: $windowsInstallerUrl,
+                    sha256: $windowsInstallerSha,
+                    size: $windowsInstallerSize
+                  }
+                },
                 macos: { url: $macosUrl, sha256: $macosSha, size: $macosSize }
               }
             }' > artifacts/update.json
-          gh release create "$GITHUB_REF_NAME" artifacts/*.zip artifacts/update.json \
+          gh release create "$GITHUB_REF_NAME" artifacts/*.zip artifacts/*.exe artifacts/update.json \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes

@@ -47,7 +47,10 @@ const updaterPath = process.platform === "win32"
   ? path.join(projectRoot, "scripts", "windows", "Update-Moonsea-Windows.ps1")
   : path.join(projectRoot, "scripts", "macos", "update-moonsea.sh");
 
-function launchUpdater({ packagePath, currentVersion, targetVersion }) {
+function launchUpdater({ packagePath, packageKind, currentVersion, targetVersion }) {
+  if (process.platform === "win32" && packageKind === "installer") {
+    return launchWindowsInstaller(packagePath, targetVersion);
+  }
   const readyPath = path.join(installRoot, "updates", `updater-${targetVersion}.ready`);
   const launchLogPath = path.join(installRoot, "updates", "updater-launch.log");
   fs.mkdirSync(path.dirname(readyPath), { recursive: true });
@@ -119,6 +122,40 @@ function launchUpdater({ packagePath, currentVersion, targetVersion }) {
     timeoutTimer = setTimeout(() => {
       finish(new Error("等待更新程序响应超时"));
     }, 15_000);
+  });
+}
+
+function launchWindowsInstaller(packagePath, targetVersion) {
+  const launchLogPath = path.join(installRoot, "updates", "updater-launch.log");
+  const setupLogPath = path.join(installRoot, "updates", `setup-${targetVersion}.log`);
+  fs.mkdirSync(path.dirname(launchLogPath), { recursive: true });
+  return new Promise((resolve, reject) => {
+    const launchLog = fs.openSync(launchLogPath, "a");
+    let child;
+    try {
+      child = spawn(packagePath, [
+        "/VERYSILENT",
+        "/SUPPRESSMSGBOXES",
+        "/NORESTART",
+        "/CLOSEAPPLICATIONS",
+        "/MOONSEAUPDATE",
+        `/LOG=${setupLogPath}`,
+      ], {
+        detached: true,
+        stdio: ["ignore", launchLog, launchLog],
+        windowsHide: true,
+      });
+    } catch (error) {
+      fs.closeSync(launchLog);
+      reject(error);
+      return;
+    }
+    fs.closeSync(launchLog);
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
   });
 }
 

@@ -17,12 +17,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: oven-sh/setup-bun@v2.2.0
+        if: runner.os == 'Windows'
+      - uses: actions/setup-dotnet@v5.0.0
+        if: runner.os == 'Windows'
+        with:
+          dotnet-version: 8.0.x
       - run: npm ci
       - run: npm test
-      - name: 验证 Windows 安装与卸载
+      - name: 构建并验证 Windows Setup.exe
         if: runner.os == 'Windows'
         shell: powershell
-        run: ./tests/windows-installer-smoke.ps1
+        run: |
+          choco install innosetup --no-progress -y
+          ./scripts/windows/Build-Moonsea-Setup.ps1 -OutputDirectory "$PWD/.build/ci-windows-release"
       - name: 验证 macOS 安装与卸载
         if: runner.os == 'macOS'
         run: zsh ./tests/macos-installer-smoke.sh

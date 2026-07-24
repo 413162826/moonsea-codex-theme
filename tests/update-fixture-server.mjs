@@ -18,6 +18,11 @@ const server = http.createServer((request, response) => {
           url: `http://127.0.0.1:${port}/Moonsea-Codex-Windows-x64.zip`,
           sha256,
           size: archive.length,
+          installer: {
+            url: `http://127.0.0.1:${port}/Moonsea-Codex-Windows-x64-Setup.exe`,
+            sha256,
+            size: archive.length,
+          },
         },
         macos: {
           url: `http://127.0.0.1:${port}/Moonsea-Codex-macOS.zip`,
@@ -28,8 +33,8 @@ const server = http.createServer((request, response) => {
     }));
     return;
   }
-  if (request.url?.endsWith(".zip")) {
-    response.writeHead(200, { "Content-Type": "application/zip", "Content-Length": archive.length });
+  if (request.url?.endsWith(".zip") || request.url?.endsWith(".exe")) {
+    response.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Length": archive.length });
     response.end(archive);
     return;
   }
@@ -40,4 +45,3 @@ server.listen(port, "127.0.0.1");
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => server.close(() => process.exit(0)));
 }
-

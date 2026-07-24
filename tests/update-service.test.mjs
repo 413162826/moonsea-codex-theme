@@ -13,17 +13,24 @@ import { APP_VERSION } from "../src/version.mjs";
 import packageMetadata from "../package.json" with { type: "json" };
 
 function manifestFor(buffer, version = "9.0.0") {
-  const entry = {
+  const packageMetadata = {
     url: "https://example.com/moonsea.zip",
     sha256: crypto.createHash("sha256").update(buffer).digest("hex"),
     size: buffer.length,
+  };
+  const windows = {
+    ...packageMetadata,
+    installer: {
+      ...packageMetadata,
+      url: "https://example.com/Moonsea-Codex-Windows-x64-Setup.exe",
+    },
   };
   return {
     schemaVersion: 1,
     version,
     notes: "更新测试",
     publishedAt: "2026-07-22T00:00:00Z",
-    platforms: { windows: entry, macos: entry },
+    platforms: { windows, macos: packageMetadata },
   };
 }
 
@@ -43,10 +50,14 @@ test("更新清单必须提供当前平台的 HTTPS 安装包和完整校验信�
   const selected = validateUpdateManifest(manifestFor(buffer), "win32", APP_VERSION);
   assert.equal(selected.version, "9.0.0");
   assert.equal(selected.package.size, buffer.length);
+  assert.equal(selected.package.kind, "installer");
 
   const insecure = manifestFor(buffer);
-  insecure.platforms.windows.url = "http://example.com/moonsea.zip";
+  insecure.platforms.windows.installer.url = "http://example.com/moonsea.exe";
   assert.throws(() => validateUpdateManifest(insecure, "win32", APP_VERSION), /HTTPS/);
+
+  const mac = validateUpdateManifest(manifestFor(buffer), "darwin", APP_VERSION);
+  assert.equal(mac.package.kind, "archive");
 });
 
 test("检查更新遇到短暂网络故障时自动重试", async () => {
@@ -121,13 +132,14 @@ test("更新服务下载到安装目录、校验后再交给独立更新器", as
     assert.equal(ready.status, "ready");
     assert.equal(ready.progress, 100);
     const archivePath = fs.readdirSync(path.join(installRoot, "updates"))
-      .find((entry) => entry.endsWith(".zip"));
-    assert.match(archivePath, /Moonsea-Codex-9\.0\.0-Windows-x64\.zip/);
+      .find((entry) => entry.endsWith(".exe"));
+    assert.match(archivePath, /Moonsea-Codex-9\.0\.0-Windows-x64-Setup\.exe/);
 
     const installing = await service.startInstall();
     assert.equal(installing.status, "installing");
     assert.equal(launches.length, 1);
     assert.equal(launches[0].installRoot, installRoot);
+    assert.equal(launches[0].packageKind, "installer");
     assert.equal(shutdowns, 1);
   } finally {
     fs.rmSync(installRoot, { recursive: true, force: true });
@@ -165,7 +177,7 @@ test("校验失败时不留下可安装的更新包", async () => {
     assert.match(service.snapshot().error, /大小|校验|不完整/);
     assert.deepEqual(
       fs.readdirSync(path.join(installRoot, "updates"))
-        .filter((entry) => entry.endsWith(".zip") || entry.endsWith(".partial")),
+        .filter((entry) => entry.endsWith(".exe") || entry.endsWith(".partial")),
       [],
     );
   } finally {
@@ -179,7 +191,7 @@ test("重启助手后复用已经校验完成的更新包", async () => {
   const archive = Buffer.from("verified-moonsea-package");
   const manifest = manifestFor(archive);
   const updatesRoot = path.join(installRoot, "updates");
-  const packagePath = path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64.zip");
+  const packagePath = path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64-Setup.exe");
   fs.mkdirSync(updatesRoot, { recursive: true });
   fs.writeFileSync(updaterPath, "test", "utf8");
   fs.writeFileSync(packagePath, archive);
@@ -214,7 +226,7 @@ test("网络中断后从 partial 文件继续下载", async () => {
   const partial = archive.subarray(0, 9);
   const manifest = manifestFor(archive);
   const updatesRoot = path.join(installRoot, "updates");
-  const partialPath = path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64.zip.partial");
+  const partialPath = path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64-Setup.exe.partial");
   fs.mkdirSync(updatesRoot, { recursive: true });
   fs.writeFileSync(updaterPath, "test", "utf8");
   fs.writeFileSync(partialPath, partial);
@@ -302,7 +314,7 @@ test("下载连接中断时保留进度并显示可操作的中文错误", async
     assert.ok(status.progress > 0);
     assert.equal(packageRequests, 2);
     assert.equal(
-      fs.existsSync(path.join(installRoot, "updates", "Moonsea-Codex-9.0.0-Windows-x64.zip.partial")),
+      fs.existsSync(path.join(installRoot, "updates", "Moonsea-Codex-9.0.0-Windows-x64-Setup.exe.partial")),
       true,
     );
   } finally {
@@ -476,7 +488,7 @@ test("服务器返回错误断点时不覆盖已有下载进度", async () => {
   const partial = archive.subarray(0, 9);
   const manifest = manifestFor(archive);
   const updatesRoot = path.join(installRoot, "updates");
-  const partialPath = path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64.zip.partial");
+  const partialPath = path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64-Setup.exe.partial");
   fs.mkdirSync(updatesRoot, { recursive: true });
   fs.writeFileSync(updaterPath, "test", "utf8");
   fs.writeFileSync(partialPath, partial);
@@ -633,7 +645,7 @@ test("回滚后的助手明确显示上次更新失败并允许复用安装包",
   const updatesRoot = path.join(installRoot, "updates");
   fs.mkdirSync(updatesRoot, { recursive: true });
   fs.writeFileSync(updaterPath, "test", "utf8");
-  fs.writeFileSync(path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64.zip"), archive);
+  fs.writeFileSync(path.join(updatesRoot, "Moonsea-Codex-9.0.0-Windows-x64-Setup.exe"), archive);
   fs.writeFileSync(path.join(updatesRoot, "update-result.json"), JSON.stringify({
     status: "failed",
     currentVersion: APP_VERSION,
