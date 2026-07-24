@@ -117,7 +117,7 @@ jobs:
           jq -n \
             --arg version "$version" \
             --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg notes "统一壁纸运行时，新增渐变壁纸、交互特效与主题创作台" \
+            --arg notes "Windows 桌面安装器上线，支持助手内校验下载、静默升级与自动重启" \
             --arg windowsUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-Windows-x64.zip" \
             --arg windowsSha "$windows_sha" \
             --argjson windowsSize "$windows_size" \

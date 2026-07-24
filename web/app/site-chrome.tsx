@@ -2,7 +2,7 @@ import Link from "next/link";
 import { OwnerAdminLink } from "./owner-admin-link";
 
 export const WINDOWS_DOWNLOAD_URL =
-  "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64.zip";
+  "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64-Setup.exe";
 
 export function SiteHeader() {
   return (
