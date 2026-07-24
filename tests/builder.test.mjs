@@ -11,16 +11,28 @@ const projectRoot = path.resolve(path.dirname(process.argv[1]), "..");
 const builder = path.join(projectRoot, "tools", "moonsea-builder.mjs");
 const themeCss = path.join(projectRoot, "theme", "static", "theme.css");
 
-function writeRpcFixture(unpacked) {
+function writeRpcFixture(unpacked, layout = "split") {
   const assets = path.join(unpacked, "webview", "assets");
   fs.mkdirSync(assets, { recursive: true });
+  const fixture = layout === "merged"
+    ? {
+        file: "app-initial-fixture.js",
+        source:
+          "var ActionRunner,latestActions,boot=(()=>{ActionRunner=class{scope=null;bindScope(e){this.scope=e}async run(e){return e}},latestActions=new ActionRunner}),host={appActions:latestActions};boot();export{host as appHost};",
+      }
+    : {
+        file: "rpc-fixture.js",
+        source:
+          "var Runner,legacyActions,boot=(()=>{Runner=class{scope=null;bindScope(e){this.scope=e}async run(e){return e}},legacyActions=new Runner}),host={appActions:legacyActions};boot();export{host as appHost};",
+      };
   fs.writeFileSync(
-    path.join(assets, "rpc-fixture.js"),
-    "var appActions={async run(e){return e}},services={appActions};export{services as appServices};",
+    path.join(assets, fixture.file),
+    fixture.source,
   );
+  return fixture.file;
 }
 
-async function createFixture(root, platform) {
+async function createFixture(root, platform, rpcLayout = "split") {
   const source =
     platform === "mac"
       ? path.join(root, "Official.app")
@@ -35,7 +47,7 @@ async function createFixture(root, platform) {
     path.join(unpacked, "webview", "index.html"),
     "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",
   );
-  writeRpcFixture(unpacked);
+  const rpcFile = writeRpcFixture(unpacked, rpcLayout);
   fs.writeFileSync(
     path.join(unpacked, "webview", "avatar-overlay-composition-surface.html"),
     "<!doctype html><html><head></head><body><div id=\"root\"></div></body></html>",
@@ -48,13 +60,13 @@ async function createFixture(root, platform) {
   } else {
     fs.writeFileSync(path.join(source, "ChatGPT.exe"), "fixture");
   }
-  return source;
+  return { rpcFile, source };
 }
 
-async function verifyLayout(platform, edition = "standard") {
+async function verifyLayout(platform, edition = "standard", rpcLayout = "split") {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `moonsea-${platform}-test-`));
   try {
-    const source = await createFixture(root, platform);
+    const { rpcFile, source } = await createFixture(root, platform, rpcLayout);
     const target = path.join(
       root,
       platform === "mac"
@@ -85,7 +97,19 @@ async function verifyLayout(platform, edition = "standard") {
       ),
       "utf8",
     );
+    const bridge = fs.readFileSync(
+      path.join(extracted, "webview", "moonsea", "appearance-bridge.js"),
+      "utf8",
+    );
+    const rpcSource = fs.readFileSync(
+      path.join(extracted, "webview", "assets", rpcFile),
+      "utf8",
+    );
     assert.match(index, /codex-moonsea-appearance-bridge/);
+    assert.match(bridge, new RegExp(`\\.\\./assets/${rpcFile.replace(".", "\\.")}`));
+    assert.match(bridge, /module\[APP_ACTIONS_EXPORT\]/);
+    assert.doesNotMatch(bridge, /services\?\.appActions/);
+    assert.match(rpcSource, /\bas moonseaAppActions\b/);
     for (const wallpaper of WALLPAPERS) {
       assert.equal(
         fs.existsSync(path.join(extracted, "webview", "moonsea", "wallpapers", wallpaper.file)),
@@ -108,7 +132,8 @@ async function verifyLayout(platform, edition = "standard") {
   }
 }
 
-test("构建 Windows 布局", () => verifyLayout("windows"));
+test("构建兼容旧版独立 RPC 模块", () => verifyLayout("windows", "standard", "split"));
+test("构建兼容新版合并 RPC 模块", () => verifyLayout("windows", "standard", "merged"));
 test("构建 macOS 应用包布局", () => verifyLayout("mac"));
 test("Pro 构建保留运行时视觉能力", () => verifyLayout("windows", "pro"));
 

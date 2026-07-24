@@ -21,7 +21,7 @@ const fixtureAssets = path.join(unpacked, "webview", "assets");
 fs.mkdirSync(fixtureAssets, { recursive: true });
 fs.writeFileSync(
   path.join(fixtureAssets, "rpc-fixture.js"),
-  "var appActions={async run(e){return e}},services={appActions};export{services as appServices};",
+  "var Runner,fixtureActions,boot=(()=>{Runner=class{scope=null;bindScope(e){this.scope=e}async run(e){return e}},fixtureActions=new Runner}),host={appActions:fixtureActions};boot();export{host as appHost};",
 );
 fs.writeFileSync(
   path.join(unpacked, "webview", "avatar-overlay-composition-surface.html"),

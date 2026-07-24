@@ -174,20 +174,56 @@ function removeProInjection(html) {
     );
 }
 
+const LOCAL_APP_ACTIONS_EXPORT = "moonseaAppActions";
+
+function hasLocalAppActionContract(source, identifier) {
+  const instanceMarker = `${identifier}=new`;
+  const instanceIndex = source.indexOf(instanceMarker);
+  if (instanceIndex < 0) return false;
+  const contractStart = Math.max(0, instanceIndex - 900);
+  const contract = source.slice(contractStart, instanceIndex + instanceMarker.length);
+  return contract.includes("bindScope(") && /async\s+run\s*\(/.test(contract);
+}
+
+function injectLocalAppActionExport(source, identifier) {
+  const exportPattern = new RegExp(
+    `\\b${identifier}\\s+as\\s+${LOCAL_APP_ACTIONS_EXPORT}\\b`,
+  );
+  if (exportPattern.test(source)) return source;
+  const exportStatement = `export{${identifier} as ${LOCAL_APP_ACTIONS_EXPORT}};\n`;
+  const sourceMapIndex = source.lastIndexOf("//# sourceMappingURL=");
+  if (sourceMapIndex < 0) return `${source}\n${exportStatement}`;
+  return `${source.slice(0, sourceMapIndex)}${exportStatement}${source.slice(sourceMapIndex)}`;
+}
+
 function resolveAppActionModule(extractedDir) {
   const assetsPath = path.join(extractedDir, "webview", "assets");
   const candidates = fs
     .readdirSync(assetsPath)
-    .filter((name) => /^rpc-[A-Za-z0-9_-]+\.js$/.test(name))
+    .filter((name) => /^[A-Za-z0-9_-]+\.js$/.test(name))
     .map((name) => ({ name, source: readUtf8(path.join(assetsPath, name)) }))
-    .filter(({ source }) => /export\{[^}]*\bas appServices\b/.test(source));
+    .flatMap(({ name, source }) => {
+      const identifiers = [
+        ...source.matchAll(/\bappActions\s*:\s*([A-Za-z_$][\w$]*)/g),
+      ].map((match) => match[1]);
+      return [...new Set(identifiers)]
+        .filter((identifier) => hasLocalAppActionContract(source, identifier))
+        .map((identifier) => ({ identifier, name, source }));
+    });
   if (candidates.length !== 1) {
-    throw new Error("无法唯一定位 Codex 应用服务入口");
+    throw new Error(
+      `当前 Codex 版本不受支持：无法唯一定位本地外观动作入口（找到 ${candidates.length} 个）`,
+    );
   }
-  const { name: fileName } = candidates[0];
+  const { identifier, name: fileName, source } = candidates[0];
+  fs.writeFileSync(
+    path.join(assetsPath, fileName),
+    injectLocalAppActionExport(source, identifier),
+    "utf8",
+  );
   return {
     modulePath: `../assets/${fileName}`,
-    exportName: "appServices",
+    exportName: LOCAL_APP_ACTIONS_EXPORT,
   };
 }
 
@@ -195,7 +231,7 @@ function buildAppearanceBridge(extractedDir, themeVersion) {
   const { modulePath, exportName } = resolveAppActionModule(extractedDir);
   return readUtf8(bridgeTemplate)
     .replace("__MOONSEA_RPC_MODULE_PATH__", modulePath)
-    .replace("__MOONSEA_APP_SERVICES_EXPORT__", exportName)
+    .replace("__MOONSEA_APP_ACTIONS_EXPORT__", exportName)
     .replace("__MOONSEA_THEME_VERSION__", themeVersion);
 }
 
