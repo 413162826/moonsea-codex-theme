@@ -46,11 +46,10 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(html, /<title>月海 Codex 主题<\/title>/i);
   assert.match(html, /为你的 Codex/);
   assert.match(html, /选一片海/);
-  assert.match(html, /今天想待在/);
   assert.match(html, /潮汐龙境/);
-  assert.match(html, /月白/);
   assert.match(html, /href="\/themes"/);
   assert.match(html, /下载 Windows 版/);
+  assert.doesNotMatch(html, /今天想待在|BROWSE THE COLLECTION|home-theme-grid/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据|找到适合今天的工作氛围/);
   assert.doesNotMatch(html, /react-loading-skeleton|Your site is taking shape/);
 });
@@ -73,7 +72,7 @@ test("Windows 下载按钮悬浮时文字保持可见", async () => {
   );
 });
 
-test("首页使用全页 WebGL 月光波纹并移除椭圆壁纸容器", async () => {
+test("首页使用全页 WebGL 深海月影并移除主题拼贴", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const ripple = await readFile(new URL("../app/moonsea-ripple.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
@@ -83,10 +82,16 @@ test("首页使用全页 WebGL 月光波纹并移除椭圆壁纸容器", async (
   assert.match(ripple, /getContext\("webgl"/);
   assert.match(ripple, /pointermove/);
   assert.match(ripple, /pointerdown/);
+  assert.match(ripple, /moonDisc/);
+  assert.match(ripple, /reflectionBand/);
+  assert.match(ripple, /pointerWake/);
+  assert.match(ripple, /--moonsea-tilt-x/);
+  assert.match(ripple, /canvas\.dataset\.interaction/);
   assert.match(ripple, /prefers-reduced-motion/);
   assert.match(ripple, /window\.innerWidth < 720 \? 1\.15 : 1\.5/);
   assert.match(styles, /\.moonsea-backdrop\s*\{[^}]*position:\s*fixed/s);
   assert.doesNotMatch(stage, /border-radius|url\(/);
+  assert.doesNotMatch(page, /home-collection|home-theme-grid|StandardCodexPreview/);
 });
 
 test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {

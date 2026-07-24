@@ -15,69 +15,116 @@ precision highp float;
 
 uniform vec2 u_resolution;
 uniform vec2 u_pointer;
+uniform vec2 u_pointer_velocity;
+uniform float u_pointer_energy;
 uniform vec2 u_click;
 uniform float u_click_age;
-uniform float u_scroll;
 uniform float u_time;
 
-float softBand(float value, float center, float width) {
-  return 1.0 - smoothstep(width * 0.35, width, abs(value - center));
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+    f.y
+  );
 }
 
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution.xy;
   vec2 ratio = vec2(u_resolution.x / u_resolution.y, 1.0);
-  float time = u_time * 0.16;
+  float time = u_time;
+  float horizon = 0.55;
+  float waterMask = 1.0 - smoothstep(horizon - 0.006, horizon + 0.006, uv.y);
+  float depth = clamp((horizon - uv.y) / horizon, 0.0, 1.0);
 
-  vec2 flow = uv;
-  flow.x += sin(uv.y * 5.4 + time * 0.82 + u_scroll * 0.9) * 0.038;
-  flow.y += cos(uv.x * 4.7 - time * 0.66) * 0.030;
-
-  float swell = sin(flow.x * 7.2 + flow.y * 4.6 - time * 1.15);
-  swell += sin(flow.x * 12.8 - flow.y * 7.4 + time * 0.74) * 0.42;
-  swell += cos(flow.x * 4.2 + flow.y * 11.6 + time * 0.52) * 0.28;
-  swell = swell / 1.70 * 0.5 + 0.5;
-
-  float causticA = softBand(sin(flow.x * 15.0 + flow.y * 10.0 - time), 0.72, 0.30);
-  float causticB = softBand(sin(flow.x * 9.0 - flow.y * 17.0 + time * 0.8), 0.80, 0.25);
-  float caustics = causticA * 0.56 + causticB * 0.34;
-
-  vec2 pointerDelta = (uv - u_pointer) * ratio;
+  vec2 waterPointer = vec2(u_pointer.x, min(u_pointer.y, horizon - 0.035));
+  vec2 pointerDelta = (uv - waterPointer) * ratio;
   float pointerDistance = length(pointerDelta);
-  float pointerWave = sin(pointerDistance * 35.0 - time * 4.2)
-    * exp(-pointerDistance * 6.8);
-  float pointerLight = exp(-pointerDistance * 4.6);
+  float cursorAtmosphere = exp(-length((uv - u_pointer) * ratio) * 5.8)
+    * u_pointer_energy;
+  float pointerWave = sin(pointerDistance * 72.0 - time * 8.5)
+    * exp(-pointerDistance * 9.0)
+    * u_pointer_energy
+    * waterMask;
+  vec2 wakeDirection = normalize(u_pointer_velocity + vec2(0.0001));
+  float behindPointer = max(0.0, dot(pointerDelta, -wakeDirection));
+  float acrossWake = abs(pointerDelta.x * wakeDirection.y - pointerDelta.y * wakeDirection.x);
+  float pointerWake = exp(-acrossWake * 32.0)
+    * exp(-behindPointer * 5.0)
+    * step(0.0, dot(pointerDelta, -wakeDirection))
+    * sin(behindPointer * 55.0 - time * 9.0)
+    * u_pointer_energy
+    * waterMask;
 
-  vec2 clickDelta = (uv - u_click) * ratio;
+  vec2 waterClick = vec2(u_click.x, min(u_click.y, horizon - 0.045));
+  vec2 clickDelta = (uv - waterClick) * ratio;
   float clickDistance = length(clickDelta);
-  float clickRadius = u_click_age * 0.22;
-  float clickRing = exp(-abs(clickDistance - clickRadius) * 54.0)
-    * exp(-u_click_age * 0.72)
-    * step(u_click_age, 4.0);
+  float clickRadius = u_click_age * 0.30;
+  float clickRing = exp(-abs(clickDistance - clickRadius) * 70.0)
+    * exp(-u_click_age * 0.82)
+    * step(u_click_age, 3.5)
+    * waterMask;
 
-  float current = clamp(
-    swell + pointerWave * 0.11 + clickRing * 0.30 + caustics * 0.22,
-    0.0,
-    1.0
-  );
+  vec3 skyHorizon = vec3(0.115, 0.275, 0.350);
+  vec3 skyZenith = vec3(0.018, 0.055, 0.095);
+  float skyMix = smoothstep(horizon, 1.0, uv.y);
+  vec3 sky = mix(skyHorizon, skyZenith, pow(skyMix, 0.72));
+  float cloud = noise(vec2(uv.x * 3.2 + time * 0.015, uv.y * 7.0));
+  cloud *= noise(vec2(uv.x * 7.0 - time * 0.01, uv.y * 10.0));
+  sky += vec3(0.075, 0.105, 0.115) * smoothstep(0.34, 0.72, cloud) * skyMix;
 
-  vec3 moon = vec3(0.948, 0.957, 0.925);
-  vec3 mist = vec3(0.760, 0.872, 0.858);
-  vec3 tide = vec3(0.360, 0.665, 0.690);
-  vec3 deep = vec3(0.095, 0.360, 0.410);
+  vec2 moonCenter = vec2(0.73, 0.79);
+  float moonDistance = length((uv - moonCenter) * ratio);
+  float moonDisc = 1.0 - smoothstep(0.051, 0.058, moonDistance);
+  float moonHalo = exp(-moonDistance * 7.5);
+  sky += vec3(0.62, 0.70, 0.68) * moonHalo * 0.58;
+  sky = mix(sky, vec3(0.925, 0.930, 0.850), moonDisc * 0.96);
 
-  vec3 color = mix(moon, mist, smoothstep(0.18, 0.64, current));
-  color = mix(color, tide, smoothstep(0.56, 0.88, current) * 0.58);
-  color = mix(color, deep, smoothstep(0.88, 1.0, current) * 0.28);
-  color += vec3(0.110, 0.145, 0.125) * caustics;
-  color -= vec3(0.025, 0.018, 0.010)
-    * (1.0 - caustics)
-    * smoothstep(0.56, 0.92, current);
-  color += vec3(0.035, 0.075, 0.080) * pointerLight * 0.24;
-  color += vec3(0.220, 0.260, 0.225) * clickRing;
+  float waveScale = mix(52.0, 10.0, pow(depth, 0.62));
+  float swell = sin(uv.x * waveScale + depth * 11.0 - time * 0.74);
+  swell += sin(uv.x * waveScale * 0.57 - depth * 19.0 + time * 0.52) * 0.62;
+  swell += sin(uv.x * waveScale * 1.31 + depth * 7.0 - time * 0.94) * 0.26;
+  swell += pointerWave * 0.95 + pointerWake * 0.70 + clickRing * 1.25;
+  swell /= 2.05;
 
-  float vignette = 1.0 - smoothstep(0.22, 1.05, distance(uv, vec2(0.54, 0.52)));
-  color = mix(color * 0.96, color, vignette);
+  float fineWave = sin(uv.x * waveScale * 2.1 - depth * 27.0 + time * 1.18);
+  fineWave += sin(uv.x * waveScale * 0.88 + depth * 34.0 - time * 0.63);
+  fineWave *= 0.5;
+  float crest = pow(smoothstep(0.12, 0.93, swell), 4.0);
+  crest += pow(smoothstep(0.42, 0.98, fineWave), 7.0) * 0.28;
+
+  vec3 waterNear = vec3(0.012, 0.085, 0.125);
+  vec3 waterFar = vec3(0.055, 0.205, 0.270);
+  vec3 water = mix(waterFar, waterNear, pow(depth, 0.72));
+  water += vec3(0.035, 0.125, 0.160) * swell;
+  water += vec3(0.155, 0.300, 0.330) * crest;
+
+  float reflectedAxis = moonCenter.x
+    + sin(depth * 16.0 - time * 0.34) * (0.012 + depth * 0.035)
+    + swell * 0.022
+    + (u_pointer.x - 0.5) * u_pointer_energy * 0.16;
+  float reflectionWidth = mix(0.018, 0.19, pow(depth, 0.82));
+  float reflectionBand = exp(-pow((uv.x - reflectedAxis) / reflectionWidth, 2.0));
+  float brokenLight = smoothstep(0.10, 0.88, swell * 0.72 + fineWave * 0.32 + 0.48);
+  brokenLight = pow(brokenLight, 2.2);
+  float reflection = reflectionBand * brokenLight * (0.30 + depth * 0.92);
+  water += vec3(0.74, 0.77, 0.62) * reflection;
+  water += vec3(0.38, 0.64, 0.68) * clickRing * 0.72;
+  water += vec3(0.16, 0.48, 0.55) * abs(pointerWave) * u_pointer_energy;
+
+  vec3 color = mix(sky, water, waterMask);
+  color += vec3(0.09, 0.20, 0.21) * cursorAtmosphere;
+  float horizonGlow = exp(-abs(uv.y - horizon) * 82.0);
+  color += vec3(0.16, 0.33, 0.38) * horizonGlow * 0.34;
+  float vignette = smoothstep(1.04, 0.24, distance(uv, vec2(0.55, 0.54)));
+  color *= mix(0.72, 1.0, vignette);
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -135,9 +182,10 @@ export function MoonseaRipple() {
     const positionLocation = gl.getAttribLocation(program, "a_position");
     const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
     const pointerLocation = gl.getUniformLocation(program, "u_pointer");
+    const pointerVelocityLocation = gl.getUniformLocation(program, "u_pointer_velocity");
+    const pointerEnergyLocation = gl.getUniformLocation(program, "u_pointer_energy");
     const clickLocation = gl.getUniformLocation(program, "u_click");
     const clickAgeLocation = gl.getUniformLocation(program, "u_click_age");
-    const scrollLocation = gl.getUniformLocation(program, "u_scroll");
     const timeLocation = gl.getUniformLocation(program, "u_time");
     const buffer = gl.createBuffer();
     if (!buffer || positionLocation < 0) throw new Error("月海波纹顶点缓冲初始化失败");
@@ -152,7 +200,11 @@ export function MoonseaRipple() {
     gl.enableVertexAttribArray(positionLocation);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    const pointer = { x: 0.76, y: 0.62 };
+    const pointer = { x: 0.50, y: 0.36 };
+    const pointerTarget = { x: 0.50, y: 0.36 };
+    const pointerVelocity = { x: 0, y: 0 };
+    let pointerEnergy = 0;
+    let lastPointerAt = performance.now();
     const click = { x: -2, y: -2, startedAt: -10_000 };
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let animationFrame = 0;
@@ -172,15 +224,42 @@ export function MoonseaRipple() {
       }
     };
 
-    const updatePoint = (event: PointerEvent, target: typeof pointer) => {
+    const updatePoint = (event: PointerEvent, target: { x: number; y: number }) => {
       target.x = event.clientX / window.innerWidth;
       target.y = 1 - event.clientY / window.innerHeight;
     };
 
-    const onPointerMove = (event: PointerEvent) => updatePoint(event, pointer);
+    const onPointerMove = (event: PointerEvent) => {
+      const now = performance.now();
+      const previousX = pointerTarget.x;
+      const previousY = pointerTarget.y;
+      updatePoint(event, pointerTarget);
+      const elapsed = Math.max(8, now - lastPointerAt);
+      pointerVelocity.x = (pointerTarget.x - previousX) * 16_000 / elapsed;
+      pointerVelocity.y = (pointerTarget.y - previousY) * 16_000 / elapsed;
+      pointerEnergy = Math.min(
+        1,
+        pointerEnergy + Math.hypot(pointerVelocity.x, pointerVelocity.y) * 0.065 + 0.16,
+      );
+      document.documentElement.style.setProperty(
+        "--moonsea-tilt-x",
+        `${(pointerTarget.x - 0.5) * 3.5}deg`,
+      );
+      document.documentElement.style.setProperty(
+        "--moonsea-tilt-y",
+        `${(pointerTarget.y - 0.5) * -2}deg`,
+      );
+      lastPointerAt = now;
+      if (reducedMotion.matches && !animationFrame) {
+        animationFrame = requestAnimationFrame(render);
+      }
+    };
     const onPointerDown = (event: PointerEvent) => {
       updatePoint(event, click);
       click.startedAt = performance.now();
+      if (reducedMotion.matches && !animationFrame) {
+        animationFrame = requestAnimationFrame(render);
+      }
     };
     const onVisibilityChange = () => {
       visible = !document.hidden;
@@ -197,13 +276,20 @@ export function MoonseaRipple() {
       resize();
       gl.useProgram(program);
       gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+      pointer.x += (pointerTarget.x - pointer.x) * 0.12;
+      pointer.y += (pointerTarget.y - pointer.y) * 0.12;
+      pointerVelocity.x *= 0.92;
+      pointerVelocity.y *= 0.92;
+      pointerEnergy *= 0.982;
       gl.uniform2f(pointerLocation, pointer.x, pointer.y);
+      gl.uniform2f(pointerVelocityLocation, pointerVelocity.x, pointerVelocity.y);
+      gl.uniform1f(pointerEnergyLocation, pointerEnergy);
       gl.uniform2f(clickLocation, click.x, click.y);
       gl.uniform1f(clickAgeLocation, Math.max(0, (timestamp - click.startedAt) / 1_000));
-      gl.uniform1f(scrollLocation, window.scrollY / Math.max(window.innerHeight, 1));
       gl.uniform1f(timeLocation, reducedMotion.matches ? 0.0 : timestamp / 1_000);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       canvas.dataset.rendering = reducedMotion.matches ? "reduced" : "webgl";
+      canvas.dataset.interaction = pointerEnergy > 0.08 ? "active" : "idle";
 
       if (visible && !reducedMotion.matches) {
         animationFrame = requestAnimationFrame(render);
@@ -225,6 +311,8 @@ export function MoonseaRipple() {
       window.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       reducedMotion.removeEventListener("change", onMotionChange);
+      document.documentElement.style.removeProperty("--moonsea-tilt-x");
+      document.documentElement.style.removeProperty("--moonsea-tilt-y");
       gl.deleteBuffer(buffer);
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
