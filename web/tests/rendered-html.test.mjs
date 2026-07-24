@@ -44,8 +44,11 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>月海 Codex 主题<\/title>/i);
-  assert.match(html, /让 Codex/);
-  assert.match(html, /看起来终于像你的/);
+  assert.match(html, /为你的 Codex/);
+  assert.match(html, /选一片海/);
+  assert.match(html, /今天想待在/);
+  assert.match(html, /潮汐龙境/);
+  assert.match(html, /月白/);
   assert.match(html, /href="\/themes"/);
   assert.match(html, /下载 Windows 版/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据|找到适合今天的工作氛围/);
