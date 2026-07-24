@@ -10,9 +10,11 @@ export const WINDOWS_DOWNLOAD_URL =
 export function SiteHeader({
   tone = "light",
   revealOnHover = false,
+  hideNavigation = false,
 }: {
   tone?: "light" | "moonsea";
   revealOnHover?: boolean;
+  hideNavigation?: boolean;
 }) {
   const [pointerRevealed, setPointerRevealed] = useState(false);
 
@@ -46,13 +48,15 @@ export function SiteHeader({
           <span className="brand-mark" aria-hidden="true">◐</span>
           <span>月海</span>
         </Link>
-        <nav className="site-nav" aria-label="主要导航">
-          <Link href="/themes">主题</Link>
-          <OwnerAdminLink />
-          <a className="download-link" href={WINDOWS_DOWNLOAD_URL}>
-            下载 Windows 版
-          </a>
-        </nav>
+        {hideNavigation ? null : (
+          <nav className="site-nav" aria-label="主要导航">
+            <Link href="/themes">主题</Link>
+            <OwnerAdminLink />
+            <a className="download-link" href={WINDOWS_DOWNLOAD_URL}>
+              下载 Windows 版
+            </a>
+          </nav>
+        )}
       </div>
     </header>
   );

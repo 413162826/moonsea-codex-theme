@@ -63,7 +63,7 @@ main, footer { width: min(1280px, calc(100% - 40px)); margin-inline: auto; }
 .landing-hero { display: grid; width: min(1540px, calc(100% - 64px)); min-height: calc(100vh - 68px); margin: auto; align-items: center; grid-template-columns: minmax(480px, .9fr) minmax(620px, 1.1fr); gap: clamp(42px, 5vw, 86px); padding: clamp(72px, 8vh, 112px) 0; }
 .landing-hero__copy { position: relative; z-index: 2; padding-inline-start: clamp(0px, 2vw, 32px); animation: moonsea-rise .78s cubic-bezier(.22, 1, .36, 1) both; }
 .landing-hero__copy .eyebrow { color: #8fc8cf; text-shadow: 0 1px 18px rgba(32, 111, 125, .4); }
-.landing-hero__copy h1 { max-width: 690px; margin: 0; color: #edf2e9; font-size: clamp(68px, 7.1vw, 116px); line-height: .91; letter-spacing: -.075em; text-wrap: balance; text-shadow: 0 10px 45px rgba(0, 10, 18, .28); }
+.landing-hero__copy h1 { max-width: 690px; margin: 0; color: #edf2e9; font-size: clamp(64px, 5.5vw, 92px); line-height: .91; letter-spacing: -.072em; text-wrap: balance; text-shadow: 0 10px 45px rgba(0, 10, 18, .28); }
 .landing-hero__copy > p:not(.eyebrow) { max-width: 540px; margin: 30px 0 0; color: #b7cbca; font-size: clamp(17px, 1.4vw, 21px); line-height: 1.68; text-shadow: 0 2px 16px rgba(0, 12, 20, .28); }
 .landing-actions { display: flex; align-items: center; gap: 26px; margin-top: 34px; }
 .landing-actions a { font-weight: 760; text-decoration: none; }

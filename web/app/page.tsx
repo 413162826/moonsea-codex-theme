@@ -6,15 +6,15 @@ import { SiteHeader, WINDOWS_DOWNLOAD_URL } from "./site-chrome";
 export default function Home() {
   return (
     <>
-      <SiteHeader tone="moonsea" revealOnHover />
+      <SiteHeader tone="moonsea" revealOnHover hideNavigation />
 
       <main className="landing-main">
         <MoonseaRipple />
         <section className="landing-hero">
           <div className="landing-hero__copy">
-            <p className="eyebrow">MOONSEA / THE TWILIGHT ZONE</p>
-            <h1>为你的 Codex，<br />选一片海。</h1>
-            <p>让微光沉进工作界面。掠过深海，鱼群会从你的指针旁散开，再慢慢游回幽蓝。</p>
+            <p className="eyebrow">FREE THEMES / IMMERSIVE CODEX</p>
+            <h1>免费主题与<br />Pro 壁纸，<br />让 Codex<br />更沉浸。</h1>
+            <p>背景、透明层与阅读对比一体调校，选中即可应用。让长时间工作保持安静、清晰，也更有氛围。</p>
             <div className="landing-actions">
               <Link className="primary-action" href="/themes">进入主题墙 <span aria-hidden="true">↗</span></Link>
               <a className="text-action" href={WINDOWS_DOWNLOAD_URL}>下载 Windows 版</a>
