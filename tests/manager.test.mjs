@@ -179,12 +179,13 @@ test("普通壁纸封面使用受约束的完整 Codex 窗口缩略图", () => {
   assert.doesNotMatch(website, /preview-content/);
 });
 
-test("控制桥等待 Codex 官方动作作用域就绪", () => {
+test("控制桥通过 Codex 公开应用服务调用官方动作", () => {
   const bridge = fs.readFileSync(
     path.join(projectRoot, "theme", "runtime", "appearance-bridge.template.js"),
     "utf8",
   );
-  assert.match(bridge, /appActions\.scope != null/);
+  assert.match(bridge, /services\?\.appActions/);
+  assert.match(bridge, /ready:\s*true/);
   assert.match(bridge, /getStatus/);
   assert.match(bridge, /applyRuntimeTheme/);
   assert.match(bridge, /app\.appearance\.set_mode/);
@@ -389,4 +390,20 @@ test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () =>
   assert.match(installEntry, /Start-Transcript/);
   assert.match(installEntry, /install-result\.json/);
   assert.match(installEntry, /technicalError/);
+  const installer = fs.readFileSync(
+    path.join(scriptsRoot, "Install-Moonsea-Windows.ps1"),
+    "ascii",
+  );
+  assert.match(installer, /@\(& node \$BuilderPath @Arguments 2>&1\)/);
+  assert.match(installer, /\$output \| ForEach-Object \{ Write-Host \$_ \}/);
+});
+
+test("Windows 安装失败不会留下可点击快捷方式", () => {
+  const setup = fs.readFileSync(
+    path.join(projectRoot, "installer", "windows", "Moonsea.iss"),
+    "utf8",
+  );
+  assert.match(setup, /HadWorkingInstallation:\s*Boolean/);
+  assert.match(setup, /procedure RemoveFailedInstallShortcuts/);
+  assert.match(setup, /if not HadWorkingInstallation then\s+RemoveFailedInstallShortcuts/s);
 });

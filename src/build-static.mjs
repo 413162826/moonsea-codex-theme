@@ -180,23 +180,14 @@ function resolveAppActionModule(extractedDir) {
     .readdirSync(assetsPath)
     .filter((name) => /^rpc-[A-Za-z0-9_-]+\.js$/.test(name))
     .map((name) => ({ name, source: readUtf8(path.join(assetsPath, name)) }))
-    .filter(({ source }) => source.includes("bindScope("));
+    .filter(({ source }) => /export\{[^}]*\bas appServices\b/.test(source));
   if (candidates.length !== 1) {
-    throw new Error("无法唯一定位 Codex 外观控制模块");
+    throw new Error("无法唯一定位 Codex 应用服务入口");
   }
-  const { name: fileName, source } = candidates[0];
-  const singletonMatch = source.match(
-    /bindScope\([^)]*\)\{[\s\S]{0,700}?\}\},([A-Za-z_$][\w$]*)=new\s+[A-Za-z_$][\w$]*/,
-  );
-  if (!singletonMatch) throw new Error("Codex 外观控制服务结构已经变化");
-  const singleton = singletonMatch[1];
-  const exportMatch = source.match(
-    new RegExp(`(?:^|[,\\{])${singleton} as ([A-Za-z_$][\\w$]*)`),
-  );
-  if (!exportMatch) throw new Error("Codex 外观控制服务没有可调用的导出");
+  const { name: fileName } = candidates[0];
   return {
     modulePath: `../assets/${fileName}`,
-    exportName: exportMatch[1],
+    exportName: "appServices",
   };
 }
 
@@ -204,7 +195,7 @@ function buildAppearanceBridge(extractedDir, themeVersion) {
   const { modulePath, exportName } = resolveAppActionModule(extractedDir);
   return readUtf8(bridgeTemplate)
     .replace("__MOONSEA_RPC_MODULE_PATH__", modulePath)
-    .replace("__MOONSEA_APP_ACTION_EXPORT__", exportName)
+    .replace("__MOONSEA_APP_SERVICES_EXPORT__", exportName)
     .replace("__MOONSEA_THEME_VERSION__", themeVersion);
 }
 

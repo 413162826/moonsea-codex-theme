@@ -115,16 +115,19 @@ if (Test-Path -LiteralPath $managerPidPath -PathType Leaf) {
 
 function Invoke-MoonseaBuilder([string[]]$Arguments, [switch]$Capture) {
     if ([System.IO.Path]::GetExtension($BuilderPath) -eq ".mjs") {
-        $output = & node $BuilderPath @Arguments
+        $output = @(& node $BuilderPath @Arguments 2>&1)
     }
     else {
-        $output = & $BuilderPath @Arguments
+        $output = @(& $BuilderPath @Arguments 2>&1)
     }
-    if ($LASTEXITCODE -ne 0) {
-        throw "Moonsea builder failed with exit code $LASTEXITCODE"
+    $builderExitCode = $LASTEXITCODE
+    if ($Capture -and $builderExitCode -eq 0) {
+        return @($output)
     }
-    if ($Capture) { return @($output) }
     $output | ForEach-Object { Write-Host $_ }
+    if ($builderExitCode -ne 0) {
+        throw "Moonsea builder failed with exit code $builderExitCode"
+    }
 }
 
 function Find-OfficialCodexApp {

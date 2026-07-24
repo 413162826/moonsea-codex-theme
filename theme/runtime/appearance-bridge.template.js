@@ -1,5 +1,5 @@
 const RPC_MODULE_PATH = "__MOONSEA_RPC_MODULE_PATH__";
-const APP_ACTION_EXPORT = "__MOONSEA_APP_ACTION_EXPORT__";
+const APP_SERVICES_EXPORT = "__MOONSEA_APP_SERVICES_EXPORT__";
 const THEME_VERSION = "__MOONSEA_THEME_VERSION__";
 const APPEARANCE_STATE_KEY = "codex-moonsea-appearance-state-v1";
 
@@ -10,7 +10,8 @@ let restorationPromise = Promise.resolve();
 
 function getAppActionService() {
   appActionServicePromise ??= import(RPC_MODULE_PATH).then((module) => {
-    const service = module[APP_ACTION_EXPORT];
+    const services = module[APP_SERVICES_EXPORT];
+    const service = services?.appActions;
     if (!service || typeof service.run !== "function") {
       throw new Error("当前 Codex 版本没有可用的外观控制入口");
     }
@@ -98,7 +99,7 @@ async function getStatus() {
   await restorationPromise;
   const appActions = await getAppActionService();
   return {
-    ready: appActions.scope != null,
+    ready: true,
     runtimeActive: window.moonseaProRuntime?.isActive() === true,
     edition: restoredAppearanceState?.edition ?? null,
     themeId: restoredAppearanceState?.themeId ?? null,

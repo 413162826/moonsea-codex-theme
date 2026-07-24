@@ -16,7 +16,7 @@ function writeRpcFixture(unpacked) {
   fs.mkdirSync(assets, { recursive: true });
   fs.writeFileSync(
     path.join(assets, "rpc-fixture.js"),
-    "var Service,instance;Service=class{scope=null;bindScope(e){return this.scope=e,()=>{this.scope=null}}},instance=new Service;export{instance as z};",
+    "var appActions={async run(e){return e}},services={appActions};export{services as appServices};",
   );
 }
 

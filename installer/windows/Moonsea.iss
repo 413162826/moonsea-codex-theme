@@ -136,6 +136,9 @@ Filename: "{app}\MoonseaLauncher.exe"; Parameters: "--update-restart"; \
   Flags: nowait skipifdoesntexist; Check: IsUpdateMode
 
 [Code]
+var
+  HadWorkingInstallation: Boolean;
+
 function HasCommandLineParameter(const Expected: String): Boolean;
 var
   Index: Integer;
@@ -161,6 +164,12 @@ begin
   Result := not IsUpdateMode;
 end;
 
+procedure RemoveFailedInstallShortcuts;
+begin
+  DeleteFile(ExpandConstant('{group}\月海 Codex.lnk'));
+  DeleteFile(ExpandConstant('{autodesktop}\月海 Codex.lnk'));
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
@@ -168,6 +177,14 @@ var
   InstallerPath: String;
   Parameters: String;
 begin
+  if CurStep = ssInstall then
+  begin
+    HadWorkingInstallation :=
+      FileExists(ExpandConstant('{app}\install.json')) and
+      FileExists(ExpandConstant('{app}\Start-Moonsea-Windows.ps1'));
+    Exit;
+  end;
+
   if CurStep <> ssPostInstall then
     Exit;
 
@@ -187,6 +204,8 @@ begin
   end;
   if ResultCode <> 0 then
   begin
+    if not HadWorkingInstallation then
+      RemoveFailedInstallShortcuts;
     RaiseException(
       '月海没有安装完成。请查看 ' +
       ExpandConstant('{app}\logs') + ' 中的安装日志后重试。'
