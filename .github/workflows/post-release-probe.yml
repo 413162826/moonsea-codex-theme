@@ -1,0 +1,21 @@
+name: 仅运行正式版线上探针
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 要验证的正式版本号（不含 v）
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 正式版线上探针
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: 校验更新清单、安装包与官网下载链路
+        run: bash ./scripts/ci/probe-release.sh "${{ inputs.version }}"

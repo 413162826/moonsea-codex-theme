@@ -125,6 +125,28 @@ test("下载入口按系统跳转并为未知系统提供选择页", async () =>
     /Moonsea-Codex-macOS\.zip$/,
   );
 
+  const windowsProbe = await fetch(`${origin}/download`, {
+    method: "HEAD",
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+    redirect: "manual",
+  });
+  assert.equal(windowsProbe.status, 302);
+  assert.match(
+    windowsProbe.headers.get("location") ?? "",
+    /releases\/latest\/download\/Moonsea-Codex-Windows-x64-Setup\.exe$/,
+  );
+
+  const macosProbe = await fetch(`${origin}/download`, {
+    method: "HEAD",
+    headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)" },
+    redirect: "manual",
+  });
+  assert.equal(macosProbe.status, 302);
+  assert.match(
+    macosProbe.headers.get("location") ?? "",
+    /releases\/latest\/download\/Moonsea-Codex-macOS\.zip$/,
+  );
+
   const unknown = await fetch(`${origin}/download`, {
     headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" },
     redirect: "manual",

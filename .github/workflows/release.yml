@@ -248,21 +248,6 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     steps:
-      - name: 校验最新更新清单与下载入口
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-          manifest_url="https://github.com/$GITHUB_REPOSITORY/releases/latest/download/update.json"
-          curl --fail --location --retry 6 --retry-delay 5 "$manifest_url" -o update.json
-          test "$(jq -r .version update.json)" = "$RELEASE_VERSION"
-          for url in \
-            "$(jq -r .platforms.windows.installer.url update.json)" \
-            "$(jq -r .platforms.macos.url update.json)"; do
-            curl --fail --location --retry 4 --retry-delay 5 --range 0-0 "$url" -o /dev/null
-          done
-          windows_location="$(curl --silent --show-error --head \
-            --user-agent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' \
-            https://moonsea-codex-theme.suguowen5.chatgpt.site/download |
-            awk 'BEGIN{IGNORECASE=1} /^location:/{gsub(/\r/,""); print $2}' | tail -1)"
-          test "$windows_location" = "$(jq -r .platforms.windows.installer.url update.json)"
+      - uses: actions/checkout@v7.0.1
+      - name: 校验更新清单、安装包与官网下载链路
+        run: bash ./scripts/ci/probe-release.sh "${{ inputs.version }}"
