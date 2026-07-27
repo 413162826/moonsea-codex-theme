@@ -36,7 +36,7 @@ APPLESCRIPT
   done
 fi
 
-APP_PID="$(print -r -- "$RUNNING_MOONSEA" | /usr/bin/grep -F "$ACTIVE_BUILD" | /usr/bin/awk 'NR == 1 { print $1 }')"
+APP_PID="${MOONSEA_APP_PID:-$(print -r -- "$RUNNING_MOONSEA" | /usr/bin/grep -F "$ACTIVE_BUILD" | /usr/bin/awk 'NR == 1 { print $1 }')}"
 if [[ -z "$APP_PID" && -z "${MOONSEA_SKIP_APP_LAUNCH:-}" ]]; then
   /bin/rm -f -- "$PROFILE_PATH/DevToolsActivePort"
   /usr/bin/open -na "$ACTIVE_BUILD" --args \

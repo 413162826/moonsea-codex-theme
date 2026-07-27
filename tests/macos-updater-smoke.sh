@@ -15,6 +15,7 @@ ARCHIVE_PATH="$INSTALL_ROOT/updates/Moonsea-Codex-test-macOS.zip"
 READY_PATH="$INSTALL_ROOT/updates/updater-smoke.ready"
 EXPECTED_VERSION="$(/usr/bin/sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$PACKAGE_ROOT/package.json" | /usr/bin/head -n 1)"
 MANAGER_PORT=18321
+FAKE_APP_PID=""
 
 stop_test_manager() {
   local pid_path="$INSTALL_ROOT/manager.pid"
@@ -23,9 +24,13 @@ stop_test_manager() {
   [[ ! "$manager_pid" =~ ^[0-9]+$ ]] || /bin/kill -9 "$manager_pid" 2>/dev/null || true
 }
 
+stop_fake_app() {
+  [[ ! "$FAKE_APP_PID" =~ ^[0-9]+$ ]] || /bin/kill -9 "$FAKE_APP_PID" 2>/dev/null || true
+}
+
 /bin/rm -rf -- "$TEST_ROOT"
 /bin/mkdir -p "$TEST_ROOT" "$APPLICATIONS_DIR" "$DESKTOP_DIR"
-trap 'stop_test_manager; /bin/rm -rf -- "$TEST_ROOT"' EXIT
+trap 'stop_test_manager; stop_fake_app; /bin/rm -rf -- "$TEST_ROOT"' EXIT
 
 node "$SOURCE_ROOT/tests/create-fixture.mjs" macos "$SOURCE_APP" >/dev/null
 /bin/mkdir -p "$LEGACY_PACKAGE/scripts/macos" "$LEGACY_PACKAGE/tools"
@@ -49,6 +54,9 @@ export MOONSEA_SKIP_LAUNCH=1
 export MOONSEA_SKIP_APP_LAUNCH=1
 export MOONSEA_NONINTERACTIVE=1
 export MOONSEA_MANAGER_PORT="$MANAGER_PORT"
+/bin/sleep 120 &
+FAKE_APP_PID="$!"
+export MOONSEA_APP_PID="$FAKE_APP_PID"
 
 /bin/zsh "$LEGACY_PACKAGE/scripts/macos/install-moonsea.sh"
 [[ "$(/usr/bin/plutil -extract appVersion raw -o - "$INSTALL_ROOT/install.plist")" == "1.3.9" ]]
