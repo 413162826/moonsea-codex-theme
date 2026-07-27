@@ -308,7 +308,8 @@ test("月海助手与 Codex 进程生命周期绑定", () => {
     path.join(projectRoot, "scripts", "macos", "Start-Moonsea-macOS.command"),
     "utf8",
   );
-  assert.match(windowsLauncher, /Start-Process[\s\S]*-PassThru/);
+  assert.match(windowsLauncher, /Start-Process -FilePath \$app[\s\S]*Wait-ForActiveMainProcess/);
+  assert.doesNotMatch(windowsLauncher, /\$appProcess\s*=\s*Start-Process[\s\S]*\$appProcess\.Id/);
   assert.match(windowsLauncher, /--app-pid \$appProcessId/);
   assert.match(macosLauncher, /APP_PID=/);
   assert.match(macosLauncher, /MOONSEA_APP_PID/);
@@ -422,6 +423,14 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
 
 test("Windows 新版更新由同一 Setup.exe 静默接管", () => {
   const manager = fs.readFileSync(path.join(projectRoot, "src", "manager.mjs"), "utf8");
+  const installer = fs.readFileSync(
+    path.join(projectRoot, "installer", "windows", "Moonsea.iss"),
+    "utf8",
+  );
+  const launcher = fs.readFileSync(
+    path.join(projectRoot, "scripts", "windows", "Start-Moonsea-Windows.ps1"),
+    "ascii",
+  );
   assert.match(manager, /packageKind === "installer"/);
   assert.match(manager, /launchWindowsInstaller\(packagePath, targetVersion\)/);
   assert.match(manager, /"\/VERYSILENT"/);
@@ -429,6 +438,62 @@ test("Windows 新版更新由同一 Setup.exe 静默接管", () => {
   assert.match(manager, /"\/NORESTART"/);
   assert.match(manager, /"\/CLOSEAPPLICATIONS"/);
   assert.match(manager, /"\/MOONSEAUPDATE"/);
+  assert.match(
+    manager,
+    /`\/DIR=\$\{installRoot\}`/,
+    "应用内更新必须把当前安装目录显式交给 Setup.exe",
+  );
+  assert.doesNotMatch(
+    installer,
+    /\[Run\][\s\S]*Parameters:\s*"--update-restart"/,
+    "Setup.exe 不得在月海安装引擎完成前从 [Run] 提前重启",
+  );
+  assert.match(
+    installer,
+    /if IsUpdateMode then[\s\S]*MoonseaLauncher\.exe[\s\S]*--update-restart/,
+    "更新完成后必须由安装引擎之后的代码启动新版",
+  );
+  assert.match(
+    installer,
+    /ResolveUpdateInstallRoot[\s\S]*ExplicitInstallRoot[\s\S]*\{srcexe\}[\s\S]*install\.json/,
+    "新安装包必须能从旧版下载目录反推出原安装根目录",
+  );
+  assert.match(
+    installer,
+    /CompareText\([\s\S]*\{app\}[\s\S]*ResolveUpdateInstallRoot[\s\S]*停止更新/,
+    "更新写入前必须阻止安装目录漂移",
+  );
+  assert.match(
+    launcher,
+    /Wait-ForActiveMainProcess/,
+    "启动器必须找到真实 Electron 主进程，不能绑定可能立即退出的中间进程",
+  );
+});
+
+test("正式发布必须经过候选包准入且复用同一批产物", () => {
+  const releaseWorkflow = fs.readFileSync(
+    path.join(projectRoot, ".github", "workflows", "release.yml"),
+    "utf8",
+  );
+  const ciWorkflow = fs.readFileSync(
+    path.join(projectRoot, ".github", "workflows", "ci.yml"),
+    "utf8",
+  );
+  assert.match(releaseWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(releaseWorkflow, /push:\s*\n\s*tags:/);
+  assert.match(releaseWorkflow, /windows_release_gate:/);
+  assert.match(releaseWorkflow, /tests\/windows-release-gate\.ps1/);
+  assert.match(
+    releaseWorkflow,
+    /needs:\s*\[web_gate, windows_candidate, macos_candidate, windows_release_gate\]/,
+  );
+  assert.match(releaseWorkflow, /environment:\s*production-release/);
+  assert.match(
+    releaseWorkflow,
+    /actions\/download-artifact@[\w.]+[\s\S]*merge-multiple:\s*true/,
+  );
+  assert.match(ciWorkflow, /working-directory:\s*web/);
+  assert.match(ciWorkflow, /npm run lint[\s\S]*npm test/);
 });
 
 test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () => {

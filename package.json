@@ -1,12 +1,13 @@
 {
   "name": "moonsea-codex-theme",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "通过本地助手即时切换 Codex 免费渐变壁纸与 Pro 精选壁纸",
   "type": "module",
   "scripts": {
     "wallpapers": "node ./scripts/sync-wallpapers.mjs",
     "build": "npm run wallpapers && node ./scripts/build-tool.mjs",
-    "test": "npm run build && node --test ./tests/*.test.mjs"
+    "test:unit": "node --test ./tests/*.test.mjs",
+    "test": "npm run build && npm run test:unit"
   },
   "engines": {
     "node": ">=22.12"

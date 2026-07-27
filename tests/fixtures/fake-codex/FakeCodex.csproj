@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>ChatGPT</AssemblyName>
+    <RootNamespace>Moonsea.ReleaseGate.FakeCodex</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+</Project>
