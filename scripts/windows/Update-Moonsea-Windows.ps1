@@ -75,6 +75,9 @@ $manifestPath = Join-Path $InstallRoot "install.json"
 $launcherPath = Join-Path $InstallRoot "Start-Moonsea-Windows.ps1"
 $extractRoot = Join-Path $updatesRoot "extract-$TargetVersion"
 $rollbackRoot = Join-Path $updatesRoot "rollback-$CurrentVersion-to-$TargetVersion"
+$payloadRoot = Join-Path $InstallRoot "payload"
+$payloadStaging = Join-Path $InstallRoot "payload-staging"
+$payloadBackup = Join-Path $InstallRoot "payload-previous"
 $logPath = Join-Path $updatesRoot "update.log"
 $resultPath = Join-Path $updatesRoot "update-result.json"
 
@@ -125,6 +128,14 @@ try {
 
     $installer = Join-Path $packageRoot "scripts\windows\Install-Moonsea-Windows.ps1"
     & $installer -SourceApp ([string]$previousManifest.sourceApp) -InstallRoot $InstallRoot -SkipLaunch
+    if (Test-Path -LiteralPath $payloadStaging) { Remove-Item -LiteralPath $payloadStaging -Recurse -Force }
+    if (Test-Path -LiteralPath $payloadBackup) { Remove-Item -LiteralPath $payloadBackup -Recurse -Force }
+    New-Item -ItemType Directory -Path $payloadStaging -Force | Out-Null
+    Copy-Item -Path (Join-Path $packageRoot "*") -Destination $payloadStaging -Recurse -Force
+    if (Test-Path -LiteralPath $payloadRoot) {
+        Move-Item -LiteralPath $payloadRoot -Destination $payloadBackup
+    }
+    Move-Item -LiteralPath $payloadStaging -Destination $payloadRoot
     & $launcherPath
     if (-not (Wait-ForManager $TargetVersion)) { throw "The new Moonsea manager did not pass its startup check." }
 
@@ -144,6 +155,7 @@ try {
     }
     Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $PackagePath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $payloadBackup -Recurse -Force -ErrorAction SilentlyContinue
     [System.IO.File]::WriteAllText($resultPath, (@{
         status = "succeeded"
         currentVersion = $CurrentVersion
@@ -153,6 +165,11 @@ try {
 }
 catch {
     Stop-InstalledManager $InstallRoot
+    if (Test-Path -LiteralPath $payloadBackup) {
+        Remove-Item -LiteralPath $payloadRoot -Recurse -Force -ErrorAction SilentlyContinue
+        Move-Item -LiteralPath $payloadBackup -Destination $payloadRoot
+    }
+    Remove-Item -LiteralPath $payloadStaging -Recurse -Force -ErrorAction SilentlyContinue
     $rollbackManifest = Join-Path $rollbackRoot "install.json"
     $rollbackLauncher = Join-Path $rollbackRoot "Start-Moonsea-Windows.ps1"
     if (Test-Path -LiteralPath $rollbackManifest -PathType Leaf) {

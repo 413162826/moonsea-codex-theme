@@ -5,6 +5,49 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-OfficialVersion([string]$AppPath, [string]$DetectedVersion) {
+    $version = $DetectedVersion
+    if ([string]::IsNullOrWhiteSpace($version) -and $AppPath -match "OpenAI\.Codex_([^_]+)_") {
+        $version = $Matches[1]
+    }
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        $executable = Join-Path $AppPath "ChatGPT.exe"
+        if (Test-Path -LiteralPath $executable -PathType Leaf) {
+            $version = (Get-Item -LiteralPath $executable).VersionInfo.ProductVersion
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($version)) { $version = "unknown" }
+    return [regex]::Replace($version, "[^A-Za-z0-9._-]", "-")
+}
+
+function Find-LatestOfficialCodex {
+    if ($env:MOONSEA_SOURCE_APP) {
+        $sourceApp = [System.IO.Path]::GetFullPath($env:MOONSEA_SOURCE_APP)
+        if (-not (Test-Path -LiteralPath (Join-Path $sourceApp "resources\app.asar") -PathType Leaf)) {
+            throw "MOONSEA_SOURCE_APP is not a valid official Codex app."
+        }
+        return [pscustomobject]@{
+            Path = $sourceApp
+            Version = Get-OfficialVersion $sourceApp $null
+        }
+    }
+
+    $package = Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Where-Object {
+            Test-Path -LiteralPath (Join-Path $_.InstallLocation "app\resources\app.asar") -PathType Leaf
+        } |
+        Select-Object -First 1
+    if ($null -eq $package) {
+        throw "Official Codex was not found. Install and open the official app once, then retry."
+    }
+    $appPath = [System.IO.Path]::GetFullPath((Join-Path $package.InstallLocation "app"))
+    return [pscustomobject]@{
+        Path = $appPath
+        Version = Get-OfficialVersion $appPath ([string]$package.Version)
+    }
+}
+
 $installRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $manifestPath = Join-Path $installRoot "install.json"
 $buildsRoot = [System.IO.Path]::GetFullPath((Join-Path $installRoot "builds")).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
@@ -13,6 +56,20 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
 }
 
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$official = Find-LatestOfficialCodex
+if ([string]$manifest.officialVersion -ne [string]$official.Version -or
+    -not [string]::Equals(
+        [System.IO.Path]::GetFullPath([string]$manifest.sourceApp),
+        [string]$official.Path,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )) {
+    $payloadInstaller = Join-Path $installRoot "payload\scripts\windows\Install-Moonsea-Windows.ps1"
+    if (-not (Test-Path -LiteralPath $payloadInstaller -PathType Leaf)) {
+        throw "Moonsea update files are incomplete. Install the latest Moonsea version again."
+    }
+    & $payloadInstaller -SourceApp ([string]$official.Path) -InstallRoot $installRoot -SkipLaunch
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+}
 $activeBuild = [System.IO.Path]::GetFullPath([string]$manifest.activeBuild)
 if (-not $activeBuild.StartsWith($buildsRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "The active app path in the installation data is invalid."
@@ -74,7 +131,14 @@ $activeMain = @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -Er
     $_.CommandLine -notmatch "\s--type=" -and
     $_.CommandLine -match "--remote-debugging-port=0"
 })
-if ($activeMain.Count -gt 0) {
+$requestedAppProcessId = 0
+if ($env:MOONSEA_APP_PID -and [int]::TryParse($env:MOONSEA_APP_PID, [ref]$requestedAppProcessId)) {
+    if ($null -eq (Get-Process -Id $requestedAppProcessId -ErrorAction SilentlyContinue)) {
+        throw "MOONSEA_APP_PID does not reference a running process."
+    }
+    $appProcessId = $requestedAppProcessId
+}
+elseif ($activeMain.Count -gt 0) {
     $appProcessId = [int]$activeMain[0].ProcessId
 }
 else {

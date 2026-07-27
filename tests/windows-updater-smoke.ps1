@@ -33,6 +33,10 @@ $previousManagerPort = $env:MOONSEA_MANAGER_PORT
 $previousNonInteractive = $env:MOONSEA_NONINTERACTIVE
 $previousHealthAttempts = $env:MOONSEA_UPDATE_HEALTH_ATTEMPTS
 $previousSkipShortcut = $env:MOONSEA_SKIP_SHORTCUT
+$previousSourceApp = $env:MOONSEA_SOURCE_APP
+$previousAppPid = $env:MOONSEA_APP_PID
+$previousSkipLaunch = $env:MOONSEA_SKIP_LAUNCH
+$testAppProcess = $null
 
 function Stop-TestManager {
     $pidPath = Join-Path $installRoot "manager.pid"
@@ -69,6 +73,15 @@ try {
     $env:MOONSEA_NONINTERACTIVE = "1"
     $env:MOONSEA_UPDATE_HEALTH_ATTEMPTS = "8"
     $env:MOONSEA_SKIP_SHORTCUT = "1"
+    $env:MOONSEA_SOURCE_APP = $sourceApp
+    $testAppProcess = Start-Process -FilePath "powershell.exe" -ArgumentList @(
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Start-Sleep -Seconds 120"
+    ) -WindowStyle Hidden -PassThru
+    $env:MOONSEA_APP_PID = [string]$testAppProcess.Id
 
     New-Item -ItemType Directory -Path (Join-Path $legacyPackage "scripts\windows") -Force | Out-Null
     Copy-Item -Path (Join-Path $PackageRoot "scripts\windows\*") -Destination (Join-Path $legacyPackage "scripts\windows") -Force
@@ -152,11 +165,33 @@ try {
         catch { Start-Sleep -Milliseconds 100 }
     }
     if (-not $rollbackReady) { throw "Rollback manager did not restart" }
+
+    Stop-TestManager
+    $refreshManifest = Get-Content -LiteralPath (Join-Path $installRoot "install.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    $refreshManifest.officialVersion = "stale-version"
+    [System.IO.File]::WriteAllText(
+        (Join-Path $installRoot "install.json"),
+        ($refreshManifest | ConvertTo-Json -Depth 5),
+        $utf8NoBom
+    )
+    $env:MOONSEA_SKIP_LAUNCH = "1"
+    & (Join-Path $installRoot "Start-Moonsea-Windows.ps1")
+    $refreshedManifest = Get-Content -LiteralPath (Join-Path $installRoot "install.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($refreshedManifest.officialVersion -eq "stale-version") {
+        throw "Launcher did not refresh the Moonsea build after an official Codex update"
+    }
+    $payloadVersion = [string](Get-Content -LiteralPath (Join-Path $installRoot "payload\package.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version
+    if ($payloadVersion -ne $expectedVersion) {
+        throw "Updater did not refresh the installed Moonsea payload"
+    }
     Write-Host "Windows application update smoke test passed"
 }
 finally {
     Stop-TestManager
     Stop-TestProcesses
+    if ($null -ne $testAppProcess) {
+        Stop-Process -Id $testAppProcess.Id -Force -ErrorAction SilentlyContinue
+    }
     Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
         $_.ExecutablePath -and $_.ExecutablePath.StartsWith($testRoot, [System.StringComparison]::OrdinalIgnoreCase)
     } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
@@ -164,5 +199,8 @@ finally {
     $env:MOONSEA_NONINTERACTIVE = $previousNonInteractive
     $env:MOONSEA_UPDATE_HEALTH_ATTEMPTS = $previousHealthAttempts
     $env:MOONSEA_SKIP_SHORTCUT = $previousSkipShortcut
+    $env:MOONSEA_SOURCE_APP = $previousSourceApp
+    $env:MOONSEA_APP_PID = $previousAppPid
+    $env:MOONSEA_SKIP_LAUNCH = $previousSkipLaunch
     if (Test-Path -LiteralPath $testRoot) { Remove-Item -LiteralPath $testRoot -Recurse -Force }
 }
