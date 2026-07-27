@@ -24,5 +24,5 @@ export function OwnerAdminLink() {
     return () => controller.abort();
   }, []);
 
-  return visible ? <Link href="/admin">管理员数据</Link> : null;
+  return visible ? <Link className="employee-entry" href="/admin">员工入口</Link> : null;
 }

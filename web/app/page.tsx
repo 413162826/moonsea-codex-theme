@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProCodexPreview } from "./codex-preview";
 import { MoonseaRipple } from "./moonsea-ripple";
-import { SiteHeader, WINDOWS_DOWNLOAD_URL } from "./site-chrome";
+import { DOWNLOAD_URL, SiteHeader } from "./site-chrome";
 
 export default function Home() {
   return (
@@ -17,7 +17,7 @@ export default function Home() {
             <p>背景、透明层与阅读对比一体调校，选中即可应用。让长时间工作保持安静、清晰，也更有氛围。</p>
             <div className="landing-actions">
               <Link className="primary-action" href="/themes">进入主题墙 <span aria-hidden="true">↗</span></Link>
-              <a className="text-action" href={WINDOWS_DOWNLOAD_URL}>下载 Windows 版</a>
+              <a className="text-action" href={DOWNLOAD_URL}>下载</a>
             </div>
           </div>
           <div className="landing-hero__showcase">

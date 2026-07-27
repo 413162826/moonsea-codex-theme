@@ -1,8 +1,4 @@
 const API_ROOT = "http://127.0.0.1:17321";
-const DOWNLOADS = Object.freeze({
-  windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64-Setup.exe",
-  macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
-});
 const state = {
   connected: false,
   runtimeCapable: false,
@@ -76,21 +72,8 @@ function updateCardActions() {
 }
 
 function configureDownload() {
-  const platform = [navigator.userAgentData?.platform, navigator.platform, navigator.userAgent]
-    .filter(Boolean)
-    .join(" ");
-  const macos = /Mac/i.test(platform) && !/iPhone|iPad|iPod/i.test(platform);
-  const windows = /Win/i.test(platform);
-  if (macos) {
-    elements.downloadLink.href = DOWNLOADS.macos;
-    elements.downloadLabel.textContent = "下载 macOS 版";
-    return;
-  }
-  if (windows) return;
-  elements.downloadLink.removeAttribute("href");
-  elements.downloadLink.removeAttribute("download");
-  elements.downloadLabel.textContent = "支持 Windows / macOS";
-  elements.downloadLink.setAttribute("aria-disabled", "true");
+  elements.downloadLink.href = "https://moonsea-codex-theme.suguowen5.chatgpt.site/download";
+  elements.downloadLabel.textContent = "下载";
 }
 
 async function request(path, options) {

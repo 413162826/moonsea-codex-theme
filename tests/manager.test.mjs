@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import test from "node:test";
@@ -269,18 +271,24 @@ test("普通与 Pro 壁纸共用完整月海助手和交互特效", () => {
   assert.match(manager, /updater-launch\.log/);
   assert.match(manager, /startDownload\(\{ autoInstall: true \}\)/);
   assert.match(managerCore, /const command = bridge\.takeCommand\(\);[\s\S]*if \(!command\) bridge\.setStatus/);
-  assert.match(runtime, /data-setting="motionMode"/);
-  assert.match(runtime, /data-setting="clickRipple"/);
-  assert.match(runtime, /data-setting="motionOverrideReduced"/);
-  assert.match(runtime, /data-setting="telemetryConsent"/);
-  assert.match(runtime, /默认关闭。开启后仅上报随机安装标识/);
-  assert.match(runtime, /getTelemetryConsent: \(\) => settings\.telemetryConsent === true/);
-  assert.match(manager, /telemetryService\.sync\(exchange\?\.telemetryConsent === true\)/);
-  assert.match(managerCore, /telemetryConsent: bridge\.getTelemetryConsent\?\.\(\) === true/);
+  assert.match(runtime, /data-setting="effectsEnabled"/);
+  assert.match(runtime, /LEGACY_MOTION_MODES/);
+  assert.match(runtime, /saved\.motionMode[\s\S]*saved\.clickRipple/);
+  assert.doesNotMatch(runtime, /data-setting="motionMode"/);
+  assert.doesNotMatch(runtime, /data-setting="clickRipple"/);
+  assert.doesNotMatch(runtime, /data-setting="motionOverrideReduced"/);
+  assert.doesNotMatch(runtime, /data-setting="telemetryConsent"/);
+  assert.doesNotMatch(runtime, /匿名使用统计|帮助改进月海|getTelemetryConsent/);
+  assert.match(manager, /setInterval\(\(\) => \{[\s\S]*telemetryService\.sync\(\)[\s\S]*TELEMETRY_INTERVAL_MS/);
+  assert.match(manager, /void telemetryService\.sync\(\)\.catch/);
+  assert.match(manager, /readArgument\("--app-pid"\)/);
+  assert.match(manager, /process\.kill\(appPid, 0\)/);
+  assert.match(manager, /clearInterval\(appLifecycleTimer\)/);
+  assert.doesNotMatch(managerCore, /telemetryConsent|getTelemetryConsent/);
   assert.match(managerCore, /https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site/);
-  assert.match(assistantCss, /\.moonsea-telemetry-settings/);
-  assert.match(runtime, /moonsea-motion-override-reduced/);
-  assert.match(runtime, /Windows 已关闭动画/);
+  assert.doesNotMatch(assistantCss, /\.moonsea-telemetry-settings/);
+  assert.doesNotMatch(runtime, /moonsea-motion-override-reduced/);
+  assert.match(runtime, /跟随系统关闭/);
   assert.match(runtime, /moonsea-controls__dock/);
   assert.match(runtime, /createAmbientMotion/);
   assert.match(runtime, /codex-moonsea-motion-layer/);
@@ -295,10 +303,74 @@ test("普通与 Pro 壁纸共用完整月海助手和交互特效", () => {
   assert.match(assistantCss, /#codex-moonsea-controls\s*\{[\s\S]*display:\s*contents/);
   assert.match(assistantCss, /\.moonsea-controls__dock/);
   assert.match(assistantCss, /\.moonsea-motion-settings/);
-  assert.match(assistantCss, /\.moonsea-reduced-motion-row\[hidden\]/);
-  assert.match(assistantCss, /\.moonsea-select-row select:focus-visible/);
+  assert.doesNotMatch(assistantCss, /\.moonsea-reduced-motion-row/);
+  assert.match(assistantCss, /\.moonsea-toggle-row input:focus-visible \+ \.moonsea-toggle-switch/);
   assert.match(assistantCss, /\.moonsea-controls__toggle\.is-update-available::after/);
   assert.match(assistantCss, /prefers-reduced-motion/);
+});
+
+test("月海助手与 Codex 进程生命周期绑定", () => {
+  const windowsLauncher = fs.readFileSync(
+    path.join(projectRoot, "scripts", "windows", "Start-Moonsea-Windows.ps1"),
+    "ascii",
+  );
+  const macosLauncher = fs.readFileSync(
+    path.join(projectRoot, "scripts", "macos", "Start-Moonsea-macOS.command"),
+    "utf8",
+  );
+  assert.match(windowsLauncher, /Start-Process[\s\S]*-PassThru/);
+  assert.match(windowsLauncher, /--app-pid \$appProcessId/);
+  assert.match(macosLauncher, /APP_PID=/);
+  assert.match(macosLauncher, /--app-pid "\$APP_PID"/);
+});
+
+test("Codex 进程退出后助手自行停止", async () => {
+  const installRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moonsea-manager-lifecycle-"));
+  const profilePath = path.join(installRoot, "BrowserProfile");
+  fs.mkdirSync(profilePath, { recursive: true });
+  fs.writeFileSync(path.join(installRoot, "telemetry.json"), `${JSON.stringify({
+    installId: "65f5e77a-9504-4f6c-8a78-f3a8561c5c1f",
+    lastReportedAt: Date.now(),
+  })}\n`, "utf8");
+
+  const app = spawn(process.execPath, ["-e", "setTimeout(() => {}, 350)"], {
+    stdio: "ignore",
+  });
+  const manager = spawn(process.execPath, [
+    path.join(projectRoot, "src", "manager.mjs"),
+    "--install-root", installRoot,
+    "--profile-path", profilePath,
+    "--app-pid", String(app.pid),
+  ], {
+    env: {
+      ...process.env,
+      MOONSEA_MANAGER_PORT: "28321",
+      MOONSEA_PROJECT_ROOT: projectRoot,
+    },
+    stdio: "ignore",
+  });
+
+  try {
+    const exitCode = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Codex 退出后助手没有在时限内停止"));
+      }, 5_000);
+      manager.once("exit", (code) => {
+        clearTimeout(timeout);
+        resolve(code);
+      });
+      manager.once("error", (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+    assert.equal(exitCode, 0);
+    assert.equal(fs.existsSync(path.join(installRoot, "manager.pid")), false);
+  } finally {
+    if (app.exitCode === null) app.kill();
+    if (manager.exitCode === null) manager.kill();
+    fs.rmSync(installRoot, { recursive: true, force: true });
+  }
 });
 
 test("壁纸目录同时生成官网预览与安装资源", () => {
@@ -323,9 +395,11 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
 test("官网按系统直下安装包且入口使用通用命名", () => {
   const website = fs.readFileSync(path.join(projectRoot, "site", "app.js"), "utf8");
   const page = fs.readFileSync(path.join(projectRoot, "site", "index.html"), "utf8");
-  assert.match(website, /Moonsea-Codex-Windows-x64-Setup\.exe/);
-  assert.match(website, /Moonsea-Codex-macOS\.zip/);
-  assert.doesNotMatch(website, /releases\/latest["']/);
+  assert.match(website, /suguowen5\.chatgpt\.site\/download/);
+  assert.match(website, /downloadLabel\.textContent = "下载"/);
+  assert.doesNotMatch(website, /Moonsea-Codex-Windows|Moonsea-Codex-macOS/);
+  assert.match(page, />下载<\/span>/);
+  assert.match(page, /moonsea-codex-theme\/wiki/);
   assert.match(website, /status\.runtimeCapable === true/);
   assert.match(website, /status\.catalogVersion >= 3/);
   assert.match(website, /\.\/catalog\.json/);

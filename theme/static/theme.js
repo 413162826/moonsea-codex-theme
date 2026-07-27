@@ -64,13 +64,10 @@
     sharpness: 100,
     readingMode: true,
     wallpaperSource: "theme",
-    motionMode: "soft",
-    clickRipple: true,
-    motionOverrideReduced: false,
-    telemetryConsent: false,
+    effectsEnabled: true,
   };
   const WALLPAPER_SOURCES = new Set(["theme", "custom"]);
-  const MOTION_MODES = new Set(["off", "soft", "lively"]);
+  const LEGACY_MOTION_MODES = new Set(["off", "soft", "lively"]);
   const MOTION_BLOCK_SELECTOR = [
     "#codex-moonsea-controls",
     "input",
@@ -96,18 +93,19 @@
       shiftY: 2,
       follow: 0.12,
     }),
-    lively: Object.freeze({
-      radius: 360,
-      lightAlpha: 0.07,
-      shiftX: 6,
-      shiftY: 4,
-      follow: 0.16,
-    }),
   });
 
   const readSettings = () => {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      const hasLegacyEffects = (
+        LEGACY_MOTION_MODES.has(saved.motionMode)
+        || typeof saved.clickRipple === "boolean"
+      );
+      const migratedEffectsEnabled = (
+        (LEGACY_MOTION_MODES.has(saved.motionMode) && saved.motionMode !== "off")
+        || saved.clickRipple === true
+      );
       return {
         transparency: saved.transparency ?? defaults.transparency,
         brightness: saved.brightness ?? defaults.brightness,
@@ -116,18 +114,11 @@
         wallpaperSource: WALLPAPER_SOURCES.has(saved.wallpaperSource)
           ? saved.wallpaperSource
           : defaults.wallpaperSource,
-        motionMode: MOTION_MODES.has(saved.motionMode)
-          ? saved.motionMode
-          : defaults.motionMode,
-        clickRipple: typeof saved.clickRipple === "boolean"
-          ? saved.clickRipple
-          : defaults.clickRipple,
-        motionOverrideReduced: typeof saved.motionOverrideReduced === "boolean"
-          ? saved.motionOverrideReduced
-          : defaults.motionOverrideReduced,
-        telemetryConsent: typeof saved.telemetryConsent === "boolean"
-          ? saved.telemetryConsent
-          : defaults.telemetryConsent,
+        effectsEnabled: typeof saved.effectsEnabled === "boolean"
+          ? saved.effectsEnabled
+          : hasLegacyEffects
+            ? migratedEffectsEnabled
+            : defaults.effectsEnabled,
       };
     } catch {
       return { ...defaults };
@@ -137,20 +128,11 @@
   const settings = readSettings();
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   const motionDescription = () => {
-    if (reducedMotionQuery.matches && !settings.motionOverrideReduced) {
-      return "Windows 已关闭动画，月海已暂停特效；可开启“仍然播放”。";
+    if (reducedMotionQuery.matches) {
+      return "跟随系统关闭";
     }
-    if (reducedMotionQuery.matches && settings.motionOverrideReduced) {
-      return "已按你的选择仅在月海播放，不会更改 Windows 设置。";
-    }
-    if (settings.motionMode === "lively") {
-      return "包含光场、壁纸视差和受限区域外的拖动潮痕。";
-    }
-    if (settings.motionMode === "soft") {
-      return "使用低强度光场和轻微壁纸视差。";
-    }
-    if (settings.clickRipple) {
-      return "背景保持静止，仅保留点击月晕。";
+    if (settings.effectsEnabled) {
+      return "光场、轻微壁纸视差和点击月晕已开启。";
     }
     return "所有交互特效均已关闭。";
   };
@@ -203,9 +185,7 @@
     };
     let animationFrame = 0;
     let pixelRatio = 1;
-    let currentMode = settings.motionMode;
-    let clickRippleEnabled = settings.clickRipple;
-    let overrideReducedMotion = settings.motionOverrideReduced;
+    let effectsEnabled = settings.effectsEnabled;
     let hidden = document.hidden;
     let destroyed = false;
     let wallpaperX = 0;
@@ -221,10 +201,10 @@
 
     const effectiveMode = () =>
       !hidden
-        && (!reducedMotionQuery.matches || overrideReducedMotion)
+        && !reducedMotionQuery.matches
         && active
-        && MOTION_MODES.has(currentMode)
-        ? currentMode
+        && effectsEnabled
+        ? "soft"
         : "off";
 
     const accentColor = () => cachedAccent;
@@ -376,15 +356,7 @@
     const updateModeClasses = () => {
       const mode = effectiveMode();
       root.classList.toggle("moonsea-motion-soft", mode === "soft");
-      root.classList.toggle("moonsea-motion-lively", mode === "lively");
-      root.classList.toggle(
-        "moonsea-motion-override-reduced",
-        reducedMotionQuery.matches && overrideReducedMotion,
-      );
-      layer.hidden = (
-        reducedMotionQuery.matches
-        && !overrideReducedMotion
-      ) || (!clickRippleEnabled && mode === "off");
+      layer.hidden = reducedMotionQuery.matches || !effectsEnabled;
       if (mode === "off") resetWallpaperOffset();
       if (layer.hidden) {
         ripples.length = 0;
@@ -457,10 +429,10 @@
     const handleClick = (event) => {
       if (
         event.detail <= 0
-        || (reducedMotionQuery.matches && !overrideReducedMotion)
+        || reducedMotionQuery.matches
         || hidden
         || !active
-        || !clickRippleEnabled
+        || !effectsEnabled
       ) {
         return;
       }
@@ -533,18 +505,12 @@
         animationFrame = 0;
         root.classList.remove(
           "moonsea-motion-soft",
-          "moonsea-motion-lively",
-          "moonsea-motion-override-reduced",
         );
         resetWallpaperOffset();
         layer.remove();
       },
       sync: (nextSettings) => {
-        currentMode = MOTION_MODES.has(nextSettings.motionMode)
-          ? nextSettings.motionMode
-          : defaults.motionMode;
-        clickRippleEnabled = Boolean(nextSettings.clickRipple);
-        overrideReducedMotion = Boolean(nextSettings.motionOverrideReduced);
+        effectsEnabled = Boolean(nextSettings.effectsEnabled);
         cachedAccent = getComputedStyle(root)
           .getPropertyValue("--moonsea-accent")
           .trim() || "oklch(82% 0.12 155)";
@@ -845,16 +811,6 @@
           <div class="moonsea-assistant__progress" data-update-progress hidden role="progressbar" aria-label="更新下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
           <button class="moonsea-assistant__update-action" data-update-action type="button" hidden></button>
         </div>
-        <div class="moonsea-telemetry-settings">
-          <div class="moonsea-telemetry-settings__title">匿名使用统计</div>
-          <label class="moonsea-toggle-row">
-            <span>帮助改进月海</span>
-            <input data-setting="telemetryConsent" type="checkbox">
-            <span class="moonsea-toggle-switch" aria-hidden="true"></span>
-            <output data-output="telemetryConsent"></output>
-          </label>
-          <p>默认关闭。开启后仅上报随机安装标识、版本、系统与最近活跃时间，不读取 Codex 账号和工作内容。</p>
-        </div>
         <p class="moonsea-assistant__standard-note" data-inactive-note>当前未启用月海壁纸。应用任意渐变或 Pro 壁纸后，可在这里继续调整。</p>
         <div data-wallpaper-settings hidden>
           <div class="moonsea-assistant__pro-title">壁纸外观</div>
@@ -881,25 +837,11 @@
           </label>
           <div class="moonsea-motion-settings">
             <div class="moonsea-motion-settings__title">交互特效</div>
-            <label class="moonsea-select-row">
-              <span>背景响应</span>
-              <select data-setting="motionMode">
-                <option value="off">关闭</option>
-                <option value="soft">轻柔</option>
-                <option value="lively">灵动</option>
-              </select>
-            </label>
             <label class="moonsea-toggle-row">
-              <span>点击月晕</span>
-              <input data-setting="clickRipple" type="checkbox">
+              <span>开启特效</span>
+              <input data-setting="effectsEnabled" type="checkbox">
               <span class="moonsea-toggle-switch" aria-hidden="true"></span>
-              <output data-output="clickRipple"></output>
-            </label>
-            <label class="moonsea-toggle-row moonsea-reduced-motion-row" data-reduced-motion-control hidden>
-              <span>仍然播放</span>
-              <input data-setting="motionOverrideReduced" type="checkbox">
-              <span class="moonsea-toggle-switch" aria-hidden="true"></span>
-              <output data-output="motionOverrideReduced"></output>
+              <output data-output="effectsEnabled"></output>
             </label>
             <p class="moonsea-motion-settings__note" data-motion-note aria-live="polite"></p>
           </div>
@@ -931,20 +873,8 @@
     const readingModeInput = controls.querySelector(
       '[data-setting="readingMode"]',
     );
-    const motionModeInput = controls.querySelector(
-      '[data-setting="motionMode"]',
-    );
-    const clickRippleInput = controls.querySelector(
-      '[data-setting="clickRipple"]',
-    );
-    const motionOverrideReducedInput = controls.querySelector(
-      '[data-setting="motionOverrideReduced"]',
-    );
-    const telemetryConsentInput = controls.querySelector(
-      '[data-setting="telemetryConsent"]',
-    );
-    const reducedMotionControl = controls.querySelector(
-      "[data-reduced-motion-control]",
+    const effectsEnabledInput = controls.querySelector(
+      '[data-setting="effectsEnabled"]',
     );
     const transparencyOutput = controls.querySelector(
       '[data-output="transparency"]',
@@ -954,14 +884,8 @@
     const readingModeOutput = controls.querySelector(
       '[data-output="readingMode"]',
     );
-    const clickRippleOutput = controls.querySelector(
-      '[data-output="clickRipple"]',
-    );
-    const motionOverrideReducedOutput = controls.querySelector(
-      '[data-output="motionOverrideReduced"]',
-    );
-    const telemetryConsentOutput = controls.querySelector(
-      '[data-output="telemetryConsent"]',
+    const effectsEnabledOutput = controls.querySelector(
+      '[data-output="effectsEnabled"]',
     );
     const motionNote = controls.querySelector("[data-motion-note]");
     const wallpaperInput = controls.querySelector("[data-wallpaper-input]");
@@ -1045,20 +969,15 @@
       brightnessInput.value = String(settings.brightness);
       sharpnessInput.value = String(settings.sharpness);
       readingModeInput.checked = settings.readingMode;
-      motionModeInput.value = settings.motionMode;
-      clickRippleInput.checked = settings.clickRipple;
-      motionOverrideReducedInput.checked = settings.motionOverrideReduced;
-      telemetryConsentInput.checked = settings.telemetryConsent;
-      reducedMotionControl.hidden = !reducedMotionQuery.matches;
+      effectsEnabledInput.checked = settings.effectsEnabled && !reducedMotionQuery.matches;
+      effectsEnabledInput.disabled = reducedMotionQuery.matches;
       transparencyOutput.value = `${settings.transparency}%`;
       brightnessOutput.value = `${settings.brightness}%`;
       sharpnessOutput.value = `${settings.sharpness}%`;
       readingModeOutput.value = settings.readingMode ? "开启" : "关闭";
-      clickRippleOutput.value = settings.clickRipple ? "开启" : "关闭";
-      motionOverrideReducedOutput.value = settings.motionOverrideReduced
-        ? "开启"
-        : "关闭";
-      telemetryConsentOutput.value = settings.telemetryConsent ? "已授权" : "关闭";
+      effectsEnabledOutput.value = reducedMotionQuery.matches
+        ? "跟随系统关闭"
+        : settings.effectsEnabled ? "开启" : "关闭";
       motionNote.textContent = motionDescription();
     };
 
@@ -1114,28 +1033,8 @@
       applySettings();
     });
 
-    motionModeInput.addEventListener("change", () => {
-      settings.motionMode = MOTION_MODES.has(motionModeInput.value)
-        ? motionModeInput.value
-        : defaults.motionMode;
-      applySettings();
-      syncControls();
-    });
-
-    clickRippleInput.addEventListener("change", () => {
-      settings.clickRipple = clickRippleInput.checked;
-      applySettings();
-      syncControls();
-    });
-
-    motionOverrideReducedInput.addEventListener("change", () => {
-      settings.motionOverrideReduced = motionOverrideReducedInput.checked;
-      applySettings();
-      syncControls();
-    });
-
-    telemetryConsentInput.addEventListener("change", () => {
-      settings.telemetryConsent = telemetryConsentInput.checked;
+    effectsEnabledInput.addEventListener("change", () => {
+      settings.effectsEnabled = effectsEnabledInput.checked;
       applySettings();
       syncControls();
     });
@@ -1211,7 +1110,6 @@
           pendingUpdateCommand = null;
           return command;
         },
-        getTelemetryConsent: () => settings.telemetryConsent === true,
       }),
     });
   };

@@ -36,19 +36,26 @@ APPLESCRIPT
   done
 fi
 
-/bin/rm -f -- "$PROFILE_PATH/DevToolsActivePort"
-if [[ -z "${MOONSEA_SKIP_APP_LAUNCH:-}" ]]; then
+APP_PID="$(print -r -- "$RUNNING_MOONSEA" | /usr/bin/grep -F "$ACTIVE_BUILD" | /usr/bin/awk 'NR == 1 { print $1 }')"
+if [[ -z "$APP_PID" && -z "${MOONSEA_SKIP_APP_LAUNCH:-}" ]]; then
+  /bin/rm -f -- "$PROFILE_PATH/DevToolsActivePort"
   /usr/bin/open -na "$ACTIVE_BUILD" --args \
     "--user-data-dir=$PROFILE_PATH" \
     "--remote-debugging-address=127.0.0.1" \
     "--remote-debugging-port=0"
 fi
+for ATTEMPT in {1..50}; do
+  [[ -z "$APP_PID" ]] || break
+  APP_PID="$(/bin/ps ax -o pid=,command= | /usr/bin/grep -F "$ACTIVE_BUILD" | /usr/bin/grep -v grep | /usr/bin/awk 'NR == 1 { print $1 }')"
+  /bin/sleep 0.1
+done
+[[ "$APP_PID" =~ ^[0-9]+$ ]] || { echo "月海版没有成功启动，助手不会驻留后台。" >&2; exit 1; }
 if [[ "$MANAGER_PATH" == *.mjs ]]; then
   /usr/bin/nohup /usr/bin/env node "$MANAGER_PATH" \
-    --install-root "$INSTALL_ROOT" --profile-path "$PROFILE_PATH" \
+    --install-root "$INSTALL_ROOT" --profile-path "$PROFILE_PATH" --app-pid "$APP_PID" \
     >"$INSTALL_ROOT/manager.log" 2>&1 &
 else
   /usr/bin/nohup "$MANAGER_PATH" \
-    --install-root "$INSTALL_ROOT" --profile-path "$PROFILE_PATH" \
+    --install-root "$INSTALL_ROOT" --profile-path "$PROFILE_PATH" --app-pid "$APP_PID" \
     >"$INSTALL_ROOT/manager.log" 2>&1 &
 fi
