@@ -82,6 +82,7 @@ test("新增普通主题用不同渐变构图忠实呈现实际壁纸", () => {
 
 test("普通与 Pro 壁纸共用交界算法并由各自调色板控制强度", () => {
   const themeCss = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.css"), "utf8");
+  const assistantCss = fs.readFileSync(path.join(projectRoot, "theme", "static", "assistant.css"), "utf8");
   const runtime = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.js"), "utf8");
 
   assert.match(themeCss, /--moonsea-sidebar-top-blend-height:\s*12px/);
@@ -96,14 +97,26 @@ test("普通与 Pro 壁纸共用交界算法并由各自调色板控制强度", 
   assert.match(themeCss, /body::before[\s\S]*--moonsea-wallpaper-vignette/);
   assert.match(themeCss, /body::before[\s\S]*--moonsea-wallpaper-protection/);
   assert.match(themeCss, /body::before[\s\S]*--moonsea-wallpaper-floor/);
-  assert.match(themeCss, /#codex-moonsea-motion-layer[\s\S]*pointer-events:\s*none/);
-  assert.match(themeCss, /#codex-moonsea-controls\s*\{[\s\S]*display:\s*contents/);
-  assert.match(themeCss, /\.moonsea-controls__dock[\s\S]*z-index:\s*2147483000/);
-  assert.match(themeCss, /\.moonsea-motion-soft[\s\S]*translate3d/);
-  assert.match(themeCss, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*#codex-moonsea-motion-layer[\s\S]*transform:\s*none/);
+  assert.doesNotMatch(themeCss, /#codex-moonsea-controls|\.moonsea-controls__dock/);
+  assert.match(assistantCss, /#codex-moonsea-controls\s*\{[\s\S]*display:\s*contents/);
+  assert.match(assistantCss, /\.moonsea-controls__dock[\s\S]*z-index:\s*2147483000/);
+  assert.match(
+    themeCss,
+    /\[data-local-conversation-user-anchor="true"\]\s+form\s*\{[\s\S]*background:\s*var\(--moonsea-control\)\s*!important/,
+  );
+  assert.match(
+    themeCss,
+    /form button\[type="submit"\]\s*\{[\s\S]*background:\s*var\(--moonsea-accent\)\s*!important/,
+  );
+  assert.doesNotMatch(
+    themeCss,
+    /#root\s+:where\([\s\S]*button,[\s\S]*\)\s*\{[\s\S]*color:\s*var\(--moonsea-ink\)\s*!important/,
+  );
+  assert.doesNotMatch(themeCss, /codex-moonsea-motion-layer|moonsea-motion-soft/);
   assert.match(runtime, /url\("app:\/\/-\/moonsea\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
   assert.match(runtime, /runtime\.backgroundGradient/);
   assert.match(runtime, /surfaceEdgeTint:\s*"--moonsea-surface-edge-tint"/);
   assert.match(runtime, /elevationEdgeTint:\s*"--moonsea-elevation-edge-tint"/);
+  assert.doesNotMatch(runtime, /effectsEnabled|createAmbientMotion|MOTION_BLOCK_SELECTOR/);
   assert.doesNotMatch(runtime, /--moonsea-(?:sidebar-top|main-top|surface-blend-width)/);
 });

@@ -235,7 +235,7 @@ test("统一壁纸运行时可以启用并完整退出", () => {
   assert.match(runtime, /runtime\.backgroundGradient/);
 });
 
-test("普通与 Pro 壁纸共用完整月海助手和交互特效", () => {
+test("普通与 Pro 壁纸共用精简后的完整月海助手", () => {
   const runtime = fs.readFileSync(
     path.join(projectRoot, "theme", "static", "theme.js"),
     "utf8",
@@ -271,9 +271,9 @@ test("普通与 Pro 壁纸共用完整月海助手和交互特效", () => {
   assert.match(manager, /updater-launch\.log/);
   assert.match(manager, /startDownload\(\{ autoInstall: true \}\)/);
   assert.match(managerCore, /const command = bridge\.takeCommand\(\);[\s\S]*if \(!command\) bridge\.setStatus/);
-  assert.match(runtime, /data-setting="effectsEnabled"/);
-  assert.match(runtime, /LEGACY_MOTION_MODES/);
-  assert.match(runtime, /saved\.motionMode[\s\S]*saved\.clickRipple/);
+  assert.doesNotMatch(runtime, /effectsEnabled/);
+  assert.doesNotMatch(runtime, /LEGACY_MOTION_MODES/);
+  assert.doesNotMatch(runtime, /saved\.motionMode|saved\.clickRipple/);
   assert.doesNotMatch(runtime, /data-setting="motionMode"/);
   assert.doesNotMatch(runtime, /data-setting="clickRipple"/);
   assert.doesNotMatch(runtime, /data-setting="motionOverrideReduced"/);
@@ -287,23 +287,13 @@ test("普通与 Pro 壁纸共用完整月海助手和交互特效", () => {
   assert.doesNotMatch(managerCore, /telemetryConsent|getTelemetryConsent/);
   assert.match(managerCore, /https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site/);
   assert.doesNotMatch(assistantCss, /\.moonsea-telemetry-settings/);
-  assert.doesNotMatch(runtime, /moonsea-motion-override-reduced/);
-  assert.match(runtime, /跟随系统关闭/);
+  assert.doesNotMatch(runtime, /moonsea-motion|交互特效|点击月晕|跟随系统关闭/);
   assert.match(runtime, /moonsea-controls__dock/);
-  assert.match(runtime, /createAmbientMotion/);
-  assert.match(runtime, /codex-moonsea-motion-layer/);
-  assert.match(runtime, /requestAnimationFrame/);
-  assert.match(runtime, /Math\.min\(window\.devicePixelRatio \|\| 1, 1\.5\)/);
-  assert.match(runtime, /prefers-reduced-motion: reduce/);
-  assert.match(runtime, /MOTION_BLOCK_SELECTOR/);
   assert.match(runtime, /runtimeGeneration \+= 1/);
   assert.match(runtime, /generation !== runtimeGeneration/);
-  assert.match(runtime, /motionController\?\.destroy\(\)/);
-  assert.match(runtime, /events\.abort\(\)/);
   assert.match(assistantCss, /#codex-moonsea-controls\s*\{[\s\S]*display:\s*contents/);
   assert.match(assistantCss, /\.moonsea-controls__dock/);
-  assert.match(assistantCss, /\.moonsea-motion-settings/);
-  assert.doesNotMatch(assistantCss, /\.moonsea-reduced-motion-row/);
+  assert.doesNotMatch(assistantCss, /\.moonsea-motion-settings|\.moonsea-reduced-motion-row/);
   assert.match(assistantCss, /\.moonsea-toggle-row input:focus-visible \+ \.moonsea-toggle-switch/);
   assert.match(assistantCss, /\.moonsea-controls__toggle\.is-update-available::after/);
   assert.match(assistantCss, /prefers-reduced-motion/);

@@ -51,6 +51,11 @@ html.codex-moonsea {
   --color-token-main-surface-primary: var(--moonsea-panel) !important;
   --color-token-side-bar-background: var(--moonsea-sidebar) !important;
   --color-token-bg-primary: var(--moonsea-panel) !important;
+  --color-token-input-background: var(--moonsea-control) !important;
+  --color-token-input-foreground: var(--moonsea-ink) !important;
+  --color-token-input-placeholder-foreground: var(--moonsea-faint) !important;
+  --color-token-dropdown-background: var(--moonsea-panel-opaque) !important;
+  --color-token-dropdown-foreground: var(--moonsea-ink) !important;
   --color-background-panel: var(--moonsea-panel-strong) !important;
   --color-token-bg-fog: var(--moonsea-panel-strong) !important;
   --color-background-elevated-primary-opaque: var(--moonsea-panel-opaque) !important;
@@ -149,58 +154,11 @@ html.codex-moonsea body::before {
     blur(var(--moonsea-wallpaper-blur));
 }
 
-#codex-moonsea-motion-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  width: 100vw;
-  height: 100vh;
-  contain: strict;
-  pointer-events: none;
-}
-
-.codex-moonsea-motion-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-html.codex-moonsea.moonsea-motion-soft body::before {
-  inset: calc((var(--moonsea-wallpaper-blur) * -2) - 8px);
-  transform: translate3d(
-    var(--moonsea-motion-x, 0px),
-    var(--moonsea-motion-y, 0px),
-    0
-  ) scale(1.008);
-  transform-origin: center;
-  will-change: transform;
-}
-
 html.codex-moonsea #root {
   position: relative;
   z-index: 1;
   color: var(--moonsea-ink) !important;
   text-shadow: var(--moonsea-text-shadow);
-}
-
-html.codex-moonsea #root :where(
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  p,
-  span,
-  a,
-  label,
-  button,
-  input,
-  textarea,
-  [contenteditable="true"]
-):not([class*="text-red"]):not([class*="text-green"]):not([class*="text-orange"]):not([class*="text-yellow"]) {
-  color: var(--moonsea-ink) !important;
 }
 
 html.codex-moonsea #root :where(
@@ -485,279 +443,50 @@ html.codex-moonsea :where(
   --color-token-main-surface-primary: var(--moonsea-control) !important;
 }
 
+/*
+ * 用户消息的就地编辑器没有 composer 类，而是挂在稳定的用户消息锚点下。
+ * 它原本使用 foreground 的浅色透明层，深色壁纸上会像一块未换肤的白卡。
+ */
+html.codex-moonsea [data-local-conversation-user-anchor="true"] form {
+  color: var(--moonsea-ink) !important;
+  background: var(--moonsea-control) !important;
+  border: 1px solid var(--moonsea-border) !important;
+  box-shadow:
+    inset 0 1px var(--moonsea-highlight),
+    var(--moonsea-shadow) !important;
+  text-shadow: none;
+  backdrop-filter: blur(18px) saturate(0.92);
+}
+
+html.codex-moonsea [data-local-conversation-user-anchor="true"]
+  form [contenteditable="true"] {
+  color: var(--moonsea-ink) !important;
+  caret-color: var(--moonsea-accent);
+}
+
+html.codex-moonsea [data-local-conversation-user-anchor="true"]
+  form button:not([type="submit"]) {
+  color: var(--moonsea-ink) !important;
+  background: var(--moonsea-accent-soft) !important;
+  border-color: var(--moonsea-border) !important;
+}
+
+html.codex-moonsea [data-local-conversation-user-anchor="true"]
+  form button[type="submit"] {
+  color: var(--moonsea-panel-opaque) !important;
+  background: var(--moonsea-accent) !important;
+  border-color: transparent !important;
+}
+
+html.codex-moonsea [data-local-conversation-user-anchor="true"]
+  form button:disabled {
+  color: var(--moonsea-faint) !important;
+  background: var(--moonsea-accent-soft) !important;
+  border-color: var(--moonsea-border-light) !important;
+  opacity: 0.68;
+}
+
 html.codex-moonsea ::selection {
   color: var(--moonsea-ink);
   background: var(--moonsea-selection);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #codex-moonsea-motion-layer {
-    display: none !important;
-  }
-
-  html.codex-moonsea.moonsea-motion-soft body::before {
-    inset: calc(var(--moonsea-wallpaper-blur) * -2);
-    transform: none;
-    will-change: auto;
-  }
-}
-
-#codex-moonsea-controls {
-  display: contents;
-  color: var(--moonsea-ink);
-  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
-  text-shadow: none;
-}
-
-.moonsea-controls__dock {
-  position: fixed;
-  right: 18px;
-  bottom: 74px;
-  z-index: 2147483000;
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-}
-
-#codex-moonsea-controls button,
-#codex-moonsea-controls input,
-#codex-moonsea-controls select {
-  font: inherit;
-}
-
-.moonsea-controls__toggle {
-  min-width: 38px;
-  height: 38px;
-  padding: 0 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid var(--moonsea-border);
-  border-radius: 999px;
-  color: var(--moonsea-ink);
-  background: var(--moonsea-control);
-  box-shadow: var(--moonsea-shadow);
-  backdrop-filter: blur(18px);
-  cursor: pointer;
-  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.moonsea-controls__toggle > span:first-child {
-  font-size: 15px;
-  line-height: 1;
-}
-
-.moonsea-controls__toggle:hover {
-  transform: translateY(-2px);
-}
-
-.moonsea-controls__panel {
-  width: 254px;
-  padding: 15px 16px;
-  border: 1px solid var(--moonsea-border);
-  border-radius: 15px;
-  background: var(--moonsea-panel-strong);
-  box-shadow: var(--moonsea-shadow-deep);
-  backdrop-filter: blur(24px);
-}
-
-.moonsea-controls__panel[hidden] {
-  display: none;
-}
-
-.moonsea-controls__title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.moonsea-controls__title span {
-  color: var(--moonsea-muted) !important;
-  font-size: 11px;
-  font-weight: 400;
-}
-
-.moonsea-control-row {
-  display: grid;
-  grid-template-columns: 70px 1fr 36px;
-  align-items: center;
-  gap: 9px;
-  margin-top: 11px;
-  font-size: 12px;
-}
-
-.moonsea-control-row output {
-  color: var(--moonsea-muted);
-  text-align: right;
-  font-size: 11px;
-}
-
-.moonsea-toggle-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 70px 38px 1fr;
-  align-items: center;
-  gap: 9px;
-  margin-top: 13px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.moonsea-toggle-row input {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.moonsea-toggle-switch {
-  position: relative;
-  width: 34px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--moonsea-toggle-track);
-  transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.moonsea-toggle-switch::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--moonsea-ink);
-  box-shadow: var(--moonsea-shadow);
-  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.moonsea-toggle-row input:checked + .moonsea-toggle-switch {
-  background: var(--moonsea-accent);
-}
-
-.moonsea-toggle-row input:checked + .moonsea-toggle-switch::after {
-  transform: translateX(16px);
-}
-
-.moonsea-toggle-row output {
-  color: var(--moonsea-muted);
-  text-align: right;
-  font-size: 11px;
-}
-
-.moonsea-control-row input[type="range"] {
-  width: 100%;
-  height: 4px;
-  margin: 0;
-  accent-color: var(--moonsea-accent);
-  cursor: pointer;
-}
-
-.moonsea-wallpaper-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-  margin-top: 14px;
-  padding-top: 13px;
-  border-top: 1px solid var(--moonsea-border);
-}
-
-.moonsea-wallpaper-row input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.moonsea-wallpaper-select {
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--moonsea-border);
-  border-radius: 8px;
-  color: var(--moonsea-ink);
-  background: var(--moonsea-accent-soft);
-  cursor: pointer;
-  font-size: 11px;
-  transition:
-    background-color 140ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.moonsea-wallpaper-select:hover {
-  background: var(--moonsea-accent-hover);
-}
-
-.moonsea-wallpaper-select:active {
-  transform: translateY(1px);
-}
-
-.moonsea-wallpaper-select:focus-visible,
-.moonsea-controls__reset:focus-visible,
-.moonsea-controls__toggle:focus-visible {
-  outline: 2px solid var(--moonsea-accent);
-  outline-offset: 2px;
-}
-
-.moonsea-wallpaper-select:disabled {
-  cursor: wait;
-  opacity: 0.56;
-}
-
-.moonsea-wallpaper-row output {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--moonsea-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-}
-
-.moonsea-wallpaper-row output.is-error {
-  color: oklch(78% 0.13 25);
-}
-
-.moonsea-controls__actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
-
-.moonsea-controls__reset {
-  border: 0;
-  padding: 5px 7px;
-  color: var(--moonsea-muted);
-  background: transparent;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-.moonsea-controls__reset:hover {
-  color: var(--moonsea-ink);
-}
-
-@media (max-width: 720px) {
-  .moonsea-controls__dock {
-    right: 12px;
-    bottom: 64px;
-  }
-
-  .moonsea-controls__toggle {
-    width: 38px;
-    padding: 0;
-  }
-
-  .moonsea-controls__toggle > span:last-child {
-    display: none;
-  }
 }

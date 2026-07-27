@@ -117,7 +117,7 @@ jobs:
           jq -n \
             --arg version "$version" \
             --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg notes "收敛交互特效开关，增加自动下载、运行活跃心跳、网站流量与员工数据看板" \
+            --arg notes "修复深色壁纸下消息编辑器、输入框与下拉菜单的主题适配，并移除已废弃的交互特效" \
             --arg windowsUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-Windows-x64.zip" \
             --arg windowsSha "$windows_sha" \
             --argjson windowsSize "$windows_size" \
