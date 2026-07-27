@@ -321,6 +321,7 @@ test("月海助手与 Codex 进程生命周期绑定", () => {
   assert.match(windowsLauncher, /Start-Process[\s\S]*-PassThru/);
   assert.match(windowsLauncher, /--app-pid \$appProcessId/);
   assert.match(macosLauncher, /APP_PID=/);
+  assert.match(macosLauncher, /MOONSEA_APP_PID/);
   assert.match(macosLauncher, /--app-pid "\$APP_PID"/);
 });
 
