@@ -36,6 +36,9 @@ jobs:
         run: zsh ./tests/macos-installer-smoke.sh
       - name: 验证 macOS 应用内更新
         if: runner.os == 'macOS'
+        env:
+          MOONSEA_BUILDER_PATH: ${{ github.workspace }}/tools/moonsea-builder.mjs
+          MOONSEA_MANAGER_PATH: ${{ github.workspace }}/tools/moonsea-manager.mjs
         run: zsh ./tests/macos-updater-smoke.sh
       - name: 检查 Windows PowerShell 5.1 兼容性
         if: runner.os == 'Windows'
