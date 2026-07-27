@@ -6,7 +6,8 @@ on:
   pull_request:
 
 jobs:
-  test:
+  core:
+    name: 核心测试 (${{ matrix.os }})
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
@@ -61,3 +62,20 @@ jobs:
           zsh -n Uninstall.command
           zsh -n scripts/macos/*.sh
           zsh -n scripts/macos/*.command
+
+  web:
+    name: 官网 lint、构建与渲染测试
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test

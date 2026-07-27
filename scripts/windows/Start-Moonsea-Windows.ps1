@@ -48,6 +48,25 @@ function Find-LatestOfficialCodex {
     }
 }
 
+function Get-ActiveMainProcesses([string]$ActiveBuild) {
+    return @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
+        $_.ExecutablePath -and
+        $_.ExecutablePath.StartsWith($ActiveBuild + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -and
+        $_.CommandLine -notmatch "\s--type=" -and
+        $_.CommandLine -match "--remote-debugging-port=0"
+    })
+}
+
+function Wait-ForActiveMainProcess([string]$ActiveBuild, [int]$TimeoutMilliseconds = 15000) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    do {
+        $active = @(Get-ActiveMainProcesses $ActiveBuild)
+        if ($active.Count -gt 0) { return $active[0] }
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw "The Moonsea app started, but its main process did not become ready."
+}
+
 $installRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $manifestPath = Join-Path $installRoot "install.json"
 $buildsRoot = [System.IO.Path]::GetFullPath((Join-Path $installRoot "builds")).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
@@ -125,12 +144,7 @@ if ($env:MOONSEA_SKIP_LAUNCH) {
     exit 0
 }
 
-$activeMain = @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
-    $_.ExecutablePath -and
-    $_.ExecutablePath.StartsWith($activeBuild + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -and
-    $_.CommandLine -notmatch "\s--type=" -and
-    $_.CommandLine -match "--remote-debugging-port=0"
-})
+$activeMain = @(Get-ActiveMainProcesses $activeBuild)
 $requestedAppProcessId = 0
 if ($env:MOONSEA_APP_PID -and [int]::TryParse($env:MOONSEA_APP_PID, [ref]$requestedAppProcessId)) {
     if ($null -eq (Get-Process -Id $requestedAppProcessId -ErrorAction SilentlyContinue)) {
@@ -146,12 +160,12 @@ else {
     if (Test-Path -LiteralPath $devToolsPortPath) {
         Remove-Item -LiteralPath $devToolsPortPath -Force
     }
-    $appProcess = Start-Process -FilePath $app -ArgumentList @(
+    Start-Process -FilePath $app -ArgumentList @(
         "--user-data-dir=`"$profilePath`"",
         "--remote-debugging-address=127.0.0.1",
         "--remote-debugging-port=0"
-    ) -PassThru
-    $appProcessId = $appProcess.Id
+    ) | Out-Null
+    $appProcessId = [int](Wait-ForActiveMainProcess $activeBuild).ProcessId
 }
 
 $managerArguments = "--install-root `"$installRoot`" --profile-path `"$profilePath`" --app-pid $appProcessId"

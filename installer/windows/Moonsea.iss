@@ -132,8 +132,6 @@ Type: files; Name: "{app}\manager.pid"
 [Run]
 Filename: "{app}\MoonseaLauncher.exe"; Description: "启动月海 Codex"; \
   Flags: nowait postinstall skipifsilent; Check: IsRegularInstall
-Filename: "{app}\MoonseaLauncher.exe"; Parameters: "--update-restart"; \
-  Flags: nowait skipifdoesntexist; Check: IsUpdateMode
 
 [Code]
 var
@@ -164,6 +162,54 @@ begin
   Result := not IsUpdateMode;
 end;
 
+function ExplicitInstallRoot: String;
+var
+  Index: Integer;
+  Argument: String;
+begin
+  Result := '';
+  for Index := 1 to ParamCount do
+  begin
+    Argument := ParamStr(Index);
+    if CompareText(Copy(Argument, 1, 5), '/DIR=') = 0 then
+    begin
+      Result := Copy(Argument, 6, MaxInt);
+      if (Length(Result) >= 2) and
+        (Result[1] = '"') and
+        (Result[Length(Result)] = '"') then
+      begin
+        Result := Copy(Result, 2, Length(Result) - 2);
+      end;
+      Result := RemoveBackslashUnlessRoot(Result);
+      Exit;
+    end;
+  end;
+end;
+
+function ResolveUpdateInstallRoot: String;
+begin
+  Result := ExplicitInstallRoot;
+  if Result = '' then
+  begin
+    Result := RemoveBackslashUnlessRoot(
+      ExtractFileDir(ExtractFileDir(ExpandConstant('{srcexe}')))
+    );
+  end;
+  if not FileExists(AddBackslash(Result) + 'install.json') or
+    not FileExists(AddBackslash(Result) + 'Start-Moonsea-Windows.ps1') then
+  begin
+    RaiseException(
+      '无法确认当前月海安装位置。请从月海助手重新下载更新，或运行完整安装包。'
+    );
+  end;
+end;
+
+procedure InitializeWizard;
+begin
+  if IsUpdateMode then
+    WizardForm.DirEdit.Text := ResolveUpdateInstallRoot;
+end;
+
 procedure RemoveFailedInstallShortcuts;
 begin
   DeleteFile(ExpandConstant('{group}\月海 Codex.lnk'));
@@ -175,10 +221,19 @@ var
   ResultCode: Integer;
   PowerShellPath: String;
   InstallerPath: String;
+  LauncherPath: String;
   Parameters: String;
 begin
   if CurStep = ssInstall then
   begin
+    if IsUpdateMode and
+      (CompareText(
+        RemoveBackslashUnlessRoot(ExpandConstant('{app}')),
+        ResolveUpdateInstallRoot
+      ) <> 0) then
+    begin
+      RaiseException('更新安装目录与当前月海目录不一致，已经停止更新。');
+    end;
     HadWorkingInstallation :=
       FileExists(ExpandConstant('{app}\install.json')) and
       FileExists(ExpandConstant('{app}\Start-Moonsea-Windows.ps1'));
@@ -210,5 +265,16 @@ begin
       '月海没有安装完成。请查看 ' +
       ExpandConstant('{app}\logs') + ' 中的安装日志后重试。'
     );
+  end;
+
+  if IsUpdateMode then
+  begin
+    LauncherPath := ExpandConstant('{app}\MoonseaLauncher.exe');
+    Log('Restarting the updated Moonsea app: ' + LauncherPath);
+    if not Exec(LauncherPath, '--update-restart', ExpandConstant('{app}'),
+      SW_HIDE, ewNoWait, ResultCode) then
+    begin
+      RaiseException('月海已经更新，但无法自动重新启动。请通过快捷方式重新打开。');
+    end;
   end;
 end;

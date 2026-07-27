@@ -1,14 +1,49 @@
-name: 发布安装包
+name: 发布候选版与正式版
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 要验证或发布的版本号（不含 v）
+        required: true
+        type: string
+      publish:
+        description: 准入通过后发布正式 Release
+        required: true
+        default: false
+        type: boolean
+      release_notes:
+        description: update.json 中展示的版本说明
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: moonsea-release-${{ inputs.version }}
+  cancel-in-progress: false
+
 jobs:
-  windows:
+  web_gate:
+    name: 官网质量门
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  windows_candidate:
+    name: 构建 Windows 候选包
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -21,18 +56,18 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - run: npm ci
-      - name: 校验发布标签与产品版本
+      - name: 校验候选版本
         shell: pwsh
         run: |
           $packageVersion = [string](Get-Content package.json -Raw -Encoding UTF8 | ConvertFrom-Json).version
-          if ($env:GITHUB_REF_NAME -ne "v$packageVersion") {
-            throw "Release tag $env:GITHUB_REF_NAME does not match package version v$packageVersion"
+          if ($packageVersion -ne "${{ inputs.version }}") {
+            throw "Input version ${{ inputs.version }} does not match package version $packageVersion"
           }
       - run: npm test
-      - name: 安装 Windows 安装器编译器
+      - name: 安装 Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
-      - name: 生成 Windows 安装包
+      - name: 生成候选安装包
         shell: pwsh
         run: |
           $releaseRoot = Join-Path $PWD ".build/windows-release"
@@ -43,12 +78,14 @@ jobs:
           Copy-Item -LiteralPath $setupPath -Destination "$PWD/Moonsea-Codex-Windows-x64-Setup.exe"
       - uses: actions/upload-artifact@v7.0.1
         with:
-          name: windows-package
+          name: windows-candidate
+          retention-days: 14
           path: |
             Moonsea-Codex-Windows-x64.zip
             Moonsea-Codex-Windows-x64-Setup.exe
 
-  macos:
+  macos_candidate:
+    name: 构建 macOS 候选包
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -58,8 +95,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: 校验候选版本
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          test "$package_version" = "${{ inputs.version }}"
       - run: npm test
-      - name: 生成 macOS 安装包
+      - name: 生成并验证 macOS 候选包
         run: |
           set -euo pipefail
           stage="$PWD/.build/Moonsea-Codex-macOS"
@@ -88,45 +129,95 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$stage" "$PWD/Moonsea-Codex-macOS.zip"
       - uses: actions/upload-artifact@v7.0.1
         with:
-          name: macos-packages
+          name: macos-candidate
+          retention-days: 14
           path: Moonsea-Codex-macOS.zip
 
-  release:
-    needs: [windows, macos]
+  windows_release_gate:
+    name: Windows 真实软件内更新准入
+    needs: windows_candidate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-dotnet@v5.0.0
+        with:
+          dotnet-version: 8.0.x
+      - run: npm ci
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: windows-candidate
+          path: .build/candidate
+      - name: 下载上一稳定版安装包
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Path .build/previous -Force | Out-Null
+          gh release download --repo "$env:GITHUB_REPOSITORY" `
+            --pattern "Moonsea-Codex-Windows-x64-Setup.exe" `
+            --dir .build/previous
+      - name: 执行真实软件内更新准入
+        shell: powershell
+        run: |
+          ./tests/windows-release-gate.ps1 `
+            -PreviousSetupPath "$PWD/.build/previous/Moonsea-Codex-Windows-x64-Setup.exe" `
+            -CandidateSetupPath "$PWD/.build/candidate/Moonsea-Codex-Windows-x64-Setup.exe" `
+            -CandidateVersion "${{ inputs.version }}" `
+            -AllowSystemChanges
+      - name: 保存准入证据
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: windows-release-gate-evidence
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            .build/windows-release-gate/evidence.json
+            .build/windows-release-gate/*.log
+            .build/windows-release-gate/custom install/MoonseaCodex/updates/*.log
+
+  publish:
+    name: 发布已通过准入的同一批产物
+    if: inputs.publish && github.ref == 'refs/heads/main'
+    needs: [web_gate, windows_candidate, macos_candidate, windows_release_gate]
     runs-on: ubuntu-latest
+    environment: production-release
     steps:
       - uses: actions/download-artifact@v8.0.1
         with:
           path: artifacts
           merge-multiple: true
-      - name: 创建 GitHub Release
+      - name: 生成更新清单并发布
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          tag="v$RELEASE_VERSION"
           windows_file="artifacts/Moonsea-Codex-Windows-x64.zip"
           windows_installer="artifacts/Moonsea-Codex-Windows-x64-Setup.exe"
           macos_file="artifacts/Moonsea-Codex-macOS.zip"
           windows_sha="$(sha256sum "$windows_file" | cut -d' ' -f1)"
           windows_installer_sha="$(sha256sum "$windows_installer" | cut -d' ' -f1)"
           macos_sha="$(sha256sum "$macos_file" | cut -d' ' -f1)"
-          windows_size="$(stat -c%s "$windows_file")"
-          windows_installer_size="$(stat -c%s "$windows_installer")"
-          macos_size="$(stat -c%s "$macos_file")"
           jq -n \
-            --arg version "$version" \
+            --arg version "$RELEASE_VERSION" \
             --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg notes "修复深色壁纸下消息编辑器、输入框与下拉菜单的主题适配，并移除已废弃的交互特效" \
-            --arg windowsUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-Windows-x64.zip" \
+            --arg notes "$RELEASE_NOTES" \
+            --arg windowsUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/Moonsea-Codex-Windows-x64.zip" \
             --arg windowsSha "$windows_sha" \
-            --argjson windowsSize "$windows_size" \
-            --arg windowsInstallerUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-Windows-x64-Setup.exe" \
+            --argjson windowsSize "$(stat -c%s "$windows_file")" \
+            --arg windowsInstallerUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/Moonsea-Codex-Windows-x64-Setup.exe" \
             --arg windowsInstallerSha "$windows_installer_sha" \
-            --argjson windowsInstallerSize "$windows_installer_size" \
-            --arg macosUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Moonsea-Codex-macOS.zip" \
+            --argjson windowsInstallerSize "$(stat -c%s "$windows_installer")" \
+            --arg macosUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/Moonsea-Codex-macOS.zip" \
             --arg macosSha "$macos_sha" \
-            --argjson macosSize "$macos_size" \
+            --argjson macosSize "$(stat -c%s "$macos_file")" \
             '{
               schemaVersion: 1,
               version: $version,
@@ -146,7 +237,32 @@ jobs:
                 macos: { url: $macosUrl, sha256: $macosSha, size: $macosSize }
               }
             }' > artifacts/update.json
-          gh release create "$GITHUB_REF_NAME" artifacts/*.zip artifacts/*.exe artifacts/update.json \
+          gh release create "$tag" artifacts/*.zip artifacts/*.exe artifacts/update.json \
             --repo "$GITHUB_REPOSITORY" \
-            --title "$GITHUB_REF_NAME" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
             --generate-notes
+
+  post_release_probe:
+    name: 正式版线上探针
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: 校验最新更新清单与下载入口
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          manifest_url="https://github.com/$GITHUB_REPOSITORY/releases/latest/download/update.json"
+          curl --fail --location --retry 6 --retry-delay 5 "$manifest_url" -o update.json
+          test "$(jq -r .version update.json)" = "$RELEASE_VERSION"
+          for url in \
+            "$(jq -r .platforms.windows.installer.url update.json)" \
+            "$(jq -r .platforms.macos.url update.json)"; do
+            curl --fail --location --retry 4 --retry-delay 5 --range 0-0 "$url" -o /dev/null
+          done
+          windows_location="$(curl --silent --show-error --head \
+            --user-agent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' \
+            https://moonsea-codex-theme.suguowen5.chatgpt.site/download |
+            awk 'BEGIN{IGNORECASE=1} /^location:/{gsub(/\r/,""); print $2}' | tail -1)"
+          test "$windows_location" = "$(jq -r .platforms.windows.installer.url update.json)"

@@ -144,6 +144,7 @@ function launchWindowsInstaller(packagePath, targetVersion) {
         "/NORESTART",
         "/CLOSEAPPLICATIONS",
         "/MOONSEAUPDATE",
+        `/DIR=${installRoot}`,
         `/LOG=${setupLogPath}`,
       ], {
         detached: true,
