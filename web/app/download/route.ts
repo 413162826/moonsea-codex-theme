@@ -36,3 +36,11 @@ export async function GET(request: Request) {
 
   return Response.redirect(DOWNLOADS[platform], 302);
 }
+
+export function HEAD(request: Request) {
+  const platform = detectPlatform(request);
+  if (!platform) {
+    return Response.redirect(new URL("/download/choose", request.url), 302);
+  }
+  return Response.redirect(DOWNLOADS[platform], 302);
+}

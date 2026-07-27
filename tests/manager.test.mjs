@@ -492,6 +492,7 @@ test("正式发布必须经过候选包准入且复用同一批产物", () => {
     releaseWorkflow,
     /actions\/download-artifact@[\w.]+[\s\S]*merge-multiple:\s*true/,
   );
+  assert.match(releaseWorkflow, /scripts\/ci\/probe-release\.sh/);
   assert.match(ciWorkflow, /working-directory:\s*web/);
   assert.match(ciWorkflow, /npm run lint[\s\S]*npm test/);
 });
