@@ -64,22 +64,33 @@ if ($staleMain.Count -gt 0) {
     }
 }
 
-$devToolsPortPath = Join-Path $profilePath "DevToolsActivePort"
-if (Test-Path -LiteralPath $devToolsPortPath) {
-    Remove-Item -LiteralPath $devToolsPortPath -Force
-}
-
 if ($env:MOONSEA_SKIP_LAUNCH) {
     exit 0
 }
 
-Start-Process -FilePath $app -ArgumentList @(
-    "--user-data-dir=`"$profilePath`"",
-    "--remote-debugging-address=127.0.0.1",
-    "--remote-debugging-port=0"
-)
+$activeMain = @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue | Where-Object {
+    $_.ExecutablePath -and
+    $_.ExecutablePath.StartsWith($activeBuild + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -and
+    $_.CommandLine -notmatch "\s--type=" -and
+    $_.CommandLine -match "--remote-debugging-port=0"
+})
+if ($activeMain.Count -gt 0) {
+    $appProcessId = [int]$activeMain[0].ProcessId
+}
+else {
+    $devToolsPortPath = Join-Path $profilePath "DevToolsActivePort"
+    if (Test-Path -LiteralPath $devToolsPortPath) {
+        Remove-Item -LiteralPath $devToolsPortPath -Force
+    }
+    $appProcess = Start-Process -FilePath $app -ArgumentList @(
+        "--user-data-dir=`"$profilePath`"",
+        "--remote-debugging-address=127.0.0.1",
+        "--remote-debugging-port=0"
+    ) -PassThru
+    $appProcessId = $appProcess.Id
+}
 
-$managerArguments = "--install-root `"$installRoot`" --profile-path `"$profilePath`""
+$managerArguments = "--install-root `"$installRoot`" --profile-path `"$profilePath`" --app-pid $appProcessId"
 if ([System.IO.Path]::GetExtension($managerPath) -eq ".mjs") {
     Start-Process -FilePath "node" -ArgumentList "`"$managerPath`" $managerArguments" -WindowStyle Hidden
 }

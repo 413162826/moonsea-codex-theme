@@ -4,7 +4,7 @@
 
 ## 使用
 
-1. 打开[月海主题官网](https://moonsea-codex-theme.suguowen5.chatgpt.site)，点击下载。
+1. 打开[月海主题官网](https://moonsea-codex-theme.suguowen5.chatgpt.site)，点击“下载”，网站会自动提供 Windows 或 macOS 安装包。
 2. Windows 运行 `Moonsea-Codex-Windows-x64-Setup.exe`；macOS 解压后右键打开 `Install.command`。
 3. 打开桌面的“Codex 月海版”，回到官网选择主题。
 
@@ -13,11 +13,15 @@
 
 两类壁纸使用同一套月海透明表面、正文增强、助手与交互特效。
 
-## 匿名使用统计
+## 使用数据
 
-使用统计默认关闭。只有你在“月海助手”里主动开启后，月海才会按天上报一次随机安装标识、版本、操作系统、架构和最近活跃时间。
+月海 Codex 运行期间会在启动时及之后每 5 分钟上报一次随机安装标识、版本、操作系统、架构和上报时间，用于统计安装设备与活跃趋势。助手与月海 Codex 进程绑定，退出月海后停止上报。
 
-月海不会读取或上传 Codex 账号、邮箱、提示词、项目名称、文件路径和壁纸内容。关闭后不再上报。
+上报负载不包含 Codex 账号、邮箱、提示词、项目名称、文件路径、IP 地址、原始 User-Agent 和壁纸内容，业务数据库也不保存 IP。服务端只保留每台安装的首次与最后活跃时间，不保存每次心跳明细。
+
+官网仅按日期和页面聚合访问次数，不使用 Cookie 或访客标识。
+
+完整使用说明见 [GitHub Wiki](https://github.com/413162826/moonsea-codex-theme/wiki)。
 
 ## 更新
 

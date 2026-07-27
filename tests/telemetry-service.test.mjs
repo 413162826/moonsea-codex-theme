@@ -23,24 +23,7 @@ afterEach(() => {
   }
 });
 
-test("未授权时不创建标识也不发送请求", async () => {
-  const root = temporaryRoot();
-  let requests = 0;
-  const service = new TelemetryService({
-    installRoot: root,
-    appVersion: "1.5.1",
-    fetchImpl: async () => {
-      requests += 1;
-      return new Response(null, { status: 202 });
-    },
-  });
-
-  assert.deepEqual(await service.sync(false), { status: "disabled" });
-  assert.equal(requests, 0);
-  assert.equal(fs.existsSync(path.join(root, "telemetry.json")), false);
-});
-
-test("授权后仅发送最小匿名字段且每天最多一次", async () => {
+test("启动后仅发送最小匿名字段且五分钟最多一次", async () => {
   const root = temporaryRoot();
   let currentTime = Date.UTC(2026, 6, 23, 12);
   const payloads = [];
@@ -56,24 +39,26 @@ test("授权后仅发送最小匿名字段且每天最多一次", async () => {
     },
   });
 
-  assert.deepEqual(await service.sync(true), { status: "reported" });
-  assert.deepEqual(await service.sync(true), { status: "waiting" });
+  assert.deepEqual(await service.sync(), { status: "reported" });
+  assert.deepEqual(await service.sync(), { status: "waiting" });
   assert.equal(payloads.length, 1);
   assert.deepEqual(Object.keys(payloads[0]).sort(), [
     "appVersion",
     "architecture",
     "channel",
-    "consent",
     "installId",
     "platform",
+    "reportedAt",
   ]);
+  assert.equal(payloads[0].reportedAt, "2026-07-23T12:00:00.000Z");
   assert.equal("account" in payloads[0], false);
   assert.equal("email" in payloads[0], false);
 
   currentTime += TELEMETRY_INTERVAL_MS;
-  assert.deepEqual(await service.sync(true), { status: "reported" });
+  assert.deepEqual(await service.sync(), { status: "reported" });
   assert.equal(payloads.length, 2);
   assert.equal(payloads[1].installId, payloads[0].installId);
+  assert.equal(payloads[1].reportedAt, "2026-07-23T12:05:00.000Z");
 });
 
 test("服务失败后按固定窗口重试且不会伪造成功时间", async () => {
@@ -90,11 +75,11 @@ test("服务失败后按固定窗口重试且不会伪造成功时间", async ()
     },
   });
 
-  await assert.rejects(service.sync(true), /503/);
+  await assert.rejects(service.sync(), /503/);
   assert.equal(requests, 1);
   assert.equal(fs.existsSync(path.join(root, "telemetry.json")), false);
-  assert.deepEqual(await service.sync(true), { status: "waiting" });
+  assert.deepEqual(await service.sync(), { status: "waiting" });
   currentTime += TELEMETRY_RETRY_MS;
-  await assert.rejects(service.sync(true), /503/);
+  await assert.rejects(service.sync(), /503/);
   assert.equal(requests, 2);
 });

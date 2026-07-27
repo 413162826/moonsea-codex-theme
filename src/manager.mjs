@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequestHandler, exchangeAssistantUpdate, MANAGER_PORT } from "./manager-core.mjs";
 import { UpdateService } from "./update-service.mjs";
-import { TelemetryService } from "./telemetry-service.mjs";
+import { TELEMETRY_INTERVAL_MS, TelemetryService } from "./telemetry-service.mjs";
 import { APP_VERSION } from "./version.mjs";
 
 function readArgument(name) {
@@ -40,6 +40,11 @@ const installRoot = path.resolve(
 const profilePath = path.resolve(
   readArgument("--profile-path") ?? path.join(installRoot, "BrowserProfile"),
 );
+const appPidArgument = readArgument("--app-pid");
+const appPid = appPidArgument === null ? null : Number.parseInt(appPidArgument, 10);
+if (appPidArgument !== null && (!Number.isInteger(appPid) || appPid < 1)) {
+  throw new Error("月海 Codex 进程 ID 无效");
+}
 const projectRoot = findProjectRoot();
 const pidPath = path.join(installRoot, "manager.pid");
 const adminAccess = fs.existsSync(path.join(installRoot, "admin-access.enabled"));
@@ -210,7 +215,6 @@ async function syncAssistantUpdate() {
     }
     if (exchange?.command === "download") await updateService.startDownload({ autoInstall: true });
     if (exchange?.command === "install") await updateService.startInstall();
-    await telemetryService.sync(exchange?.telemetryConsent === true);
   } catch {
     // Codex 可能还没有打开，下一轮会重新连接活动窗口。
   } finally {
@@ -222,8 +226,31 @@ const assistantSyncTimer = setInterval(syncAssistantUpdate, 1_000);
 assistantSyncTimer.unref();
 void syncAssistantUpdate();
 
+const telemetrySyncTimer = setInterval(() => {
+  void telemetryService.sync().catch(() => {});
+}, TELEMETRY_INTERVAL_MS);
+telemetrySyncTimer.unref();
+void telemetryService.sync().catch(() => {});
+
+function isAppRunning() {
+  if (appPid === null) return true;
+  try {
+    process.kill(appPid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const appLifecycleTimer = setInterval(() => {
+  if (!isAppRunning()) shutdown();
+}, 1_000);
+appLifecycleTimer.unref();
+
 function shutdown() {
   clearInterval(assistantSyncTimer);
+  clearInterval(telemetrySyncTimer);
+  clearInterval(appLifecycleTimer);
   server.close(() => {
     if (fs.existsSync(pidPath) && fs.readFileSync(pidPath, "utf8").trim() === String(process.pid)) {
       fs.rmSync(pidPath, { force: true });

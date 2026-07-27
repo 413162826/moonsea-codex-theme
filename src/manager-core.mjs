@@ -214,13 +214,12 @@ export async function exchangeAssistantUpdate(profilePath, update) {
     const result = await client.call("Runtime.evaluate", {
       expression: `(() => {
         const bridge = window.moonseaAssistantUpdateBridge;
-        if (!bridge) return { ready: false, command: null, telemetryConsent: false };
+        if (!bridge) return { ready: false, command: null };
         const command = bridge.takeCommand();
         if (!command) bridge.setStatus(${JSON.stringify(update)});
         return {
           ready: true,
           command,
-          telemetryConsent: bridge.getTelemetryConsent?.() === true,
         };
       })()`,
       returnByValue: true,

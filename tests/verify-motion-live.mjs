@@ -144,12 +144,10 @@ await evaluate(`(() => {
   const panel = document.querySelector(".moonsea-controls__panel");
   if (panel?.hidden) document.querySelector(".moonsea-controls__toggle")?.click();
 })()`);
-await changeControl('[data-setting="motionMode"]', "soft");
-await changeControl('[data-setting="clickRipple"]', true);
-await changeControl('[data-setting="motionOverrideReduced"]', false);
+await changeControl('[data-setting="effectsEnabled"]', true);
 await waitFor(
   () => evaluate(`document.documentElement.classList.contains("moonsea-motion-soft")`),
-  "轻柔模式基线",
+  "交互特效基线",
 );
 
 const initial = await evaluate(`(() => {
@@ -157,8 +155,8 @@ const initial = await evaluate(`(() => {
   const canvas = layer.querySelector("canvas");
   const root = document.documentElement;
   return {
-    motionMode: document.querySelector('[data-setting="motionMode"]').value,
-    clickRipple: document.querySelector('[data-setting="clickRipple"]').checked,
+    effectsEnabled: document.querySelector('[data-setting="effectsEnabled"]').checked,
+    effectsDisabled: document.querySelector('[data-setting="effectsEnabled"]').disabled,
     canvasPointerEvents: getComputedStyle(layer).pointerEvents,
     canvasWidth: canvas.width,
     viewportWidth: innerWidth,
@@ -179,24 +177,23 @@ const moved = await evaluate(`(() => ({
   y: document.documentElement.style.getPropertyValue("--moonsea-motion-y"),
 }))()`);
 
-await changeControl('[data-setting="motionMode"]', "off");
-await changeControl('[data-setting="clickRipple"]', false);
+await changeControl('[data-setting="effectsEnabled"]', false);
 await waitFor(
   () => evaluate(`document.querySelector("#codex-moonsea-motion-layer")?.hidden === true`),
   "关闭全部动效",
 );
 
-await changeControl('[data-setting="clickRipple"]', true);
-const clickOnly = await evaluate(`(() => ({
+const disabledControls = await evaluate(`(() => ({
   canvasHidden: document.querySelector("#codex-moonsea-motion-layer")?.hidden,
-  checked: document.querySelector('[data-setting="clickRipple"]')?.checked,
-  mode: document.querySelector('[data-setting="motionMode"]')?.value,
+  checked: document.querySelector('[data-setting="effectsEnabled"]')?.checked,
   reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
   stored: localStorage.getItem("codex-moonsea-theme-settings-v2"),
 }))()`);
-if (clickOnly.canvasHidden !== false) {
-  throw new Error(`仅启用点击月晕失败：${JSON.stringify(clickOnly)}`);
-}
+await changeControl('[data-setting="effectsEnabled"]', true);
+await waitFor(
+  () => evaluate(`document.querySelector("#codex-moonsea-motion-layer")?.hidden === false`),
+  "重新开启全部动效",
+);
 await evaluate(`(() => {
   window.__moonseaMotionTestClick = null;
   document.addEventListener("click", (event) => {
@@ -241,12 +238,6 @@ const ripplePixels = await evaluate(`(() => {
 })()`);
 const dispatchedClick = await evaluate(`window.__moonseaMotionTestClick`);
 
-await changeControl('[data-setting="motionMode"]', "lively");
-await waitFor(
-  () => evaluate(`document.documentElement.classList.contains("moonsea-motion-lively")`),
-  "灵动模式",
-);
-
 await call("Emulation.setEmulatedMedia", {
   features: [{ name: "prefers-reduced-motion", value: "reduce" }],
 });
@@ -256,43 +247,19 @@ await waitFor(
 );
 const reduced = await evaluate(`(() => ({
   canvasHidden: document.querySelector("#codex-moonsea-motion-layer").hidden,
-  motionClass: document.documentElement.classList.contains("moonsea-motion-lively"),
-  overrideVisible: !document.querySelector("[data-reduced-motion-control]").hidden,
+  motionClass: document.documentElement.classList.contains("moonsea-motion-soft"),
+  controlChecked: document.querySelector('[data-setting="effectsEnabled"]').checked,
+  controlDisabled: document.querySelector('[data-setting="effectsEnabled"]').disabled,
+  overrideControlPresent: Boolean(document.querySelector('[data-setting="motionOverrideReduced"]')),
   note: document.querySelector("[data-motion-note]").textContent,
 }))()`);
-
-await changeControl('[data-setting="motionOverrideReduced"]', true);
-await waitFor(
-  () => evaluate(`document.documentElement.classList.contains("moonsea-motion-lively")
-    && document.documentElement.classList.contains("moonsea-motion-override-reduced")
-    && document.querySelector("#codex-moonsea-motion-layer")?.hidden === false`),
-  "月海单独覆盖系统减少动态",
-);
-await call("Input.dispatchMouseEvent", {
-  type: "mouseMoved",
-  x: 180,
-  y: 160,
-});
-await delay(220);
-const reducedOverride = await evaluate(`(() => ({
-  canvasHidden: document.querySelector("#codex-moonsea-motion-layer").hidden,
-  motionClass: document.documentElement.classList.contains("moonsea-motion-lively"),
-  overrideClass: document.documentElement.classList.contains("moonsea-motion-override-reduced"),
-  x: document.documentElement.style.getPropertyValue("--moonsea-motion-x"),
-  y: document.documentElement.style.getPropertyValue("--moonsea-motion-y"),
-  note: document.querySelector("[data-motion-note]").textContent,
-}))()`);
-await changeControl('[data-setting="motionOverrideReduced"]', false);
-await waitFor(
-  () => evaluate(`document.querySelector("#codex-moonsea-motion-layer")?.hidden === true`),
-  "恢复系统减少动态",
-);
 
 await call("Emulation.setEmulatedMedia", {
   features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
 });
 await waitFor(
-  () => evaluate(`document.documentElement.classList.contains("moonsea-motion-lively")`),
+  () => evaluate(`document.documentElement.classList.contains("moonsea-motion-soft")
+    && document.querySelector('[data-setting="effectsEnabled"]').disabled === false`),
   "恢复动态效果",
 );
 
@@ -305,16 +272,14 @@ await waitFor(
 );
 const disabled = await evaluate(`(() => ({
   canvasPresent: Boolean(document.querySelector("#codex-moonsea-motion-layer")),
-  motionClass: document.documentElement.classList.contains("moonsea-motion-lively")
-    || document.documentElement.classList.contains("moonsea-motion-soft"),
+  motionClass: document.documentElement.classList.contains("moonsea-motion-soft"),
   x: document.documentElement.style.getPropertyValue("--moonsea-motion-x"),
   y: document.documentElement.style.getPropertyValue("--moonsea-motion-y"),
 }))()`);
 
 socket.close();
 
-if (initial.motionMode !== "soft") throw new Error("默认背景响应不是轻柔模式");
-if (!initial.clickRipple) throw new Error("默认点击月晕未启用");
+if (!initial.effectsEnabled || initial.effectsDisabled) throw new Error("默认交互特效未启用");
 if (initial.canvasPointerEvents !== "none") throw new Error("特效层拦截了鼠标");
 if (initial.canvasWidth > initial.viewportWidth * 1.5 + 1) throw new Error("特效层像素比超过 1.5");
 if (!moved.x || !moved.y || moved.x === "0.00px" || moved.y === "0.00px") {
@@ -323,7 +288,7 @@ if (!moved.x || !moved.y || moved.x === "0.00px" || moved.y === "0.00px") {
 if (ripplePixels <= 0) {
   throw new Error(`点击月晕没有绘制可见像素：${JSON.stringify({
     initial,
-    clickOnly,
+    disabledControls,
     dispatchedClick,
     runtimeErrors,
   })}`);
@@ -331,20 +296,12 @@ if (ripplePixels <= 0) {
 if (
   !reduced.canvasHidden
   || reduced.motionClass
-  || !reduced.overrideVisible
-  || !reduced.note.includes("Windows 已关闭动画")
+  || reduced.controlChecked
+  || !reduced.controlDisabled
+  || reduced.overrideControlPresent
+  || !reduced.note.includes("跟随系统关闭")
 ) {
   throw new Error(`减少动态效果没有完整生效：${JSON.stringify(reduced)}`);
-}
-if (
-  reducedOverride.canvasHidden
-  || !reducedOverride.motionClass
-  || !reducedOverride.overrideClass
-  || !reducedOverride.x
-  || !reducedOverride.y
-  || !reducedOverride.note.includes("仅在月海播放")
-) {
-  throw new Error(`月海单独启用动态没有生效：${JSON.stringify(reducedOverride)}`);
 }
 if (disabled.canvasPresent || disabled.motionClass || disabled.x || disabled.y) {
   throw new Error("退出 Pro 后仍有特效残留");
@@ -354,8 +311,8 @@ console.log(JSON.stringify({
   initial,
   moved,
   ripplePixels,
+  disabledControls,
   reduced,
-  reducedOverride,
   disabled,
   screenshot,
 }, null, 2));

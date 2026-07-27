@@ -166,7 +166,7 @@ html.codex-moonsea body::before {
   pointer-events: none;
 }
 
-html.codex-moonsea:is(.moonsea-motion-soft, .moonsea-motion-lively) body::before {
+html.codex-moonsea.moonsea-motion-soft body::before {
   inset: calc((var(--moonsea-wallpaper-blur) * -2) - 8px);
   transform: translate3d(
     var(--moonsea-motion-x, 0px),
@@ -175,14 +175,6 @@ html.codex-moonsea:is(.moonsea-motion-soft, .moonsea-motion-lively) body::before
   ) scale(1.008);
   transform-origin: center;
   will-change: transform;
-}
-
-html.codex-moonsea.moonsea-motion-lively body::before {
-  transform: translate3d(
-    var(--moonsea-motion-x, 0px),
-    var(--moonsea-motion-y, 0px),
-    0
-  ) scale(1.012);
 }
 
 html.codex-moonsea #root {
@@ -499,14 +491,11 @@ html.codex-moonsea ::selection {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html:not(.moonsea-motion-override-reduced) #codex-moonsea-motion-layer {
+  #codex-moonsea-motion-layer {
     display: none !important;
   }
 
-  html.codex-moonsea:not(.moonsea-motion-override-reduced):is(
-    .moonsea-motion-soft,
-    .moonsea-motion-lively
-  ) body::before {
+  html.codex-moonsea.moonsea-motion-soft body::before {
     inset: calc(var(--moonsea-wallpaper-blur) * -2);
     transform: none;
     will-change: auto;

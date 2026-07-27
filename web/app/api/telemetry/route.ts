@@ -8,11 +8,11 @@ const PLATFORMS = new Set(["win32", "darwin", "linux"]);
 const ARCHITECTURES = new Set(["x64", "arm64"]);
 
 type TelemetryPayload = {
-  consent?: boolean;
   installId?: string;
   platform?: string;
   architecture?: string;
   appVersion?: string;
+  reportedAt?: string;
   channel?: string;
 };
 
@@ -29,20 +29,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "请求格式无效" }, { status: 400 });
   }
 
-  if (payload.consent !== true) {
-    return Response.json({ error: "缺少明确的使用统计授权" }, { status: 400 });
-  }
-
   const installId = payload.installId?.trim().toLowerCase() ?? "";
   const platform = payload.platform?.trim().toLowerCase() ?? "";
   const architecture = payload.architecture?.trim().toLowerCase() ?? "";
   const appVersion = payload.appVersion?.trim() ?? "";
+  const reportedAt = payload.reportedAt?.trim() ?? "";
   const channel = payload.channel?.trim().toLowerCase() || "stable";
 
   if (!INSTALL_ID_PATTERN.test(installId)
     || !PLATFORMS.has(platform)
     || !ARCHITECTURES.has(architecture)
     || !VERSION_PATTERN.test(appVersion)
+    || !Number.isFinite(Date.parse(reportedAt))
+    || new Date(reportedAt).toISOString() !== reportedAt
     || channel !== "stable") {
     return Response.json({ error: "使用统计字段无效" }, { status: 400 });
   }

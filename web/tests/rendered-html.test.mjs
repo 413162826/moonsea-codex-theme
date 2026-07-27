@@ -64,7 +64,8 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(html, /更沉浸/);
   assert.match(html, /背景、透明层与阅读对比一体调校/);
   assert.match(html, /href="\/themes"/);
-  assert.match(html, /下载 Windows 版/);
+  assert.match(html, />下载</);
+  assert.match(html, /href="\/download"/);
   assert.match(html, /site-header--reveal/);
   assert.doesNotMatch(html, /aria-label="主要导航"/);
   assert.match(html, /landing-codex-preview/);
@@ -95,12 +96,48 @@ test("首页顶栏仅在顶部感应或键盘聚焦时显示", async () => {
   assert.match(chrome, /event\.clientY > 84/);
 });
 
-test("Windows 下载按钮悬浮时文字保持可见", async () => {
+test("下载按钮悬浮时文字保持可见", async () => {
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(
     styles,
     /\.site-nav\s+\.download-link:hover\s*\{[^}]*color:\s*var\(--paper\)/s,
   );
+});
+
+test("下载入口按系统跳转并为未知系统提供选择页", async () => {
+  const windows = await fetch(`${origin}/download`, {
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+    redirect: "manual",
+  });
+  assert.equal(windows.status, 302);
+  assert.match(
+    windows.headers.get("location") ?? "",
+    /Moonsea-Codex-Windows-x64-Setup\.exe$/,
+  );
+
+  const macos = await fetch(`${origin}/download`, {
+    headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)" },
+    redirect: "manual",
+  });
+  assert.equal(macos.status, 302);
+  assert.match(
+    macos.headers.get("location") ?? "",
+    /Moonsea-Codex-macOS\.zip$/,
+  );
+
+  const unknown = await fetch(`${origin}/download`, {
+    headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" },
+    redirect: "manual",
+  });
+  assert.equal(unknown.status, 302);
+  assert.equal(new URL(unknown.headers.get("location")).pathname, "/download/choose");
+
+  const chooser = await fetch(`${origin}/download/choose`);
+  assert.equal(chooser.status, 200);
+  const chooserHtml = await chooser.text();
+  assert.match(chooserHtml, /选择你的电脑/);
+  assert.match(chooserHtml, /platform=windows/);
+  assert.match(chooserHtml, /platform=macos/);
 });
 
 test("首页使用全页 WebGL 深海暮光层与交互鱼群并移除主题拼贴", async () => {
@@ -155,13 +192,18 @@ test("未知页面返回 404", async () => {
   assert.equal(response.status, 404);
 });
 
-test("匿名统计迁移能建立完整数据表", async () => {
+test("数据迁移能建立安装与聚合指标表", async () => {
   const database = new DatabaseSync(":memory:");
-  const migration = await readFile(
+  const installationMigration = await readFile(
     new URL("../drizzle/0000_unusual_molten_man.sql", import.meta.url),
     "utf8",
   );
-  database.exec(migration);
+  const metricsMigration = await readFile(
+    new URL("../drizzle/0001_closed_namorita.sql", import.meta.url),
+    "utf8",
+  );
+  database.exec(installationMigration);
+  database.exec(metricsMigration);
   const columns = database.prepare("PRAGMA table_info(installations)").all();
   assert.deepEqual(
     columns.map((column) => column.name),
@@ -176,5 +218,15 @@ test("匿名统计迁移能建立完整数据表", async () => {
       "report_count",
     ],
   );
+  const metricColumns = database.prepare("PRAGMA table_info(daily_metrics)").all();
+  assert.deepEqual(
+    metricColumns.map((column) => column.name),
+    ["day", "metric_type", "dimension", "total"],
+  );
+  const primaryKeyColumns = metricColumns
+    .filter((column) => column.pk > 0)
+    .sort((left, right) => left.pk - right.pk)
+    .map((column) => column.name);
+  assert.deepEqual(primaryKeyColumns, ["day", "metric_type", "dimension"]);
   database.close();
 });

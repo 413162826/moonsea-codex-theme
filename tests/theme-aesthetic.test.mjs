@@ -100,7 +100,7 @@ test("普通与 Pro 壁纸共用交界算法并由各自调色板控制强度", 
   assert.match(themeCss, /#codex-moonsea-controls\s*\{[\s\S]*display:\s*contents/);
   assert.match(themeCss, /\.moonsea-controls__dock[\s\S]*z-index:\s*2147483000/);
   assert.match(themeCss, /\.moonsea-motion-soft[\s\S]*translate3d/);
-  assert.match(themeCss, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*:not\(\.moonsea-motion-override-reduced\)[\s\S]*transform:\s*none/);
+  assert.match(themeCss, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*#codex-moonsea-motion-layer[\s\S]*transform:\s*none/);
   assert.match(runtime, /url\("app:\/\/-\/moonsea\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
   assert.match(runtime, /runtime\.backgroundGradient/);
   assert.match(runtime, /surfaceEdgeTint:\s*"--moonsea-surface-edge-tint"/);
