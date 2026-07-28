@@ -114,6 +114,22 @@ test("下载入口按系统跳转并为未知系统提供选择页", async () =>
     windows.headers.get("location") ?? "",
     /Moonsea-Codex-Windows-x64-Setup\.exe$/,
   );
+  const visitorCookie = windows.headers.get("set-cookie") ?? "";
+  assert.match(
+    visitorCookie,
+    /^moonsea_download_visitor=[0-9a-f-]+; Max-Age=31536000; Path=\/download; HttpOnly; Secure; SameSite=Lax$/i,
+  );
+  const visitorCookiePair = visitorCookie.split(";")[0];
+
+  const repeatedWindows = await fetch(`${origin}/download`, {
+    headers: {
+      Cookie: visitorCookiePair,
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    },
+    redirect: "manual",
+  });
+  assert.equal(repeatedWindows.status, 302);
+  assert.equal(repeatedWindows.headers.get("set-cookie"), null);
 
   const macos = await fetch(`${origin}/download`, {
     headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)" },
@@ -224,8 +240,13 @@ test("数据迁移能建立安装与聚合指标表", async () => {
     new URL("../drizzle/0001_closed_namorita.sql", import.meta.url),
     "utf8",
   );
+  const downloadVisitorsMigration = await readFile(
+    new URL("../drizzle/0002_green_young_avengers.sql", import.meta.url),
+    "utf8",
+  );
   database.exec(installationMigration);
   database.exec(metricsMigration);
+  database.exec(downloadVisitorsMigration);
   const columns = database.prepare("PRAGMA table_info(installations)").all();
   assert.deepEqual(
     columns.map((column) => column.name),
@@ -250,5 +271,24 @@ test("数据迁移能建立安装与聚合指标表", async () => {
     .sort((left, right) => left.pk - right.pk)
     .map((column) => column.name);
   assert.deepEqual(primaryKeyColumns, ["day", "metric_type", "dimension"]);
+  const downloadVisitorColumns = database
+    .prepare("PRAGMA table_info(download_visitors)")
+    .all();
+  assert.deepEqual(
+    downloadVisitorColumns.map((column) => column.name),
+    [
+      "visitor_hash",
+      "platform",
+      "first_downloaded_at",
+      "last_downloaded_at",
+      "download_count",
+    ],
+  );
+  assert.deepEqual(
+    downloadVisitorColumns
+      .filter((column) => column.pk > 0)
+      .map((column) => column.name),
+    ["visitor_hash"],
+  );
   database.close();
 });
