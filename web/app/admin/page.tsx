@@ -24,6 +24,11 @@ type MetricSummaryRow = {
   recent30d: number;
 };
 
+type DownloadVisitorSummaryRow = {
+  total: number;
+  repeatedDownloads: number;
+};
+
 type DistributionRow = {
   label: string;
   total: number;
@@ -78,6 +83,7 @@ async function loadStatistics() {
     platforms,
     activeDaily,
     downloads,
+    downloadVisitors,
     pageViews,
     trafficDaily,
     trafficPages,
@@ -112,6 +118,12 @@ async function loadStatistics() {
       ORDER BY day ASC
     `).all<DailyRow>(),
     metricSummary("download"),
+    env.DB.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        COALESCE(SUM(download_count - 1), 0) AS repeatedDownloads
+      FROM download_visitors
+    `).first<DownloadVisitorSummaryRow>(),
     metricSummary("page_view"),
     env.DB.prepare(`
       SELECT day, SUM(total) AS total
@@ -142,6 +154,7 @@ async function loadStatistics() {
     platforms: platforms.results,
     activeDaily: activeDaily.results,
     downloads,
+    downloadVisitors: downloadVisitors ?? { total: 0, repeatedDownloads: 0 },
     pageViews,
     trafficDaily: trafficDaily.results,
     trafficPages: trafficPages.results,
@@ -221,10 +234,12 @@ export default async function AdminPage() {
       <section className="admin-section" aria-labelledby="usage-title">
         <div className="admin-section__heading">
           <h2 id="usage-title">下载与使用</h2>
-          <p>下载是点击次数，安装与活跃按匿名安装设备统计。</p>
+          <p>下载按点击次数统计；下载访客按匿名浏览器标识去重，不采集硬件指纹。更换浏览器或清除站点数据后会视为新访客。</p>
         </div>
         <div className="metric-grid metric-grid--usage" aria-label="下载与使用指标">
           <article><span>累计下载次数</span><strong>{data.downloads.total}</strong></article>
+          <article><span>已识别下载访客</span><strong>{data.downloadVisitors.total}</strong><small>自新口径上线起</small></article>
+          <article><span>重复下载次数</span><strong>{data.downloadVisitors.repeatedDownloads}</strong><small>同一浏览器再次下载</small></article>
           <article><span>累计安装设备</span><strong>{data.counts.total}</strong></article>
           <article><span>当前在线设备</span><strong>{data.counts.online15m}</strong><small>近 15 分钟有心跳</small></article>
           <article><span>7 日活跃设备</span><strong>{data.counts.active7d}</strong></article>

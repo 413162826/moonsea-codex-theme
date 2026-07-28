@@ -19,3 +19,11 @@ export const dailyMetrics = sqliteTable("daily_metrics", {
 }, (table) => [
   primaryKey({ columns: [table.day, table.metricType, table.dimension] }),
 ]);
+
+export const downloadVisitors = sqliteTable("download_visitors", {
+  visitorHash: text("visitor_hash").primaryKey(),
+  platform: text("platform").notNull(),
+  firstDownloadedAt: text("first_downloaded_at").notNull(),
+  lastDownloadedAt: text("last_downloaded_at").notNull(),
+  downloadCount: integer("download_count").notNull().default(1),
+});

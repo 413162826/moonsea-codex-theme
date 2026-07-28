@@ -2,6 +2,12 @@ import {
   incrementDailyMetric,
   METRIC_TYPES,
 } from "../../lib/daily-metrics";
+import {
+  createDownloadVisitorId,
+  downloadVisitorCookie,
+  readDownloadVisitorId,
+  recordDownloadVisitor,
+} from "../../lib/download-visitors";
 
 const DOWNLOADS = Object.freeze({
   windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64-Setup.exe",
@@ -28,13 +34,21 @@ export async function GET(request: Request) {
     return Response.redirect(new URL("/download/choose", request.url), 302);
   }
 
+  const existingVisitorId = readDownloadVisitorId(request);
+  const visitorId = existingVisitorId ?? createDownloadVisitorId();
+
   try {
-    await incrementDailyMetric(METRIC_TYPES.download, platform);
+    await Promise.all([
+      incrementDailyMetric(METRIC_TYPES.download, platform),
+      recordDownloadVisitor(visitorId, platform),
+    ]);
   } catch {
     // 统计属于非关键链路，不阻断用户下载。
   }
 
-  return Response.redirect(DOWNLOADS[platform], 302);
+  const headers = new Headers({ Location: DOWNLOADS[platform] });
+  if (!existingVisitorId) headers.set("Set-Cookie", downloadVisitorCookie(visitorId));
+  return new Response(null, { status: 302, headers });
 }
 
 export function HEAD(request: Request) {
