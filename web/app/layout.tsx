@@ -1,34 +1,30 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import "./globals.css";
+import { SITE_NAME, SITE_URL } from "../lib/site";
 import { PageViewTracker } from "./page-view-tracker";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  if (!host) throw new Error("缺少站点域名");
-  const previewUrl = new URL("/og.png", `https://${host}`).toString();
-
-  return {
-    title: {
-      default: "月海 Codex 主题",
-      template: "%s · 月海",
-    },
-    description: "为 Codex 提供渐变壁纸、Pro 精选壁纸与沉浸式交互体验。",
-    openGraph: {
-      title: "月海 Codex 主题",
-      description: "让壁纸真正融入界面",
-      type: "website",
-      images: [{ url: previewUrl, width: 1200, height: 630, alt: "月海 Codex 主题" }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: "月海 Codex 主题",
-      description: "让壁纸真正融入界面",
-      images: [previewUrl],
-    },
-  };
-}
+export const metadata: Metadata = {
+  metadataBase: SITE_URL,
+  title: {
+    default: SITE_NAME,
+    template: "%s · 月海",
+  },
+  description: "免费主题，让 Codex 更沉浸。保持安静、专注、氛围编程。",
+  openGraph: {
+    title: SITE_NAME,
+    description: "免费主题，让 Codex 更沉浸",
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "zh_CN",
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: SITE_NAME }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: "免费主题，让 Codex 更沉浸",
+    images: ["/og.png"],
+  },
+};
 
 export default function RootLayout({
   children,

@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { dailyMetrics } from "../db/schema";
 
-export const PUBLIC_PAGE_PATHS = new Set(["/", "/themes", "/download/choose"]);
+export const PUBLIC_PAGE_PATHS = new Set(["/", "/themes", "/privacy", "/download/choose"]);
 export const METRIC_TYPES = Object.freeze({
   download: "download",
   pageView: "page_view",

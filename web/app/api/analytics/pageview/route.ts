@@ -3,9 +3,18 @@ import {
   METRIC_TYPES,
   PUBLIC_PAGE_PATHS,
 } from "../../../../lib/daily-metrics";
+import {
+  createSiteVisitorId,
+  normalizeAttribution,
+  readSiteVisitorId,
+  recordSiteVisitor,
+  siteVisitorCookie,
+} from "../../../../lib/site-visitors";
 
 type PageViewPayload = {
   path?: string;
+  source?: string;
+  campaign?: string;
 };
 
 export async function POST(request: Request) {
@@ -15,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > 512) {
+  if (contentLength > 1024) {
     return Response.json({ error: "请求内容过大" }, { status: 413 });
   }
 
@@ -31,9 +40,22 @@ export async function POST(request: Request) {
     return Response.json({ error: "页面路径无效" }, { status: 400 });
   }
 
-  await incrementDailyMetric(METRIC_TYPES.pageView, path);
+  const source = normalizeAttribution(payload.source, "direct") ?? "direct";
+  const campaign = normalizeAttribution(payload.campaign, null);
+  const existingVisitorId = readSiteVisitorId(request);
+  const visitorId = existingVisitorId ?? createSiteVisitorId();
+
+  await Promise.all([
+    incrementDailyMetric(METRIC_TYPES.pageView, path),
+    recordSiteVisitor(visitorId, source, campaign),
+  ]);
+
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  if (!existingVisitorId) {
+    headers.set("Set-Cookie", siteVisitorCookie(visitorId));
+  }
   return new Response(null, {
     status: 204,
-    headers: { "Cache-Control": "no-store" },
+    headers,
   });
 }

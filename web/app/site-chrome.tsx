@@ -76,6 +76,7 @@ export function SiteFooter() {
       <p>月海 · Codex 主题与壁纸</p>
       <div className="footer-links">
         <Link href="/themes">浏览主题</Link>
+        <Link href="/privacy">隐私说明</Link>
         <a href={WIKI_URL}>使用帮助</a>
       </div>
     </footer>

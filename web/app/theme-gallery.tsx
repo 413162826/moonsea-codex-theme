@@ -5,16 +5,11 @@ import { ProCodexPreview, StandardCodexPreview, type PreviewTheme } from "./code
 
 const API_ROOT = "http://127.0.0.1:17321";
 
-type Theme = PreviewTheme & {
+export type Theme = PreviewTheme & {
   id: string;
   description: string;
   edition: "standard" | "pro";
   preview?: string[];
-};
-
-type Catalog = {
-  catalogVersion: number;
-  themes: Theme[];
 };
 
 type Connection = {
@@ -31,31 +26,13 @@ const initialConnection: Connection = {
   message: "打开月海版",
 };
 
-export function ThemeGallery() {
-  const [themes, setThemes] = useState<Theme[]>([]);
+export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
+  const [themes] = useState(initialThemes);
   const [filter, setFilter] = useState<"all" | "light" | "dark" | "pro">("all");
   const [query, setQuery] = useState("");
   const [connection, setConnection] = useState(initialConnection);
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-
-  useEffect(() => {
-    let active = true;
-    fetch("/catalog.json", { cache: "no-store" })
-      .then((response) => {
-        if (!response.ok) throw new Error("主题暂时没有准备好");
-        return response.json() as Promise<Catalog>;
-      })
-      .then((catalog) => {
-        if (active) setThemes(catalog.themes);
-      })
-      .catch((error: Error) => {
-        if (active) setNotice(error.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -129,7 +106,7 @@ export function ThemeGallery() {
       <div className="gallery-toolbar">
         <div>
           <p className="section-kicker">主题墙</p>
-          <h2 id="themes-title">选一张，立即应用。</h2>
+          <h1 id="themes-title">选一张，立即应用。</h1>
         </div>
         <div className={`connection-status ${connection.connected ? "is-connected" : ""}`}>
           <span aria-hidden="true" />

@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ProCodexPreview } from "./codex-preview";
 import { MoonseaRipple } from "./moonsea-ripple";
 import { DOWNLOAD_URL, SiteHeader } from "./site-chrome";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "免费主题，让 Codex 更沉浸",
+    description: "保持安静、专注、氛围编程。",
+    url: "/",
+  },
+};
 
 export default function Home() {
   return (

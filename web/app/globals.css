@@ -137,7 +137,7 @@ main, footer { width: min(1280px, calc(100% - 40px)); margin-inline: auto; }
 .themes-page { min-height: calc(100vh - 68px); }
 .themes-section { padding: 92px 0 112px; }
 .gallery-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
-.gallery-toolbar h2 { max-width: 820px; margin: 0; font-size: clamp(34px, 4vw, 58px); line-height: 1.05; letter-spacing: -0.055em; }
+.gallery-toolbar h1 { max-width: 820px; margin: 0; font-size: clamp(34px, 4vw, 58px); line-height: 1.05; letter-spacing: -0.055em; }
 .connection-status { display: flex; align-items: center; gap: 11px; min-width: 240px; padding: 13px 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.72); }
 .connection-status > span { width: 10px; height: 10px; border-radius: 50%; background: #a8b4b6; box-shadow: 0 0 0 5px #e8eded; }
 .connection-status.is-connected > span { background: var(--success); box-shadow: 0 0 0 5px #dff1e8; }
@@ -226,6 +226,13 @@ footer { position: relative; z-index: 2; display: flex; min-height: 110px; align
 .themes-shell .theme-card__footer button:hover:not(:disabled) { border-color: rgba(198, 229, 224, .58); background: rgba(19, 68, 80, .94); }
 .themes-shell .theme-card__footer button:disabled { color: #71898b; background: rgba(5, 27, 37, .64); }
 .themes-shell footer { color: #8ea7a9; }
+
+.legal-page { min-height: calc(100vh - 178px); padding-block: clamp(72px, 10vw, 128px); }
+.legal-page > * { max-width: 760px; }
+.legal-page h1 { margin: 0 0 38px; color: #edf4ef; font-size: clamp(42px, 6vw, 74px); line-height: 1.02; letter-spacing: -.055em; text-wrap: balance; }
+.legal-page h2 { margin: 42px 0 14px; color: #dce9e5; font-size: 24px; }
+.legal-page p, .legal-page li { color: #a9bfc0; font-size: 16px; line-height: 1.8; }
+.legal-page ul { display: grid; gap: 8px; padding-inline-start: 22px; }
 
 .download-choose { min-height: calc(100vh - 68px); padding-block: 12vh 80px; }
 .download-choose > p { margin: 0 0 12px; color: var(--sea); font-weight: 750; }

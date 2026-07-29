@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readdir, readFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
@@ -22,6 +24,30 @@ const port = await new Promise((resolve, reject) => {
 });
 const origin = `http://localhost:${port}`;
 let server;
+let localDatabasePath;
+
+async function ensureLocalVisitorSchema(root) {
+  const stateRoot = join(root, ".wrangler", "state", "v3", "d1");
+  const entries = await readdir(stateRoot, { recursive: true });
+  const databaseEntry = entries.find(
+    (entry) => entry.endsWith(".sqlite") && !entry.endsWith("metadata.sqlite"),
+  );
+  if (!databaseEntry) throw new Error("没有找到本地 D1 数据库");
+
+  localDatabasePath = join(stateRoot, databaseEntry);
+  const database = new DatabaseSync(localDatabasePath);
+  const visitorTable = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'site_visitors'")
+    .get();
+  if (!visitorTable) {
+    const migration = await readFile(
+      new URL("../drizzle/0003_cloudy_hemingway.sql", import.meta.url),
+      "utf8",
+    );
+    database.exec(migration);
+  }
+  database.close();
+}
 
 before(async () => {
   const root = fileURLToPath(new URL("../", import.meta.url));
@@ -38,7 +64,10 @@ before(async () => {
     if (server.exitCode !== null) throw new Error(`预览服务提前退出：${server.exitCode}`);
     try {
       const response = await fetch(origin);
-      if (response.ok) return;
+      if (response.ok) {
+        await ensureLocalVisitorSchema(root);
+        return;
+      }
     } catch {
       // 服务尚未监听，继续等待。
     }
@@ -83,7 +112,105 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.match(html, /Codex 未连接/);
   assert.match(html, /themes-shell/);
   assert.match(html, /site-header--moonsea/);
+  assert.match(html, /月白/);
+  assert.match(html, /潮汐龙境/);
+  assert.match(html, /显示 17 个主题/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
+});
+
+test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
+  const homepage = await fetch(origin);
+  const homepageHtml = await homepage.text();
+  assert.match(
+    homepageHtml,
+    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/"/,
+  );
+
+  const themes = await fetch(`${origin}/themes`);
+  const themesHtml = await themes.text();
+  assert.match(
+    themesHtml,
+    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes"/,
+  );
+
+  const robots = await fetch(`${origin}/robots.txt`);
+  assert.equal(robots.status, 200);
+  const robotsText = await robots.text();
+  assert.match(robotsText, /Disallow: \/admin/);
+  assert.match(
+    robotsText,
+    /Sitemap: https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/sitemap\.xml/,
+  );
+
+  const sitemap = await fetch(`${origin}/sitemap.xml`);
+  assert.equal(sitemap.status, 200);
+  const sitemapText = await sitemap.text();
+  assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes<\/loc>/);
+});
+
+test("隐私页透明说明匿名访客统计边界", async () => {
+  const response = await fetch(`${origin}/privacy`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /随机标识/);
+  assert.match(html, /SHA-256/);
+  assert.match(html, /不采集硬件指纹/);
+});
+
+test("页面访问接口按匿名浏览器设置站点级访客标识", async () => {
+  const first = await fetch(`${origin}/api/analytics/pageview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Origin: origin,
+    },
+    body: JSON.stringify({
+      path: "/",
+      source: "x",
+      campaign: "week1_launch",
+    }),
+  });
+  assert.equal(first.status, 204);
+  const visitorCookie = first.headers.get("set-cookie") ?? "";
+  assert.match(
+    visitorCookie,
+    /^moonsea_site_visitor=[0-9a-f-]+; Max-Age=31536000; Path=\/; HttpOnly; Secure; SameSite=Lax$/i,
+  );
+
+  const repeated = await fetch(`${origin}/api/analytics/pageview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: visitorCookie.split(";")[0],
+      Origin: origin,
+    },
+    body: JSON.stringify({
+      path: "/themes",
+      source: "internal",
+      campaign: "week1_launch",
+    }),
+  });
+  assert.equal(repeated.status, 204);
+  assert.equal(repeated.headers.get("set-cookie"), null);
+
+  const visitorId = visitorCookie.split(";")[0].split("=")[1];
+  const visitorHash = createHash("sha256").update(visitorId).digest("hex");
+  const database = new DatabaseSync(localDatabasePath);
+  const recordedDay = database
+    .prepare(`
+      SELECT source, campaign, page_view_count AS pageViewCount
+      FROM site_visitor_days
+      WHERE visitor_hash = ?
+      ORDER BY day DESC
+      LIMIT 1
+    `)
+    .get(visitorHash);
+  database.close();
+  assert.deepEqual({ ...recordedDay }, {
+    source: "x",
+    campaign: "week1_launch",
+    pageViewCount: 2,
+  });
 });
 
 test("首页顶栏仅在顶部感应或键盘聚焦时显示", async () => {
@@ -229,7 +356,7 @@ test("未知页面返回 404", async () => {
   assert.equal(response.status, 404);
 });
 
-test("数据迁移能建立安装与聚合指标表", async () => {
+test("数据迁移能建立安装、聚合指标与匿名访客表", async () => {
   const database = new DatabaseSync(":memory:");
   const installationMigration = await readFile(
     new URL("../drizzle/0000_unusual_molten_man.sql", import.meta.url),
@@ -243,9 +370,14 @@ test("数据迁移能建立安装与聚合指标表", async () => {
     new URL("../drizzle/0002_green_young_avengers.sql", import.meta.url),
     "utf8",
   );
+  const siteVisitorsMigration = await readFile(
+    new URL("../drizzle/0003_cloudy_hemingway.sql", import.meta.url),
+    "utf8",
+  );
   database.exec(installationMigration);
   database.exec(metricsMigration);
   database.exec(downloadVisitorsMigration);
+  database.exec(siteVisitorsMigration);
   const columns = database.prepare("PRAGMA table_info(installations)").all();
   assert.deepEqual(
     columns.map((column) => column.name),
@@ -288,6 +420,32 @@ test("数据迁移能建立安装与聚合指标表", async () => {
       .filter((column) => column.pk > 0)
       .map((column) => column.name),
     ["visitor_hash"],
+  );
+  const siteVisitorColumns = database
+    .prepare("PRAGMA table_info(site_visitors)")
+    .all();
+  assert.deepEqual(
+    siteVisitorColumns.map((column) => column.name),
+    [
+      "visitor_hash",
+      "first_seen_at",
+      "last_seen_at",
+      "page_view_count",
+      "first_source",
+      "last_source",
+      "first_campaign",
+      "last_campaign",
+    ],
+  );
+  const siteVisitorDayColumns = database
+    .prepare("PRAGMA table_info(site_visitor_days)")
+    .all();
+  assert.deepEqual(
+    siteVisitorDayColumns
+      .filter((column) => column.pk > 0)
+      .sort((left, right) => left.pk - right.pk)
+      .map((column) => column.name),
+    ["day", "visitor_hash"],
   );
   database.close();
 });
