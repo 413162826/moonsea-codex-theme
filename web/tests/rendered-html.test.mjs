@@ -115,6 +115,8 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.match(html, /月白/);
   assert.match(html, /潮汐龙境/);
   assert.match(html, /显示 17 个主题/);
+  assert.match(html, /下载安装/);
+  assert.doesNotMatch(html, /连接后应用/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
 });
 

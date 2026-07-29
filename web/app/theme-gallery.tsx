@@ -32,6 +32,11 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
   const [query, setQuery] = useState("");
   const [connection, setConnection] = useState(initialConnection);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [pendingThemeId, setPendingThemeId] = useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : window.localStorage.getItem("moonsea_pending_theme"),
+  );
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -48,12 +53,19 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
         };
         if (!response.ok || !body.connected) throw new Error(body.message ?? "Codex 未连接");
         if (!active) return;
+        const runtimeCapable = body.runtimeCapable === true && (body.catalogVersion ?? 0) >= 3;
         setConnection({
           connected: true,
-          runtimeCapable: body.runtimeCapable === true && (body.catalogVersion ?? 0) >= 3,
+          runtimeCapable,
           activeThemeId: body.themeId ?? null,
-          message: "可立即应用",
+          message: runtimeCapable ? "可立即应用" : "需要升级月海",
         });
+        const pendingId = window.localStorage.getItem("moonsea_pending_theme");
+        const pendingTheme = themes.find((theme) => theme.id === pendingId);
+        if (pendingTheme) {
+          setPendingThemeId(pendingTheme.id);
+          setNotice(`月海已连接，可以继续应用“${pendingTheme.name}”。`);
+        }
       } catch {
         if (active) setConnection(initialConnection);
       }
@@ -64,7 +76,7 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
       active = false;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [themes]);
 
   const visibleThemes = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase("zh-CN");
@@ -81,7 +93,13 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
   }, [filter, query, themes]);
 
   const applyTheme = async (theme: Theme) => {
-    if (!connection.connected || !connection.runtimeCapable || applyingId) return;
+    if (applyingId) return;
+    if (!connection.connected || !connection.runtimeCapable) {
+      window.localStorage.setItem("moonsea_pending_theme", theme.id);
+      setPendingThemeId(theme.id);
+      window.location.assign(`/download?theme=${encodeURIComponent(theme.id)}`);
+      return;
+    }
     setApplyingId(theme.id);
     setNotice(`正在应用“${theme.name}”…`);
     try {
@@ -93,6 +111,8 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
       const body = await response.json() as { ok?: boolean; error?: string };
       if (!response.ok || !body.ok) throw new Error(body.error ?? "月海助手没有完成请求");
       setConnection((current) => ({ ...current, activeThemeId: theme.id }));
+      window.localStorage.removeItem("moonsea_pending_theme");
+      setPendingThemeId(null);
       setNotice(`“${theme.name}”已应用，Codex 无需重启。`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "应用失败，请确认月海版仍在运行");
@@ -155,9 +175,15 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
                 <button
                   type="button"
                   onClick={() => void applyTheme(theme)}
-                  disabled={!connection.connected || !connection.runtimeCapable || Boolean(applyingId) || isActive}
+                  disabled={Boolean(applyingId) || isActive}
                 >
-                  {isApplying ? "应用中…" : isActive ? "正在使用" : connection.connected ? "应用" : "连接后应用"}
+                  {isApplying
+                    ? "应用中…"
+                    : isActive
+                      ? "正在使用"
+                      : connection.connected && connection.runtimeCapable
+                        ? pendingThemeId === theme.id ? "继续应用" : "应用"
+                        : connection.connected ? "升级后应用" : "下载安装"}
                 </button>
               </div>
             </article>
