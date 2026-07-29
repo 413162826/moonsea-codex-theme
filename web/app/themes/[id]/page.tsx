@@ -42,7 +42,7 @@ export default async function ThemePage({ params }: ThemePageProps) {
     "@type": "CreativeWork",
     name: theme.name,
     description: theme.description,
-    isAccessibleForFree: theme.edition === "standard",
+    isAccessibleForFree: true,
     url: new URL(`/themes/${theme.id}`, SITE_URL).toString(),
   };
 

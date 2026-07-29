@@ -64,8 +64,11 @@ test("拒绝不存在的普通主题", () => {
 });
 
 test("Pro 主题使用同一壁纸运行时并保留精选图片资产", () => {
-  assert.equal(PRO_THEMES.length, 1);
-  assert.deepEqual(PRO_THEMES.map(({ id }) => id), ["tide-dragon-realm"]);
+  assert.equal(PRO_THEMES.length, 2);
+  assert.deepEqual(PRO_THEMES.map(({ id }) => id), [
+    "tide-dragon-realm",
+    "moonlit-silent",
+  ]);
   for (const theme of PRO_THEMES) {
     const wallpaper = WALLPAPERS.find(({ id }) => id === theme.id);
     assert.equal(theme.edition, "pro");
@@ -80,6 +83,7 @@ test("Pro 主题使用同一壁纸运行时并保留精选图片资产", () => {
     assert.ok(["light", "dark"].includes(theme.runtime.palette.scheme));
   }
   assert.equal(getProTheme("tide-dragon-realm").runtime.layout, "immersive");
+  assert.equal(getProTheme("moonlit-silent").runtime.wallpaper, "moonlit-silent.png");
   assert.deepEqual(
     WALLPAPER_DRAFTS.map(({ id }) => id),
     ["mint-academy", "vinyl-citrus"],
@@ -368,20 +372,34 @@ test("Codex 进程退出后助手自行停止", async () => {
 test("壁纸目录同时生成官网预览与安装资源", () => {
   assert.ok(WALLPAPERS.length >= 1);
   for (const wallpaper of WALLPAPERS) {
+    const source = path.join(projectRoot, "assets", "wallpapers", wallpaper.file);
+    const installerPreview = path.join(projectRoot, "site", "wallpapers", wallpaper.previewFile);
+    const productionPreview = path.join(
+      projectRoot,
+      "web",
+      "public",
+      "wallpapers",
+      wallpaper.previewFile,
+    );
     assert.equal(
-      fs.existsSync(path.join(projectRoot, "assets", "wallpapers", wallpaper.file)),
+      fs.existsSync(source),
       true,
       `${wallpaper.name} 原图应存在`,
     );
     assert.equal(
-      fs.existsSync(path.join(projectRoot, "site", "wallpapers", wallpaper.previewFile)),
+      fs.existsSync(installerPreview),
       true,
-      `${wallpaper.name} 官网预览应存在`,
+      `${wallpaper.name} 安装包预览应存在`,
     );
+    assert.equal(fs.existsSync(productionPreview), true, `${wallpaper.name} 生产站预览应存在`);
+    assert.deepEqual(fs.readFileSync(productionPreview), fs.readFileSync(installerPreview));
   }
-  const catalog = JSON.parse(fs.readFileSync(path.join(projectRoot, "site", "catalog.json"), "utf8"));
-  assert.equal(catalog.catalogVersion, 3);
-  assert.equal(catalog.themes.filter(({ edition }) => edition === "pro").length, WALLPAPERS.length);
+  const installerCatalog = fs.readFileSync(path.join(projectRoot, "site", "catalog.json"), "utf8");
+  const productionCatalog = fs.readFileSync(path.join(projectRoot, "web", "public", "catalog.json"), "utf8");
+  assert.equal(productionCatalog, installerCatalog);
+  const parsedCatalog = JSON.parse(installerCatalog);
+  assert.equal(parsedCatalog.catalogVersion, 3);
+  assert.equal(parsedCatalog.themes.filter(({ edition }) => edition === "pro").length, WALLPAPERS.length);
 });
 
 test("官网按系统直下安装包且入口使用通用命名", () => {

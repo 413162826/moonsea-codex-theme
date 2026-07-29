@@ -26,6 +26,10 @@ const origin = `http://localhost:${port}`;
 let server;
 let localDatabasePath;
 
+const publicCatalog = JSON.parse(
+  await readFile(new URL("../public/catalog.json", import.meta.url), "utf8"),
+);
+
 async function ensureLocalVisitorSchema(root) {
   const stateRoot = join(root, ".wrangler", "state", "v3", "d1");
   const entries = await readdir(stateRoot, { recursive: true });
@@ -107,7 +111,7 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(html, /site-header--reveal/);
   assert.doesNotMatch(html, /aria-label="主要导航"/);
   assert.match(html, /landing-codex-preview/);
-  assert.match(html, /tide-dragon-realm\.webp/);
+  assert.match(html, /moonlit-silent\.webp/);
   assert.doesNotMatch(html, /今天想待在|BROWSE THE COLLECTION|home-theme-grid/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据|找到适合今天的工作氛围/);
   assert.doesNotMatch(html, /react-loading-skeleton|Your site is taking shape/);
@@ -124,11 +128,21 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.match(html, /site-header--moonsea/);
   assert.match(html, /月白/);
   assert.match(html, /潮汐龙境/);
-  assert.match(html, /显示 17 个主题/);
+  assert.match(html, /月海无声/);
+  assert.match(html, /moonlit-silent\.webp/);
+  assert.match(html, new RegExp(`显示 ${publicCatalog.themes.length} 个主题`));
   assert.match(html, /下载安装/);
   assert.match(html, /href="\/themes\/moon-white"/);
   assert.doesNotMatch(html, /连接后应用/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
+});
+
+test("主题墙按本机助手实际目录判断新主题能否应用", async () => {
+  const gallery = await readFile(new URL("../app/theme-gallery.tsx", import.meta.url), "utf8");
+  assert.match(gallery, /\/api\/themes/);
+  assert.match(gallery, /supportedThemeIds/);
+  assert.match(gallery, /supportedThemeIds\.includes\(theme\.id\)/);
+  assert.match(gallery, /升级后应用/);
 });
 
 test("每个主题有可索引、可下载和可分享的独立页面", async () => {
@@ -143,6 +157,17 @@ test("每个主题有可索引、可下载和可分享的独立页面", async ()
     html,
     /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moon-white"/,
   );
+
+  const moonlitResponse = await fetch(`${origin}/themes/moonlit-silent`);
+  assert.equal(moonlitResponse.status, 200);
+  const moonlitHtml = await moonlitResponse.text();
+  assert.match(moonlitHtml, /<h1>月海无声<\/h1>/);
+  assert.match(moonlitHtml, /moonlit-silent\.webp/);
+  assert.match(moonlitHtml, /"isAccessibleForFree":true/);
+
+  const preview = await fetch(`${origin}/wallpapers/moonlit-silent.webp`);
+  assert.equal(preview.status, 200);
+  assert.match(preview.headers.get("content-type") ?? "", /^image\/webp\b/i);
 
   const missing = await fetch(`${origin}/themes/not-a-theme`);
   assert.equal(missing.status, 404);
@@ -177,6 +202,10 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
   const sitemapText = await sitemap.text();
   assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes<\/loc>/);
   assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moon-white<\/loc>/);
+  assert.match(
+    sitemapText,
+    /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moonlit-silent<\/loc>/,
+  );
 });
 
 test("隐私页透明说明匿名访客统计边界", async () => {
@@ -425,7 +454,8 @@ test("首页使用全页 WebGL 深海暮光层与交互鱼群并移除主题拼�
   assert.match(styles, /\.moonsea-backdrop__fish\s*\{/);
   assert.doesNotMatch(page, /home-collection|home-theme-grid|StandardCodexPreview|landing-stage/);
   assert.match(page, /ProCodexPreview/);
-  assert.match(page, /tide-dragon-realm\.webp/);
+  assert.match(page, /getTheme\("moonlit-silent"\)/);
+  assert.doesNotMatch(page, /previewImage:\s*"\.\/wallpapers\//);
 });
 
 test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {

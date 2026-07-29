@@ -11,6 +11,7 @@ type Connection = {
   connected: boolean;
   runtimeCapable: boolean;
   activeThemeId: string | null;
+  supportedThemeIds: string[];
   message: string;
 };
 
@@ -18,6 +19,7 @@ const initialConnection: Connection = {
   connected: false,
   runtimeCapable: false,
   activeThemeId: null,
+  supportedThemeIds: [],
   message: "打开月海版",
 };
 
@@ -38,7 +40,10 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
     let active = true;
     const connect = async () => {
       try {
-        const response = await fetch(`${API_ROOT}/api/status`, { cache: "no-store" });
+        const [response, themesResponse] = await Promise.all([
+          fetch(`${API_ROOT}/api/status`, { cache: "no-store" }),
+          fetch(`${API_ROOT}/api/themes`, { cache: "no-store" }),
+        ]);
         const body = await response.json() as {
           connected: boolean;
           runtimeCapable?: boolean;
@@ -46,20 +51,34 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
           themeId?: string;
           message?: string;
         };
+        const themesBody = await themesResponse.json() as {
+          ok?: boolean;
+          themes?: Array<{ id?: string }>;
+        };
         if (!response.ok || !body.connected) throw new Error(body.message ?? "Codex 未连接");
         if (!active) return;
-        const runtimeCapable = body.runtimeCapable === true && (body.catalogVersion ?? 0) >= 3;
+        const supportedThemeIds = themesResponse.ok && themesBody.ok && Array.isArray(themesBody.themes)
+          ? themesBody.themes.flatMap((theme) => typeof theme.id === "string" ? [theme.id] : [])
+          : [];
+        const runtimeCapable = body.runtimeCapable === true
+          && (body.catalogVersion ?? 0) >= 3
+          && supportedThemeIds.length > 0;
         setConnection({
           connected: true,
           runtimeCapable,
           activeThemeId: body.themeId ?? null,
+          supportedThemeIds,
           message: runtimeCapable ? "可立即应用" : "需要升级月海",
         });
         const pendingId = window.localStorage.getItem("moonsea_pending_theme");
         const pendingTheme = themes.find((theme) => theme.id === pendingId);
         if (pendingTheme) {
           setPendingThemeId(pendingTheme.id);
-          setNotice(`月海已连接，可以继续应用“${pendingTheme.name}”。`);
+          setNotice(
+            supportedThemeIds.includes(pendingTheme.id)
+              ? `月海已连接，可以继续应用“${pendingTheme.name}”。`
+              : `当前版本还不支持“${pendingTheme.name}”，升级后即可应用。`,
+          );
         }
       } catch {
         if (active) setConnection(initialConnection);
@@ -89,7 +108,11 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
 
   const applyTheme = async (theme: Theme) => {
     if (applyingId) return;
-    if (!connection.connected || !connection.runtimeCapable) {
+    if (
+      !connection.connected
+      || !connection.runtimeCapable
+      || !connection.supportedThemeIds.includes(theme.id)
+    ) {
       window.localStorage.setItem("moonsea_pending_theme", theme.id);
       setPendingThemeId(theme.id);
       window.location.assign(`/download?theme=${encodeURIComponent(theme.id)}`);
@@ -157,6 +180,9 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
         {visibleThemes.map((theme) => {
           const isActive = connection.activeThemeId === theme.id;
           const isApplying = applyingId === theme.id;
+          const canApply = connection.connected
+            && connection.runtimeCapable
+            && connection.supportedThemeIds.includes(theme.id);
           return (
             <article className="theme-card" key={theme.id}>
               <div className={`theme-preview ${theme.edition === "pro" ? "is-pro" : ""}`} style={{ background: theme.previewGradient }}>
@@ -179,7 +205,7 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
                     ? "应用中…"
                     : isActive
                       ? "正在使用"
-                      : connection.connected && connection.runtimeCapable
+                      : canApply
                         ? pendingThemeId === theme.id ? "继续应用" : "应用"
                         : connection.connected ? "升级后应用" : "下载安装"}
                 </button>
