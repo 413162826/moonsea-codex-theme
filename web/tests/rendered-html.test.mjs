@@ -58,11 +58,10 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>月海 Codex 主题<\/title>/i);
-  assert.match(html, /免费主题与/);
-  assert.match(html, /Pro 壁纸/);
+  assert.match(html, /免费主题，/);
   assert.match(html, /让 Codex/);
   assert.match(html, /更沉浸/);
-  assert.match(html, /背景、透明层与阅读对比一体调校/);
+  assert.match(html, /保持安静、专注、氛围编程/);
   assert.match(html, /href="\/themes"/);
   assert.match(html, />下载</);
   assert.match(html, /href="\/download"/);
@@ -185,7 +184,7 @@ test("首页使用全页 WebGL 深海暮光层与交互鱼群并移除主题拼�
 
   assert.match(page, /<MoonseaRipple \/>/);
   assert.match(page, /MOVE THROUGH THE DEEP/);
-  assert.match(page, /背景、透明层与阅读对比一体调校/);
+  assert.match(page, /保持安静、专注、氛围编程/);
   assert.match(ripple, /getContext\("webgl"/);
   assert.match(ripple, /getContext\("2d"/);
   assert.match(ripple, /createSchool/);
