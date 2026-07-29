@@ -5,6 +5,7 @@ import {
 } from "../../../../lib/daily-metrics";
 import {
   createSiteVisitorId,
+  isAutomatedUserAgent,
   normalizeAttribution,
   readSiteVisitorId,
   recordSiteVisitor,
@@ -22,6 +23,13 @@ export async function POST(request: Request) {
   const requestOrigin = new URL(request.url).origin;
   if (request.headers.get("origin") !== requestOrigin) {
     return Response.json({ error: "请求来源无效" }, { status: 403 });
+  }
+
+  if (isAutomatedUserAgent(request.headers.get("user-agent"))) {
+    return new Response(null, {
+      status: 204,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   const contentLength = Number(request.headers.get("content-length") ?? 0);

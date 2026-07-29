@@ -6,6 +6,9 @@ const VISITOR_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ATTRIBUTION_PATTERN = /^[a-z0-9._-]{1,64}$/;
 
+const AUTOMATED_USER_AGENT_PATTERN =
+  /bot|crawler|spider|slurp|preview|facebookexternalhit|headlesschrome|lighthouse|pagespeed|pingdom|uptimerobot/i;
+
 export const SITE_VISITOR_COOKIE = "moonsea_site_visitor";
 export const SITE_VISITOR_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
 
@@ -44,6 +47,11 @@ export function normalizeAttribution(
 ) {
   const normalized = value?.trim().toLowerCase() ?? "";
   return ATTRIBUTION_PATTERN.test(normalized) ? normalized : fallback;
+}
+
+export function isAutomatedUserAgent(userAgent: string | null) {
+  const normalized = userAgent?.trim() ?? "";
+  return normalized.length === 0 || AUTOMATED_USER_AGENT_PATTERN.test(normalized);
 }
 
 async function hashVisitorId(visitorId: string) {

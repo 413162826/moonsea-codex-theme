@@ -188,6 +188,38 @@ test("隐私页透明说明匿名访客统计边界", async () => {
   assert.match(html, /不采集硬件指纹/);
 });
 
+test("页面访问接口忽略明显的自动化客户端", async () => {
+  const beforeDatabase = new DatabaseSync(localDatabasePath);
+  const before = beforeDatabase
+    .prepare("SELECT COUNT(*) AS total FROM site_visitors")
+    .get().total;
+  beforeDatabase.close();
+
+  const automated = await fetch(`${origin}/api/analytics/pageview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Origin: origin,
+      "User-Agent": "GitHubBot/1.0",
+    },
+    body: JSON.stringify({
+      path: "/",
+      source: "github",
+      campaign: "week1",
+      content: "link_preview",
+    }),
+  });
+  assert.equal(automated.status, 204);
+  assert.equal(automated.headers.get("set-cookie"), null);
+
+  const afterDatabase = new DatabaseSync(localDatabasePath);
+  const after = afterDatabase
+    .prepare("SELECT COUNT(*) AS total FROM site_visitors")
+    .get().total;
+  afterDatabase.close();
+  assert.equal(after, before);
+});
+
 test("页面访问接口按匿名浏览器设置站点级访客标识", async () => {
   const first = await fetch(`${origin}/api/analytics/pageview`, {
     method: "POST",
