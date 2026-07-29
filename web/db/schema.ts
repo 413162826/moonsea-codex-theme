@@ -37,6 +37,8 @@ export const siteVisitors = sqliteTable("site_visitors", {
   lastSource: text("last_source").notNull(),
   firstCampaign: text("first_campaign"),
   lastCampaign: text("last_campaign"),
+  firstContent: text("first_content"),
+  lastContent: text("last_content"),
 });
 
 export const siteVisitorDays = sqliteTable("site_visitor_days", {
@@ -44,6 +46,7 @@ export const siteVisitorDays = sqliteTable("site_visitor_days", {
   visitorHash: text("visitor_hash").notNull(),
   source: text("source").notNull(),
   campaign: text("campaign"),
+  content: text("content"),
   pageViewCount: integer("page_view_count").notNull().default(1),
 }, (table) => [
   primaryKey({ columns: [table.day, table.visitorHash] }),

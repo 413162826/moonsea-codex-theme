@@ -15,6 +15,7 @@ type PageViewPayload = {
   path?: string;
   source?: string;
   campaign?: string;
+  content?: string;
 };
 
 export async function POST(request: Request) {
@@ -42,12 +43,13 @@ export async function POST(request: Request) {
 
   const source = normalizeAttribution(payload.source, "direct") ?? "direct";
   const campaign = normalizeAttribution(payload.campaign, null);
+  const content = normalizeAttribution(payload.content, null);
   const existingVisitorId = readSiteVisitorId(request);
   const visitorId = existingVisitorId ?? createSiteVisitorId();
 
   await Promise.all([
     incrementDailyMetric(METRIC_TYPES.pageView, path),
-    recordSiteVisitor(visitorId, source, campaign),
+    recordSiteVisitor(visitorId, source, campaign, content),
   ]);
 
   const headers = new Headers({ "Cache-Control": "no-store" });

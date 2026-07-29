@@ -61,6 +61,7 @@ export async function recordSiteVisitor(
   visitorId: string,
   source: string,
   campaign: string | null,
+  content: string | null,
   now = new Date(),
 ) {
   const visitorHash = await hashVisitorId(visitorId);
@@ -80,6 +81,8 @@ export async function recordSiteVisitor(
         lastSource: source,
         firstCampaign: campaign,
         lastCampaign: campaign,
+        firstContent: content,
+        lastContent: content,
       })
       .onConflictDoUpdate({
         target: siteVisitors.visitorHash,
@@ -88,6 +91,7 @@ export async function recordSiteVisitor(
           pageViewCount: sql`${siteVisitors.pageViewCount} + 1`,
           lastSource: source,
           lastCampaign: campaign,
+          lastContent: content,
         },
       }),
     db
@@ -97,6 +101,7 @@ export async function recordSiteVisitor(
         visitorHash,
         source,
         campaign,
+        content,
         pageViewCount: 1,
       })
       .onConflictDoUpdate({

@@ -98,6 +98,7 @@ async function loadStatistics() {
     siteVisitors,
     trafficSources,
     trafficCampaigns,
+    trafficContents,
     downloadPlatforms,
   ] = await Promise.all([
     env.DB.prepare(`
@@ -175,6 +176,14 @@ async function loadStatistics() {
       LIMIT 12
     `).all<DistributionRow>(),
     env.DB.prepare(`
+      SELECT content AS label, COUNT(DISTINCT visitor_hash) AS total
+      FROM site_visitor_days
+      WHERE day >= date('now', '-6 days') AND content IS NOT NULL
+      GROUP BY content
+      ORDER BY total DESC, content ASC
+      LIMIT 12
+    `).all<DistributionRow>(),
+    env.DB.prepare(`
       SELECT dimension AS label, SUM(total) AS total
       FROM daily_metrics
       WHERE metric_type = 'download'
@@ -196,6 +205,7 @@ async function loadStatistics() {
     siteVisitors: siteVisitors ?? { total: 0, today: 0, recent7d: 0, recent30d: 0 },
     trafficSources: trafficSources.results,
     trafficCampaigns: trafficCampaigns.results,
+    trafficContents: trafficContents.results,
     downloadPlatforms: downloadPlatforms.results,
   };
 }
@@ -309,6 +319,7 @@ export default async function AdminPage() {
           <Distribution title="页面访问分布" rows={data.trafficPages} />
           <Distribution title="近 7 日访客来源" rows={data.trafficSources} />
           <Distribution title="近 7 日活动" rows={data.trafficCampaigns} />
+          <Distribution title="近 7 日素材" rows={data.trafficContents} />
           <section className="data-card metric-note">
             <h2>统计口径</h2>
             <dl>

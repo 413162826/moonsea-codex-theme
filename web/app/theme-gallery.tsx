@@ -1,16 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ProCodexPreview, StandardCodexPreview, type PreviewTheme } from "./codex-preview";
+import type { Theme } from "../lib/theme-catalog";
+import { ProCodexPreview, StandardCodexPreview } from "./codex-preview";
 
 const API_ROOT = "http://127.0.0.1:17321";
-
-export type Theme = PreviewTheme & {
-  id: string;
-  description: string;
-  edition: "standard" | "pro";
-  preview?: string[];
-};
 
 type Connection = {
   connected: boolean;
@@ -171,7 +166,10 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
                   : <StandardCodexPreview theme={theme} />}
               </div>
               <div className="theme-card__footer">
-                <div><h3>{theme.name}</h3><p>{theme.description}</p></div>
+                <div>
+                  <h3><Link href={`/themes/${theme.id}`}>{theme.name}</Link></h3>
+                  <p>{theme.description}</p>
+                </div>
                 <button
                   type="button"
                   onClick={() => void applyTheme(theme)}

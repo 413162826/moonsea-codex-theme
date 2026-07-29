@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import catalog from "../../public/catalog.json";
+import { THEMES } from "../../lib/theme-catalog";
 import { SiteFooter, SiteHeader } from "../site-chrome";
-import { ThemeGallery, type Theme } from "../theme-gallery";
+import { ThemeGallery } from "../theme-gallery";
 
 export const metadata: Metadata = {
   title: "主题",
@@ -19,7 +19,7 @@ export default function ThemesPage() {
     <div className="themes-shell">
       <SiteHeader tone="moonsea" />
       <main className="themes-page">
-        <ThemeGallery initialThemes={catalog.themes as Theme[]} />
+        <ThemeGallery initialThemes={[...THEMES]} />
       </main>
       <SiteFooter />
     </div>

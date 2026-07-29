@@ -9,7 +9,7 @@ export function PageViewTracker() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!TRACKED_PATHS.has(pathname)) return;
+    if (!TRACKED_PATHS.has(pathname) && !pathname.startsWith("/themes/")) return;
     const parameters = new URLSearchParams(window.location.search);
     const utmSource = parameters.get("utm_source");
     let source = utmSource;
@@ -28,6 +28,7 @@ export function PageViewTracker() {
         path: pathname,
         source: source ?? "direct",
         campaign: parameters.get("utm_campaign"),
+        content: parameters.get("utm_content"),
       })],
       { type: "application/json" },
     );

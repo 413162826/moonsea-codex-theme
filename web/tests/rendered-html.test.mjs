@@ -46,6 +46,16 @@ async function ensureLocalVisitorSchema(root) {
     );
     database.exec(migration);
   }
+  const visitorColumns = database
+    .prepare("PRAGMA table_info(site_visitors)")
+    .all();
+  if (!visitorColumns.some((column) => column.name === "first_content")) {
+    const contentMigration = await readFile(
+      new URL("../drizzle/0004_sudden_giant_girl.sql", import.meta.url),
+      "utf8",
+    );
+    database.exec(contentMigration);
+  }
   database.close();
 }
 
@@ -116,8 +126,26 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.match(html, /潮汐龙境/);
   assert.match(html, /显示 17 个主题/);
   assert.match(html, /下载安装/);
+  assert.match(html, /href="\/themes\/moon-white"/);
   assert.doesNotMatch(html, /连接后应用/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
+});
+
+test("每个主题有可索引、可下载和可分享的独立页面", async () => {
+  const response = await fetch(`${origin}/themes/moon-white`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<h1>月白<\/h1>/);
+  assert.match(html, /下载安装/);
+  assert.match(html, /复制同款链接/);
+  assert.match(html, /CreativeWork/);
+  assert.match(
+    html,
+    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moon-white"/,
+  );
+
+  const missing = await fetch(`${origin}/themes/not-a-theme`);
+  assert.equal(missing.status, 404);
 });
 
 test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
@@ -148,6 +176,7 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
   assert.equal(sitemap.status, 200);
   const sitemapText = await sitemap.text();
   assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes<\/loc>/);
+  assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moon-white<\/loc>/);
 });
 
 test("隐私页透明说明匿名访客统计边界", async () => {
@@ -170,6 +199,7 @@ test("页面访问接口按匿名浏览器设置站点级访客标识", async ()
       path: "/",
       source: "x",
       campaign: "week1_launch",
+      content: "launch_x_01",
     }),
   });
   assert.equal(first.status, 204);
@@ -200,7 +230,7 @@ test("页面访问接口按匿名浏览器设置站点级访客标识", async ()
   const database = new DatabaseSync(localDatabasePath);
   const recordedDay = database
     .prepare(`
-      SELECT source, campaign, page_view_count AS pageViewCount
+      SELECT source, campaign, content, page_view_count AS pageViewCount
       FROM site_visitor_days
       WHERE visitor_hash = ?
       ORDER BY day DESC
@@ -211,8 +241,34 @@ test("页面访问接口按匿名浏览器设置站点级访客标识", async ()
   assert.deepEqual({ ...recordedDay }, {
     source: "x",
     campaign: "week1_launch",
+    content: "launch_x_01",
     pageViewCount: 2,
   });
+
+  const themeView = await fetch(`${origin}/api/analytics/pageview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: visitorCookie.split(";")[0],
+      Origin: origin,
+    },
+    body: JSON.stringify({
+      path: "/themes/moon-white",
+      source: "share",
+      campaign: "theme_referral",
+    }),
+  });
+  assert.equal(themeView.status, 204);
+
+  const invalidThemeView = await fetch(`${origin}/api/analytics/pageview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Origin: origin,
+    },
+    body: JSON.stringify({ path: "/themes/not-a-theme" }),
+  });
+  assert.equal(invalidThemeView.status, 400);
 });
 
 test("首页顶栏仅在顶部感应或键盘聚焦时显示", async () => {
@@ -376,10 +432,15 @@ test("数据迁移能建立安装、聚合指标与匿名访客表", async () =>
     new URL("../drizzle/0003_cloudy_hemingway.sql", import.meta.url),
     "utf8",
   );
+  const contentAttributionMigration = await readFile(
+    new URL("../drizzle/0004_sudden_giant_girl.sql", import.meta.url),
+    "utf8",
+  );
   database.exec(installationMigration);
   database.exec(metricsMigration);
   database.exec(downloadVisitorsMigration);
   database.exec(siteVisitorsMigration);
+  database.exec(contentAttributionMigration);
   const columns = database.prepare("PRAGMA table_info(installations)").all();
   assert.deepEqual(
     columns.map((column) => column.name),
@@ -437,11 +498,17 @@ test("数据迁移能建立安装、聚合指标与匿名访客表", async () =>
       "last_source",
       "first_campaign",
       "last_campaign",
+      "first_content",
+      "last_content",
     ],
   );
   const siteVisitorDayColumns = database
     .prepare("PRAGMA table_info(site_visitor_days)")
     .all();
+  assert.deepEqual(
+    siteVisitorDayColumns.map((column) => column.name),
+    ["day", "visitor_hash", "source", "campaign", "page_view_count", "content"],
+  );
   assert.deepEqual(
     siteVisitorDayColumns
       .filter((column) => column.pk > 0)
