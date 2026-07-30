@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
@@ -24,6 +25,7 @@ const port = await new Promise((resolve, reject) => {
   });
 });
 const origin = `http://${previewHost}:${port}`;
+const testStatePath = await mkdtemp(join(tmpdir(), "moonsea-rendered-"));
 let server;
 let serverOutput = "";
 let localDatabasePath;
@@ -32,36 +34,40 @@ const publicCatalog = JSON.parse(
   await readFile(new URL("../public/catalog.json", import.meta.url), "utf8"),
 );
 
-async function ensureLocalVisitorSchema(root) {
-  const stateRoot = join(root, ".wrangler", "state", "v3", "d1");
-  const entries = await readdir(stateRoot, { recursive: true });
-  const databaseEntry = entries.find(
-    (entry) => entry.endsWith(".sqlite") && !entry.endsWith("metadata.sqlite"),
-  );
-  if (!databaseEntry) throw new Error("没有找到本地 D1 数据库");
+async function findLocalDatabase() {
+  const stateRoot = join(testStatePath, "v3", "d1");
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    try {
+      const entries = await readdir(stateRoot, { recursive: true });
+      const databaseEntry = entries.find(
+        (entry) => entry.endsWith(".sqlite") && !entry.endsWith("metadata.sqlite"),
+      );
+      if (databaseEntry) return join(stateRoot, databaseEntry);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`没有找到本地 D1 数据库：${stateRoot}`);
+}
 
-  localDatabasePath = join(stateRoot, databaseEntry);
+async function ensureLocalVisitorSchema() {
+  await fetch(`${origin}/api/health`);
+  localDatabasePath = await findLocalDatabase();
   const database = new DatabaseSync(localDatabasePath);
-  const visitorTable = database
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'site_visitors'")
-    .get();
-  if (!visitorTable) {
-    const migration = await readFile(
-      new URL("../drizzle/0003_cloudy_hemingway.sql", import.meta.url),
-      "utf8",
-    );
-    database.exec(migration);
-  }
-  const visitorColumns = database
-    .prepare("PRAGMA table_info(site_visitors)")
-    .all();
-  if (!visitorColumns.some((column) => column.name === "first_content")) {
-    const contentMigration = await readFile(
-      new URL("../drizzle/0004_sudden_giant_girl.sql", import.meta.url),
-      "utf8",
-    );
-    database.exec(contentMigration);
-  }
+  const migrationFiles = [
+    "0000_unusual_molten_man.sql",
+    "0001_closed_namorita.sql",
+    "0002_green_young_avengers.sql",
+    "0003_cloudy_hemingway.sql",
+    "0004_sudden_giant_girl.sql",
+  ];
+  const migrations = await Promise.all(
+    migrationFiles.map((file) =>
+      readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8")),
+  );
+  database.exec(migrations.join("\n"));
   database.close();
 }
 
@@ -70,7 +76,11 @@ before(async () => {
   const cli = fileURLToPath(new URL("../node_modules/vinext/dist/cli.js", import.meta.url));
   server = spawn(process.execPath, [cli, "dev", "--hostname", previewHost, "-p", String(port)], {
     cwd: root,
-    env: { ...process.env, WRANGLER_LOG_PATH: ".wrangler/test.log" },
+    env: {
+      ...process.env,
+      MOONSEA_TEST_STATE_PATH: testStatePath,
+      WRANGLER_LOG_PATH: ".wrangler/test.log",
+    },
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
@@ -86,23 +96,31 @@ before(async () => {
     if (server.exitCode !== null) {
       throw new Error(`预览服务提前退出：${server.exitCode}\n${serverOutput}`);
     }
+    let response;
     try {
-      const response = await fetch(origin);
-      if (response.ok) {
-        await ensureLocalVisitorSchema(root);
-        return;
-      }
+      response = await fetch(origin);
     } catch {
       // 服务尚未监听，继续等待。
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      continue;
+    }
+    if (response.ok) {
+      await ensureLocalVisitorSchema();
+      return;
     }
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error(`等待预览服务启动超时\n${serverOutput}`);
 });
 
-after(() => {
-  if (!server || server.exitCode !== null) return;
-  server.kill();
+after(async () => {
+  if (server?.exitCode === null) {
+    await new Promise((resolve) => {
+      server.once("exit", resolve);
+      server.kill();
+    });
+  }
+  await rm(testStatePath, { recursive: true, force: true });
 });
 
 test("官网服务端渲染月海产品内容", async () => {
