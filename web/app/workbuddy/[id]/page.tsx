@@ -63,7 +63,7 @@ export default async function ThemePage({ params }: ThemePageProps) {
           </p>
           <h1>{theme.name}</h1>
           <p>{theme.description}。打开 WorkBuddy Codex 后，即可从网页直接应用。</p>
-          <ThemeActions themeId={theme.id} basePath="/workbuddy" />
+          <ThemeActions themeId={theme.id} basePath="/workbuddy" client="workbuddy" />
           <Link className="theme-detail__back" href="/workbuddy">返回主题墙</Link>
         </div>
         <script

@@ -10,11 +10,18 @@ import {
 } from "../../lib/download-visitors";
 
 const DOWNLOADS = Object.freeze({
-  windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64-Setup.exe",
-  macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
+  codex: {
+    windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-Windows-x64-Setup.exe",
+    macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-Codex-macOS.zip",
+  },
+  workbuddy: {
+    windows: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-WorkBuddy-Windows-x64-Setup.exe",
+    macos: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/Moonsea-WorkBuddy-macOS.zip",
+  },
 });
 
-type DownloadPlatform = keyof typeof DOWNLOADS;
+type DownloadClient = keyof typeof DOWNLOADS;
+type DownloadPlatform = "windows" | "macos";
 
 function detectPlatform(request: Request): DownloadPlatform | null {
   const requested = new URL(request.url).searchParams.get("platform");
@@ -28,10 +35,19 @@ function detectPlatform(request: Request): DownloadPlatform | null {
   return null;
 }
 
+function detectClient(request: Request): DownloadClient {
+  const requested = new URL(request.url).searchParams.get("client");
+  if (requested === "codex" || requested === "workbuddy") return requested;
+  return "codex";
+}
+
 export async function GET(request: Request) {
   const platform = detectPlatform(request);
+  const client = detectClient(request);
   if (!platform) {
-    return Response.redirect(new URL("/download/choose", request.url), 302);
+    const chooseUrl = new URL("/download/choose", request.url);
+    chooseUrl.searchParams.set("client", client);
+    return Response.redirect(chooseUrl, 302);
   }
 
   const existingVisitorId = readDownloadVisitorId(request);
@@ -46,15 +62,16 @@ export async function GET(request: Request) {
     // 统计属于非关键链路，不阻断用户下载。
   }
 
-  const headers = new Headers({ Location: DOWNLOADS[platform] });
+  const headers = new Headers({ Location: DOWNLOADS[client][platform] });
   if (!existingVisitorId) headers.set("Set-Cookie", downloadVisitorCookie(visitorId));
   return new Response(null, { status: 302, headers });
 }
 
 export function HEAD(request: Request) {
   const platform = detectPlatform(request);
+  const client = detectClient(request);
   if (!platform) {
     return Response.redirect(new URL("/download/choose", request.url), 302);
   }
-  return Response.redirect(DOWNLOADS[platform], 302);
+  return Response.redirect(DOWNLOADS[client][platform], 302);
 }

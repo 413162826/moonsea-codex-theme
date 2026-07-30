@@ -23,7 +23,13 @@ export default async function WorkbuddyPage() {
     <div className="themes-shell">
       <SiteHeader tone="workbuddy" />
       <main className="themes-page">
-        <ThemeGallery initialThemes={themes} basePath="/workbuddy" />
+        <ThemeGallery
+          initialThemes={themes}
+          basePath="/workbuddy"
+          apiRoot="http://127.0.0.1:17322"
+          clientLabel="WorkBuddy"
+          client="workbuddy"
+        />
       </main>
       <SiteFooter tone="workbuddy" />
     </div>

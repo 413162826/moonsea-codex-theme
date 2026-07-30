@@ -8,16 +8,22 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function DownloadChoosePage() {
+type ChooseProps = { searchParams: Promise<{ client?: string }> };
+
+export default async function DownloadChoosePage({ searchParams }: ChooseProps) {
+  const { client } = await searchParams;
+  const clientParam = client === "workbuddy" ? "workbuddy" : "codex";
+  const tone = clientParam === "workbuddy" ? "workbuddy" : "moonsea";
+  const withClient = (platform: string) => `/download?platform=${platform}&client=${clientParam}`;
   return (
     <>
-      <SiteHeader tone="moonsea" />
+      <SiteHeader tone={tone} />
       <main className="download-choose">
         <p>没有识别出当前系统</p>
         <h1>选择你的电脑</h1>
         <div className="download-choose__actions">
-          <a href="/download?platform=windows">Windows</a>
-          <a href="/download?platform=macos">macOS</a>
+          <a href={withClient("windows")}>Windows</a>
+          <a href={withClient("macos")}>macOS</a>
         </div>
         <Link href="/">返回月海首页</Link>
       </main>

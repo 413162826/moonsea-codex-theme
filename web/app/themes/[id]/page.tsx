@@ -63,7 +63,7 @@ export default async function ThemePage({ params }: ThemePageProps) {
           </p>
           <h1>{theme.name}</h1>
           <p>{theme.description}。打开月海 Codex 后，即可从网页直接应用。</p>
-          <ThemeActions themeId={theme.id} />
+          <ThemeActions themeId={theme.id} client="codex" />
           <Link className="theme-detail__back" href="/themes">返回主题墙</Link>
         </div>
         <script

@@ -5,8 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { Theme } from "../lib/theme-catalog";
 import { ProCodexPreview, StandardCodexPreview } from "./codex-preview";
 
-const API_ROOT = "http://127.0.0.1:17321";
-
 type Connection = {
   connected: boolean;
   runtimeCapable: boolean;
@@ -14,20 +12,25 @@ type Connection = {
   message: string;
 };
 
-const initialConnection: Connection = {
-  connected: false,
-  runtimeCapable: false,
-  activeThemeId: null,
-  message: "打开月海版",
-};
-
 export function ThemeGallery({
   initialThemes,
   basePath = "/themes",
+  apiRoot = "http://127.0.0.1:17321",
+  clientLabel = "Codex",
+  client = "codex",
 }: {
   initialThemes: Theme[];
   basePath?: string;
+  apiRoot?: string;
+  clientLabel?: string;
+  client?: string;
 }) {
+  const initialConnection: Connection = {
+    connected: false,
+    runtimeCapable: false,
+    activeThemeId: null,
+    message: "未连接",
+  };
   const [themes] = useState(initialThemes);
   const [filter, setFilter] = useState<"all" | "light" | "dark" | "pro">("all");
   const [query, setQuery] = useState("");
@@ -44,7 +47,7 @@ export function ThemeGallery({
     let active = true;
     const connect = async () => {
       try {
-        const response = await fetch(`${API_ROOT}/api/status`, { cache: "no-store" });
+        const response = await fetch(`${apiRoot}/api/status`, { cache: "no-store" });
         const body = await response.json() as {
           connected: boolean;
           runtimeCapable?: boolean;
@@ -106,13 +109,13 @@ export function ThemeGallery({
     ) {
       window.localStorage.setItem("moonsea_pending_theme", theme.id);
       setPendingThemeId(theme.id);
-      window.location.assign(`/download?theme=${encodeURIComponent(theme.id)}`);
+      window.location.assign(`/download?client=${encodeURIComponent(client)}&theme=${encodeURIComponent(theme.id)}`);
       return;
     }
     setApplyingId(theme.id);
     setNotice(`正在应用“${theme.name}”…`);
     try {
-      const response = await fetch(`${API_ROOT}/api/themes/apply`, {
+      const response = await fetch(`${apiRoot}/api/themes/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ themeId: theme.id }),
@@ -122,7 +125,7 @@ export function ThemeGallery({
       setConnection((current) => ({ ...current, activeThemeId: theme.id }));
       window.localStorage.removeItem("moonsea_pending_theme");
       setPendingThemeId(null);
-      setNotice(`“${theme.name}”已应用，Codex 无需重启。`);
+      setNotice(`"${theme.name}"已应用，${clientLabel} 无需重启。`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "应用失败，请确认月海版仍在运行");
     } finally {
@@ -139,7 +142,7 @@ export function ThemeGallery({
         </div>
         <div className={`connection-status ${connection.connected ? "is-connected" : ""}`}>
           <span aria-hidden="true" />
-          <div><strong>{connection.connected ? "Codex 已连接" : "Codex 未连接"}</strong><small>{connection.message}</small></div>
+          <div><strong>{connection.connected ? `${clientLabel} 已连接` : `${clientLabel} 未连接`}</strong><small>{connection.message}</small></div>
         </div>
       </div>
 

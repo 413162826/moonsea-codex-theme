@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { OwnerAdminLink } from "./owner-admin-link";
 
-export const DOWNLOAD_URL = "/download";
+export const DOWNLOAD_URL = "/download?client=codex";
 export const WIKI_URL =
   "https://github.com/413162826/moonsea-codex-theme/wiki";
 
@@ -17,6 +17,7 @@ type ToneConfig = {
   themes: string;
   sisterLabel: string;
   sisterHref: string;
+  download: string;
   footer: string;
 };
 
@@ -28,6 +29,7 @@ const TONE: Record<SiteTone, ToneConfig> = {
     themes: "/themes",
     sisterLabel: "WorkBuddy 壁纸",
     sisterHref: "/workbuddy",
+    download: "/download?client=codex",
     footer: "月海 · Codex 主题与壁纸",
   },
   workbuddy: {
@@ -37,6 +39,7 @@ const TONE: Record<SiteTone, ToneConfig> = {
     themes: "/workbuddy",
     sisterLabel: "月海壁纸",
     sisterHref: "/themes",
+    download: "/download?client=workbuddy",
     footer: "WorkBuddy · Codex 主题与壁纸",
   },
   light: {
@@ -46,6 +49,7 @@ const TONE: Record<SiteTone, ToneConfig> = {
     themes: "/themes",
     sisterLabel: "WorkBuddy 壁纸",
     sisterHref: "/workbuddy",
+    download: "/download?client=codex",
     footer: "月海 · Codex 主题与壁纸",
   },
 };
@@ -98,7 +102,7 @@ export function SiteHeader({
               <Link href={config.themes}>主题</Link>
               <OwnerAdminLink />
               <Link className="sister-entry" href={config.sisterHref}>{config.sisterLabel}</Link>
-              <a className="download-link" href={DOWNLOAD_URL}>
+              <a className="download-link" href={config.download}>
                 下载
               </a>
             </nav>
