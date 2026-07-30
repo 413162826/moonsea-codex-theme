@@ -138,24 +138,26 @@ function Find-OfficialWorkBuddyApp {
         return [pscustomobject]@{ Path = (Get-FullPath $env:MOONSEA_SOURCE_APP); Version = $null }
     }
 
-    # WorkBuddy 官方应用身份：默认占位值，请用环境变量覆盖为真实值。
-    #   MOONSEA_OFFICIAL_PACKAGE  AppX 包名（默认占位 Tencent.WorkBuddy）
-    #   MOONSEA_OFFICIAL_EXE      可执行文件名（默认占位 WorkBuddy.exe）
-    $packageName = if ($env:MOONSEA_OFFICIAL_PACKAGE) { $env:MOONSEA_OFFICIAL_PACKAGE } else { "Tencent.WorkBuddy" }
-    $packages = @()
-    $namedPackage = Get-AppxPackage -Name $packageName -ErrorAction SilentlyContinue
-    if ($null -ne $namedPackage) { $packages += $namedPackage }
-    if ($packages.Count -eq 0) {
-        $packages += Get-AppxPackage | Where-Object {
-            $_.Name -match "OpenAI|ChatGPT|Codex|WorkBuddy|Tencent"
+    # WorkBuddy 是独立安装的 Electron 应用（非 Microsoft Store），默认安装路径：
+    #   %LOCALAPPDATA%\Programs\WorkBuddy\
+    # 可通过环境变量 MONSEA_OFFICIAL_PATH 覆盖。
+    $defaultPath = Join-Path $env:LOCALAPPDATA "Programs\WorkBuddy"
+    $searchPath = if ($env:MOONSEA_OFFICIAL_PATH) { $env:MOONSEA_OFFICIAL_PATH } else { $defaultPath }
+    $fullPath = Get-FullPath $searchPath
+    if (Test-Path -LiteralPath (Join-Path $fullPath "resources\app.asar")) {
+        return [pscustomobject]@{ Path = $fullPath; Version = $null }
+    }
+
+    # 回退：按进程名找正在运行的 WorkBuddy
+    $running = Get-CimInstance Win32_Process -Filter "Name = 'WorkBuddy.exe'" -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($running -and $running.ExecutablePath) {
+        $exeDir = Split-Path $running.ExecutablePath -Parent
+        if (Test-Path -LiteralPath (Join-Path $exeDir "resources\app.asar")) {
+            return [pscustomobject]@{ Path = $exeDir; Version = $null }
         }
     }
-    foreach ($package in $packages | Sort-Object Version -Descending -Unique) {
-        $candidate = Join-Path $package.InstallLocation "app"
-        if (Test-Path -LiteralPath (Join-Path $candidate "resources\app.asar") -PathType Leaf) {
-            return [pscustomobject]@{ Path = $candidate; Version = [string]$package.Version }
-        }
-    }
+
     throw "Official WorkBuddy was not found. Install and open the official app once, then retry."
 }
 

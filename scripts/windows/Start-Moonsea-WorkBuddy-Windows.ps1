@@ -27,7 +27,7 @@ function Get-OfficialVersion([string]$AppPath, [string]$DetectedVersion) {
 
 function Find-LatestOfficialWorkBuddy {
     if ($env:MOONSEA_SOURCE_APP) {
-        $sourceApp = [System.IO.Path]::GetFullPath($env:MOONSEA_SOURCE_APP)
+        $sourceApp = [System.IO.Path]::GetFullPath($env:MONSEA_SOURCE_APP)
         if (-not (Test-Path -LiteralPath (Join-Path $sourceApp "resources\app.asar") -PathType Leaf)) {
             throw "MOONSEA_SOURCE_APP is not a valid official WorkBuddy app."
         }
@@ -37,19 +37,20 @@ function Find-LatestOfficialWorkBuddy {
         }
     }
 
-    $packageName = if ($env:MOONSEA_OFFICIAL_PACKAGE) { $env:MOONSEA_OFFICIAL_PACKAGE } else { "Tencent.WorkBuddy" }
-    $package = Get-AppxPackage -Name $packageName -ErrorAction SilentlyContinue |
-        Sort-Object Version -Descending |
-        Where-Object {
-            Test-Path -LiteralPath (Join-Path $_.InstallLocation "app\resources\app.asar") -PathType Leaf
-        } |
-        Select-Object -First 1
-    if ($null -eq $package) {
-        throw "Official WorkBuddy was not found. Install and open the official app once, then retry."
+    # WorkBuddy 是独立安装的 Electron 应用（非 Microsoft Store），默认安装路径：
+    #   %LOCALAPPDATA%\Programs\WorkBuddy\
+    $defaultPath = Join-Path $env:LOCALAPPDATA "Programs\WorkBuddy"
+    $searchPath = if ($env:MOONSEA_OFFICIAL_PATH) { $env:MOONSEA_OFFICIAL_PATH } else { $defaultPath }
+    $fullPath = [System.IO.Path]::GetFullPath($searchPath)
+    if (Test-Path -LiteralPath (Join-Path $fullPath "resources\app.asar") -PathType Leaf) {
+        return [pscustomobject]@{
+            Path = $fullPath
+            Version = Get-OfficialVersion $fullPath $null
+        }
     }
-    $appPath = [System.IO.Path]::GetFullPath((Join-Path $package.InstallLocation "app"))
-    return [pscustomobject]@{
-        Path = $appPath
+
+    throw "Official WorkBuddy was not found. Install and open the official app once, then retry."
+}
         Version = Get-OfficialVersion $appPath ([string]$package.Version)
     }
 }
