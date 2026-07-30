@@ -165,12 +165,13 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
 });
 
-test("主题墙按本机助手实际目录判断新主题能否应用", async () => {
+test("主题墙按助手动态分发能力判断新主题能否一键应用", async () => {
   const gallery = await readFile(new URL("../app/theme-gallery.tsx", import.meta.url), "utf8");
   assert.match(gallery, /\/api\/themes/);
-  assert.match(gallery, /supportedThemeIds/);
-  assert.match(gallery, /supportedThemeIds\.includes\(theme\.id\)/);
-  assert.match(gallery, /升级后应用/);
+  assert.match(gallery, /themeDeliveryVersion/);
+  assert.match(gallery, /themeDeliveryVersion \?\? 0\) >= 1/);
+  assert.doesNotMatch(gallery, /supportedThemeIds/);
+  assert.match(gallery, /升级月海后应用/);
 });
 
 test("每个主题有可索引、可下载和可分享的独立页面", async () => {

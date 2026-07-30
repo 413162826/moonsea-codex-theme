@@ -146,14 +146,14 @@
       request.onerror = () => reject(request.error);
     });
 
-  const readSavedWallpaper = async () => {
+  const readSavedWallpaper = async (key = WALLPAPER_KEY) => {
     const database = await openWallpaperDatabase();
     try {
       return await new Promise((resolve, reject) => {
         const request = database
           .transaction(WALLPAPER_STORE_NAME, "readonly")
           .objectStore(WALLPAPER_STORE_NAME)
-          .get(WALLPAPER_KEY);
+          .get(key);
         request.onsuccess = () => resolve(request.result ?? null);
         request.onerror = () => reject(request.error);
       });
@@ -162,7 +162,7 @@
     }
   };
 
-  const writeSavedWallpaper = async (record) => {
+  const writeSavedWallpaper = async (record, key = WALLPAPER_KEY) => {
     const database = await openWallpaperDatabase();
     try {
       await new Promise((resolve, reject) => {
@@ -170,7 +170,7 @@
           WALLPAPER_STORE_NAME,
           "readwrite",
         );
-        transaction.objectStore(WALLPAPER_STORE_NAME).put(record, WALLPAPER_KEY);
+        transaction.objectStore(WALLPAPER_STORE_NAME).put(record, key);
         transaction.oncomplete = resolve;
         transaction.onerror = () => reject(transaction.error);
         transaction.onabort = () => reject(transaction.error);
@@ -180,7 +180,7 @@
     }
   };
 
-  const removeSavedWallpaper = async () => {
+  const removeSavedWallpaper = async (key = WALLPAPER_KEY) => {
     const database = await openWallpaperDatabase();
     try {
       await new Promise((resolve, reject) => {
@@ -188,7 +188,7 @@
           WALLPAPER_STORE_NAME,
           "readwrite",
         );
-        transaction.objectStore(WALLPAPER_STORE_NAME).delete(WALLPAPER_KEY);
+        transaction.objectStore(WALLPAPER_STORE_NAME).delete(key);
         transaction.oncomplete = resolve;
         transaction.onerror = () => reject(transaction.error);
         transaction.onabort = () => reject(transaction.error);
@@ -196,6 +196,34 @@
     } finally {
       database.close();
     }
+  };
+
+  const themeWallpaperKey = (assetId) => {
+    if (!/^[a-z0-9-]+$/.test(assetId ?? "")) {
+      throw new Error("远程壁纸标识无效");
+    }
+    return `theme:${assetId}`;
+  };
+
+  const applyImageWallpaperFrame = (runtime) => {
+    if (!/^\d+% \d+%$/.test(runtime?.wallpaperPosition ?? "")) {
+      throw new Error("壁纸位置无效");
+    }
+    if (
+      typeof runtime.wallpaperGradient !== "string"
+      || !runtime.wallpaperGradient.includes("gradient(")
+      || /url\(|;/i.test(runtime.wallpaperGradient)
+    ) {
+      throw new Error("壁纸遮罩无效");
+    }
+    document.documentElement.style.setProperty(
+      "--moonsea-wallpaper-gradient",
+      runtime.wallpaperGradient,
+    );
+    document.documentElement.style.setProperty(
+      "--moonsea-wallpaper-position",
+      runtime.wallpaperPosition,
+    );
   };
 
   const applyPackagedWallpaper = (runtime) => {
@@ -217,29 +245,19 @@
       updateWallpaperStatus();
       return;
     }
-    if (!/^\d+% \d+%$/.test(runtime.wallpaperPosition ?? "")) {
-      throw new Error("壁纸位置无效");
-    }
     if (runtime.wallpaper) {
       if (!/^[a-z0-9-]+\.(?:avif|jpe?g|png|webp)$/.test(runtime.wallpaper)) {
         throw new Error("壁纸文件无效");
       }
-      if (
-        typeof runtime.wallpaperGradient !== "string"
-        || !runtime.wallpaperGradient.includes("gradient(")
-        || /url\(|;/i.test(runtime.wallpaperGradient)
-      ) {
-        throw new Error("壁纸遮罩无效");
-      }
+      applyImageWallpaperFrame(runtime);
       document.documentElement.style.setProperty(
         "--moonsea-wallpaper-image",
         `url("app://-/moonsea/wallpapers/${runtime.wallpaper}")`,
       );
-      document.documentElement.style.setProperty(
-        "--moonsea-wallpaper-gradient",
-        runtime.wallpaperGradient,
-      );
     } else {
+      if (!/^\d+% \d+%$/.test(runtime.wallpaperPosition ?? "")) {
+        throw new Error("壁纸位置无效");
+      }
       if (
         typeof runtime.backgroundGradient !== "string"
         || !runtime.backgroundGradient.includes("gradient(")
@@ -323,6 +341,41 @@
     } finally {
       URL.revokeObjectURL(previewUrl);
     }
+  };
+
+  const decodeDeliveredWallpaper = (runtime) => {
+    const match = /^data:(image\/(?:avif|jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/
+      .exec(runtime.wallpaperDataUrl ?? "");
+    if (!match) throw new Error("远程壁纸数据无效");
+    const binary = atob(match[2]);
+    if (binary.length > MAX_WALLPAPER_SIZE) throw new Error("远程壁纸不能超过 40 MB");
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new Blob([bytes], { type: match[1] });
+  };
+
+  const loadThemeWallpaper = async (runtime) => {
+    const key = themeWallpaperKey(runtime.wallpaperAssetId);
+    let record;
+    if (runtime.wallpaperDataUrl) {
+      const blob = decodeDeliveredWallpaper(runtime);
+      await validateWallpaper(blob);
+      record = {
+        blob,
+        name: runtime.wallpaperName || "月海 Pro 壁纸",
+        type: blob.type,
+        size: blob.size,
+        updatedAt: Date.now(),
+      };
+      await writeSavedWallpaper(record, themeWallpaperKey(runtime.wallpaperAssetId));
+    } else {
+      record = await readSavedWallpaper(themeWallpaperKey(runtime.wallpaperAssetId));
+      if (!record?.blob) throw new Error("远程壁纸缓存缺失，请重新应用");
+    }
+    applyImageWallpaperFrame(runtime);
+    applyWallpaper(record);
   };
 
   const applySettings = () => {
@@ -719,13 +772,16 @@
     const generation = ++runtimeGeneration;
     await ensureStylesheet();
     active = true;
-    activeRuntime = runtime;
+    activeRuntime = runtime ? { ...runtime } : runtime;
+    if (activeRuntime) delete activeRuntime.wallpaperDataUrl;
     if (options.selectTheme === true) settings.wallpaperSource = "theme";
     document.documentElement.classList.add("codex-moonsea");
     applyRuntimePalette(runtime);
     applySettings();
     if (settings.wallpaperSource === "custom") {
       await loadSavedWallpaper();
+    } else if (runtime?.wallpaperAssetId) {
+      await loadThemeWallpaper(runtime);
     } else {
       applyPackagedWallpaper(runtime);
     }

@@ -11,7 +11,6 @@ type Connection = {
   connected: boolean;
   runtimeCapable: boolean;
   activeThemeId: string | null;
-  supportedThemeIds: string[];
   message: string;
 };
 
@@ -19,7 +18,6 @@ const initialConnection: Connection = {
   connected: false,
   runtimeCapable: false,
   activeThemeId: null,
-  supportedThemeIds: [],
   message: "打开月海版",
 };
 
@@ -40,44 +38,32 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
     let active = true;
     const connect = async () => {
       try {
-        const [response, themesResponse] = await Promise.all([
-          fetch(`${API_ROOT}/api/status`, { cache: "no-store" }),
-          fetch(`${API_ROOT}/api/themes`, { cache: "no-store" }),
-        ]);
+        const response = await fetch(`${API_ROOT}/api/status`, { cache: "no-store" });
         const body = await response.json() as {
           connected: boolean;
           runtimeCapable?: boolean;
-          catalogVersion?: number;
+          themeDeliveryVersion?: number;
           themeId?: string;
           message?: string;
         };
-        const themesBody = await themesResponse.json() as {
-          ok?: boolean;
-          themes?: Array<{ id?: string }>;
-        };
         if (!response.ok || !body.connected) throw new Error(body.message ?? "Codex 未连接");
         if (!active) return;
-        const supportedThemeIds = themesResponse.ok && themesBody.ok && Array.isArray(themesBody.themes)
-          ? themesBody.themes.flatMap((theme) => typeof theme.id === "string" ? [theme.id] : [])
-          : [];
         const runtimeCapable = body.runtimeCapable === true
-          && (body.catalogVersion ?? 0) >= 3
-          && supportedThemeIds.length > 0;
+          && (body.themeDeliveryVersion ?? 0) >= 1;
         setConnection({
           connected: true,
           runtimeCapable,
           activeThemeId: body.themeId ?? null,
-          supportedThemeIds,
-          message: runtimeCapable ? "可立即应用" : "需要升级月海",
+          message: runtimeCapable ? "可一键获取并应用" : "需要升级一次月海",
         });
         const pendingId = window.localStorage.getItem("moonsea_pending_theme");
         const pendingTheme = themes.find((theme) => theme.id === pendingId);
         if (pendingTheme) {
           setPendingThemeId(pendingTheme.id);
           setNotice(
-            supportedThemeIds.includes(pendingTheme.id)
+            runtimeCapable
               ? `月海已连接，可以继续应用“${pendingTheme.name}”。`
-              : `当前版本还不支持“${pendingTheme.name}”，升级后即可应用。`,
+              : "升级一次月海助手后，今后的新壁纸都能一键应用。",
           );
         }
       } catch {
@@ -111,7 +97,6 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
     if (
       !connection.connected
       || !connection.runtimeCapable
-      || !connection.supportedThemeIds.includes(theme.id)
     ) {
       window.localStorage.setItem("moonsea_pending_theme", theme.id);
       setPendingThemeId(theme.id);
@@ -181,8 +166,7 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
           const isActive = connection.activeThemeId === theme.id;
           const isApplying = applyingId === theme.id;
           const canApply = connection.connected
-            && connection.runtimeCapable
-            && connection.supportedThemeIds.includes(theme.id);
+            && connection.runtimeCapable;
           return (
             <article className="theme-card" key={theme.id}>
               <div className={`theme-preview ${theme.edition === "pro" ? "is-pro" : ""}`} style={{ background: theme.previewGradient }}>
@@ -207,7 +191,7 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
                       ? "正在使用"
                       : canApply
                         ? pendingThemeId === theme.id ? "继续应用" : "应用"
-                        : connection.connected ? "升级后应用" : "下载安装"}
+                        : connection.connected ? "升级月海后应用" : "下载安装"}
                 </button>
               </div>
             </article>
