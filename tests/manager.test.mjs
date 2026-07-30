@@ -497,6 +497,10 @@ test("正式发布必须经过候选包准入且复用同一批产物", () => {
     path.join(projectRoot, ".github", "workflows", "ci.yml"),
     "utf8",
   );
+  const windowsReleaseGate = fs.readFileSync(
+    path.join(projectRoot, "tests", "windows-release-gate.ps1"),
+    "utf8",
+  );
   assert.match(releaseWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(releaseWorkflow, /push:\s*\n\s*tags:/);
   assert.match(releaseWorkflow, /windows_release_gate:/);
@@ -513,6 +517,11 @@ test("正式发布必须经过候选包准入且复用同一批产物", () => {
   assert.match(releaseWorkflow, /scripts\/ci\/probe-release\.sh/);
   assert.match(ciWorkflow, /working-directory:\s*web/);
   assert.match(ciWorkflow, /npm run lint[\s\S]*npm test/);
+  assert.match(
+    windowsReleaseGate,
+    /Stop-Process -Id \$appProcessId -Force[\s\S]*Get-Process -Id \$managerPid/,
+    "Windows 准入必须用真实生命周期验证 manager 绑定，而不是依赖进程命令行格式",
+  );
 });
 
 test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () => {

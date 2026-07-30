@@ -259,12 +259,20 @@ try {
         throw "The stale default installation was started."
     }
 
+    $appProcessId = [int]$customProcesses[0].ProcessId
     $managerPid = [int](Get-Content -LiteralPath (Join-Path $customRoot "manager.pid") -Raw -Encoding UTF8)
     $managerProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $managerPid"
-    if ($null -eq $managerProcess -or
-        $managerProcess.CommandLine -notmatch "--app-pid\s+$($customProcesses[0].ProcessId)(?:\s|$)") {
-        throw "The candidate manager is not bound to the real Codex main process."
+    if ($null -eq $managerProcess) {
+        throw "The candidate manager process is not running."
     }
+    Stop-Process -Id $appProcessId -Force
+    Wait-Until {
+        if ($null -eq (Get-Process -Id $managerPid -ErrorAction SilentlyContinue)) {
+            return $true
+        }
+        return $false
+    } 10 "The candidate manager did not exit with the real Codex main process." | Out-Null
+
     $setupLogPath = Join-Path $customRoot "updates\setup-$CandidateVersion.log"
     $setupLog = Get-Content -LiteralPath $setupLogPath -Raw -Encoding UTF8
     if ($setupLog.IndexOf($customRoot, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
@@ -277,9 +285,9 @@ try {
         customInstallRoot = $customRoot
         staleDefaultVersion = [string]$defaultAfter.appVersion
         activeBuild = [string]$customAfter.activeBuild
-        appProcessId = [int]$customProcesses[0].ProcessId
+        appProcessId = $appProcessId
         managerProcessId = $managerPid
-        managerAppProcessId = [int]$customProcesses[0].ProcessId
+        managerAppProcessId = $appProcessId
         profilePreserved = $true
         adminAccessPreserved = $true
         candidateSha256 = (Get-FileHash -LiteralPath $CandidateSetupPath -Algorithm SHA256).Hash.ToLowerInvariant()
