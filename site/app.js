@@ -299,7 +299,7 @@ async function connect() {
     setConnection(
       status.connected,
       status.message,
-      status.runtimeCapable === true && status.catalogVersion >= 3,
+      status.runtimeCapable === true && status.themeDeliveryVersion >= 1,
       status.appVersion ?? null,
     );
     state.activeThemeId = state.themes.find((theme) => theme.id === status.themeId)?.id ?? null;
@@ -321,7 +321,7 @@ async function connect() {
 async function applyTheme(theme) {
   if (!theme || !state.connected || state.applyingThemeId !== null) return;
   if (!state.runtimeCapable) {
-    showResult("渐变与 Pro 壁纸需要新版月海版，请先完成升级。", "error");
+    showResult("当前月海助手还不能自动获取新壁纸，请先升级一次月海助手。", "error");
     return;
   }
   state.applyingThemeId = theme.id;

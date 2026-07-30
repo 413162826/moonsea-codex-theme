@@ -50,12 +50,14 @@ function readAppearanceState() {
 }
 
 function saveAppearanceState(theme) {
+  const runtime = theme.runtime ? { ...theme.runtime } : null;
+  if (runtime) delete runtime.wallpaperDataUrl;
   const state = {
     schemaVersion: 1,
     edition: theme.edition,
     themeId: theme.id,
     mode: theme.mode,
-    runtime: theme.runtime,
+    runtime,
   };
   localStorage.setItem(APPEARANCE_STATE_KEY, JSON.stringify(state));
   restoredAppearanceState = state;

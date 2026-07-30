@@ -5,6 +5,7 @@ import process from "node:process";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequestHandler, exchangeAssistantUpdate, MANAGER_PORT } from "./manager-core.mjs";
+import { ThemeDeliveryService } from "./theme-delivery-service.mjs";
 import { UpdateService } from "./update-service.mjs";
 import { TELEMETRY_INTERVAL_MS, TelemetryService } from "./telemetry-service.mjs";
 import { APP_VERSION } from "./version.mjs";
@@ -183,6 +184,7 @@ const telemetryService = new TelemetryService({
   installRoot,
   appVersion: APP_VERSION,
 });
+const themeDeliveryService = new ThemeDeliveryService({ installRoot });
 const server = http.createServer(createRequestHandler({
   profilePath,
   siteRoot: path.join(projectRoot, "site"),
@@ -191,6 +193,7 @@ const server = http.createServer(createRequestHandler({
   appVersion: APP_VERSION,
   adminAccess,
   updateService,
+  resolveTheme: (themeId) => themeDeliveryService.resolve(themeId),
 }));
 
 server.on("error", (error) => {

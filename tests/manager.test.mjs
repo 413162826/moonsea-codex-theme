@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -220,6 +221,10 @@ test("统一壁纸运行时可以启用并完整退出", () => {
     path.join(projectRoot, "theme", "static", "theme.js"),
     "utf8",
   );
+  const bridge = fs.readFileSync(
+    path.join(projectRoot, "theme", "runtime", "appearance-bridge.template.js"),
+    "utf8",
+  );
   assert.match(runtime, /const enable = async/);
   assert.match(runtime, /const disable = \(\) =>/);
   assert.match(runtime, /classList\.remove\(/);
@@ -237,6 +242,12 @@ test("统一壁纸运行时可以启用并完整退出", () => {
   assert.match(runtime, /settings\.wallpaperSource === "custom"/);
   assert.match(runtime, /applyPackagedWallpaper\(runtime\)/);
   assert.match(runtime, /runtime\.backgroundGradient/);
+  assert.match(runtime, /runtime\.wallpaperAssetId/);
+  assert.match(runtime, /runtime\.wallpaperDataUrl/);
+  assert.match(runtime, /writeSavedWallpaper\(record,\s*themeWallpaperKey/);
+  assert.match(runtime, /readSavedWallpaper\(themeWallpaperKey/);
+  assert.doesNotMatch(bridge, /runtime:\s*theme\.runtime,/);
+  assert.match(bridge, /delete runtime\.wallpaperDataUrl/);
 });
 
 test("普通与 Pro 壁纸共用精简后的完整月海助手", () => {
@@ -400,6 +411,33 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
   const parsedCatalog = JSON.parse(installerCatalog);
   assert.equal(parsedCatalog.catalogVersion, 3);
   assert.equal(parsedCatalog.themes.filter(({ edition }) => edition === "pro").length, WALLPAPERS.length);
+
+  const installerManifest = JSON.parse(
+    fs.readFileSync(path.join(projectRoot, "site", "theme-catalog-v1.json"), "utf8"),
+  );
+  const productionManifest = JSON.parse(
+    fs.readFileSync(path.join(projectRoot, "web", "public", "theme-catalog-v1.json"), "utf8"),
+  );
+  assert.deepEqual(productionManifest, installerManifest);
+  assert.equal(productionManifest.schemaVersion, 1);
+  assert.equal(productionManifest.themes.length, STANDARD_THEMES.length + PRO_THEMES.length);
+  for (const wallpaper of WALLPAPERS) {
+    const source = path.join(projectRoot, "assets", "wallpapers", wallpaper.file);
+    const productionAsset = path.join(projectRoot, "web", "public", "theme-assets", wallpaper.file);
+    const theme = productionManifest.themes.find(({ id }) => id === wallpaper.id);
+    assert.deepEqual(fs.readFileSync(productionAsset), fs.readFileSync(source));
+    assert.equal(theme.asset.size, fs.statSync(source).size);
+    assert.equal(
+      theme.asset.sha256,
+      crypto.createHash("sha256").update(fs.readFileSync(source)).digest("hex"),
+    );
+    assert.equal(theme.asset.contentType, "image/png");
+    assert.equal(
+      theme.asset.url,
+      `https://moonsea-codex-theme.suguowen5.chatgpt.site/theme-assets/${wallpaper.file}`,
+    );
+    assert.equal(Object.hasOwn(theme.runtime, "wallpaper"), false);
+  }
 });
 
 test("官网按系统直下安装包且入口使用通用命名", () => {
@@ -411,10 +449,10 @@ test("官网按系统直下安装包且入口使用通用命名", () => {
   assert.match(page, />下载<\/span>/);
   assert.match(page, /moonsea-codex-theme\/wiki/);
   assert.match(website, /status\.runtimeCapable === true/);
-  assert.match(website, /status\.catalogVersion >= 3/);
+  assert.match(website, /status\.themeDeliveryVersion >= 1/);
   assert.match(website, /\.\/catalog\.json/);
   assert.match(website, /theme\.previewImage/);
-  assert.match(website, /渐变与 Pro 壁纸需要新版月海版/);
+  assert.match(website, /自动获取新壁纸/);
   assert.match(website, /\? "需要升级"/);
   assert.match(website, /最后一次手动安装/);
   assert.match(website, /dataset\.themeApply/);

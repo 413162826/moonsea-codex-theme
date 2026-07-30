@@ -190,10 +190,14 @@ export async function getCodexStatus(profilePath) {
   }
 }
 
-export async function applyThemeToCodex(profilePath, themeId) {
+function resolveBundledTheme(themeId) {
   const standardTheme = STANDARD_THEMES.find((theme) => theme.id === themeId);
   const theme = standardTheme ?? PRO_THEMES.find((item) => item.id === themeId);
   if (!theme) throw new Error(`没有这个主题：${themeId}`);
+  return theme;
+}
+
+export async function applyThemeToCodex(profilePath, theme) {
   const startedAt = performance.now();
   const bridgeResult = await withCodexClient(profilePath, async (client) => {
     const result = await client.call("Runtime.evaluate", {
@@ -302,6 +306,8 @@ export function createRequestHandler({
   updateService = null,
   status = getCodexStatus,
   apply = applyThemeToCodex,
+  resolveTheme = null,
+  themeDeliveryVersion = resolveTheme ? 1 : 0,
 }) {
   return async (request, response) => {
     const origin = request.headers.origin ?? "";
@@ -342,6 +348,7 @@ export function createRequestHandler({
           appVersion,
           adminAccess,
           catalogVersion: 3,
+          themeDeliveryVersion,
           ...(await status(profilePath)),
         }, origin);
         return;
@@ -382,7 +389,8 @@ export function createRequestHandler({
       }
       if (request.method === "POST" && url.pathname === "/api/themes/apply") {
         const { themeId } = await readJsonBody(request);
-        const result = await apply(profilePath, themeId);
+        const theme = await (resolveTheme ?? resolveBundledTheme)(themeId);
+        const result = await apply(profilePath, theme);
         sendJson(response, 200, { ok: true, result }, origin);
         return;
       }
