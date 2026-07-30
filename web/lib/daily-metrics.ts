@@ -1,8 +1,15 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { dailyMetrics } from "../db/schema";
+import { THEMES } from "./theme-catalog";
 
-export const PUBLIC_PAGE_PATHS = new Set(["/", "/themes", "/download/choose"]);
+export const PUBLIC_PAGE_PATHS = new Set([
+  "/",
+  "/themes",
+  "/privacy",
+  "/download/choose",
+  ...THEMES.map((theme) => `/themes/${theme.id}`),
+]);
 export const METRIC_TYPES = Object.freeze({
   download: "download",
   pageView: "page_view",

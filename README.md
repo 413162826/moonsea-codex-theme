@@ -1,5 +1,13 @@
 # Codex 月海主题
 
+免费沉浸式 Codex 桌面主题。支持 Windows 与 macOS：下载安装月海版后，可从网页主题墙一键换肤，无需重启，也不会修改官方 Codex。
+
+[官网](https://moonsea-codex-theme.suguowen5.chatgpt.site/) · [主题墙](https://moonsea-codex-theme.suguowen5.chatgpt.site/themes) · [下载最新版](https://moonsea-codex-theme.suguowen5.chatgpt.site/download)
+
+![月海 Codex 主题预览](./web/public/og.png)
+
+> Free immersive themes for the Codex desktop app, with one-click switching from the web on Windows and macOS.
+
 在网页点一下，已经打开的 Codex 会马上换主题。
 
 ## 使用
@@ -19,7 +27,7 @@
 
 上报负载不包含 Codex 账号、邮箱、提示词、项目名称、文件路径、IP 地址、原始 User-Agent 和壁纸内容，业务数据库也不保存 IP。服务端只保留每台安装的首次与最后活跃时间，不保存每次心跳明细。
 
-官网仅按日期和页面聚合访问次数，不使用 Cookie 或访客标识。
+官网使用一年期第一方随机访客标识按浏览器去重访客（UV），服务端只保存哈希；不采集账号、硬件指纹、原始 IP 或原始 User-Agent。页面访问与来源同时按日期聚合统计。清除站点数据或更换浏览器后会视为新访客。
 
 完整使用说明见 [GitHub Wiki](https://github.com/413162826/moonsea-codex-theme/wiki)。
 

@@ -233,6 +233,15 @@
       "mode": "dark",
       "previewImage": "./wallpapers/tide-dragon-realm.webp",
       "previewGradient": "radial-gradient(circle at 18% 18%, rgba(190, 239, 244, 0.34), transparent 36%), linear-gradient(135deg, rgba(11, 32, 48, 0.08), rgba(7, 24, 43, 0.52))"
+    },
+    {
+      "id": "moonlit-silent",
+      "name": "月海无声",
+      "description": "弯月、静海与低对比深蓝，适合保持安静、专注的氛围编程",
+      "edition": "pro",
+      "mode": "dark",
+      "previewImage": "./wallpapers/moonlit-silent.webp",
+      "previewGradient": "radial-gradient(circle at 78% 18%, rgba(222, 238, 244, 0.24), transparent 31%), linear-gradient(135deg, rgba(5, 19, 31, 0.06), rgba(3, 12, 23, 0.5))"
     }
   ]
 }

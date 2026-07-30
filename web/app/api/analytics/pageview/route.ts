@@ -3,9 +3,20 @@ import {
   METRIC_TYPES,
   PUBLIC_PAGE_PATHS,
 } from "../../../../lib/daily-metrics";
+import {
+  createSiteVisitorId,
+  isAutomatedUserAgent,
+  normalizeAttribution,
+  readSiteVisitorId,
+  recordSiteVisitor,
+  siteVisitorCookie,
+} from "../../../../lib/site-visitors";
 
 type PageViewPayload = {
   path?: string;
+  source?: string;
+  campaign?: string;
+  content?: string;
 };
 
 export async function POST(request: Request) {
@@ -14,8 +25,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "请求来源无效" }, { status: 403 });
   }
 
+  if (isAutomatedUserAgent(request.headers.get("user-agent"))) {
+    return new Response(null, {
+      status: 204,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+
   const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > 512) {
+  if (contentLength > 1024) {
     return Response.json({ error: "请求内容过大" }, { status: 413 });
   }
 
@@ -31,9 +49,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "页面路径无效" }, { status: 400 });
   }
 
-  await incrementDailyMetric(METRIC_TYPES.pageView, path);
+  const source = normalizeAttribution(payload.source, "direct") ?? "direct";
+  const campaign = normalizeAttribution(payload.campaign, null);
+  const content = normalizeAttribution(payload.content, null);
+  const existingVisitorId = readSiteVisitorId(request);
+  const visitorId = existingVisitorId ?? createSiteVisitorId();
+
+  await Promise.all([
+    incrementDailyMetric(METRIC_TYPES.pageView, path),
+    recordSiteVisitor(visitorId, source, campaign, content),
+  ]);
+
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  if (!existingVisitorId) {
+    headers.set("Set-Cookie", siteVisitorCookie(visitorId));
+  }
   return new Response(null, {
     status: 204,
-    headers: { "Cache-Control": "no-store" },
+    headers,
   });
 }

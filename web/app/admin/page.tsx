@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "员工数据",
   description: "月海下载、安装活跃与网站流量",
+  robots: { index: false, follow: false },
 };
 
 type InstallationCountRow = {
@@ -27,6 +28,13 @@ type MetricSummaryRow = {
 type DownloadVisitorSummaryRow = {
   total: number;
   repeatedDownloads: number;
+};
+
+type SiteVisitorSummaryRow = {
+  total: number;
+  today: number;
+  recent7d: number;
+  recent30d: number;
 };
 
 type DistributionRow = {
@@ -87,6 +95,10 @@ async function loadStatistics() {
     pageViews,
     trafficDaily,
     trafficPages,
+    siteVisitors,
+    trafficSources,
+    trafficCampaigns,
+    trafficContents,
     downloadPlatforms,
   ] = await Promise.all([
     env.DB.prepare(`
@@ -140,6 +152,38 @@ async function loadStatistics() {
       ORDER BY total DESC
     `).all<DistributionRow>(),
     env.DB.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM site_visitors) AS total,
+        COUNT(DISTINCT CASE WHEN day = date('now') THEN visitor_hash END) AS today,
+        COUNT(DISTINCT CASE WHEN day >= date('now', '-6 days') THEN visitor_hash END) AS recent7d,
+        COUNT(DISTINCT CASE WHEN day >= date('now', '-29 days') THEN visitor_hash END) AS recent30d
+      FROM site_visitor_days
+    `).first<SiteVisitorSummaryRow>(),
+    env.DB.prepare(`
+      SELECT source AS label, COUNT(DISTINCT visitor_hash) AS total
+      FROM site_visitor_days
+      WHERE day >= date('now', '-6 days')
+      GROUP BY source
+      ORDER BY total DESC, source ASC
+      LIMIT 12
+    `).all<DistributionRow>(),
+    env.DB.prepare(`
+      SELECT campaign AS label, COUNT(DISTINCT visitor_hash) AS total
+      FROM site_visitor_days
+      WHERE day >= date('now', '-6 days') AND campaign IS NOT NULL
+      GROUP BY campaign
+      ORDER BY total DESC, campaign ASC
+      LIMIT 12
+    `).all<DistributionRow>(),
+    env.DB.prepare(`
+      SELECT content AS label, COUNT(DISTINCT visitor_hash) AS total
+      FROM site_visitor_days
+      WHERE day >= date('now', '-6 days') AND content IS NOT NULL
+      GROUP BY content
+      ORDER BY total DESC, content ASC
+      LIMIT 12
+    `).all<DistributionRow>(),
+    env.DB.prepare(`
       SELECT dimension AS label, SUM(total) AS total
       FROM daily_metrics
       WHERE metric_type = 'download'
@@ -158,6 +202,10 @@ async function loadStatistics() {
     pageViews,
     trafficDaily: trafficDaily.results,
     trafficPages: trafficPages.results,
+    siteVisitors: siteVisitors ?? { total: 0, today: 0, recent7d: 0, recent30d: 0 },
+    trafficSources: trafficSources.results,
+    trafficCampaigns: trafficCampaigns.results,
+    trafficContents: trafficContents.results,
     downloadPlatforms: downloadPlatforms.results,
   };
 }
@@ -256,9 +304,12 @@ export default async function AdminPage() {
       <section className="admin-section" aria-labelledby="traffic-title">
         <div className="admin-section__heading">
           <h2 id="traffic-title">网站流量</h2>
-          <p>仅统计公开页面的访问次数，不使用 Cookie 或访客标识。</p>
+          <p>PV 是页面访问次数；访客使用一年期第一方随机标识按浏览器去重，服务端只保存哈希，不采集账号、硬件指纹或原始 IP。</p>
         </div>
         <div className="metric-grid" aria-label="网站流量指标">
+          <article><span>今日访客</span><strong>{data.siteVisitors.today}</strong><small>独立浏览器</small></article>
+          <article><span>7 日访客</span><strong>{data.siteVisitors.recent7d}</strong><small>目标口径</small></article>
+          <article><span>30 日访客</span><strong>{data.siteVisitors.recent30d}</strong></article>
           <article><span>今日 PV</span><strong>{data.pageViews.today}</strong></article>
           <article><span>7 日 PV</span><strong>{data.pageViews.recent7d}</strong></article>
           <article><span>30 日 PV</span><strong>{data.pageViews.recent30d}</strong></article>
@@ -266,9 +317,13 @@ export default async function AdminPage() {
         <Trend title="近 30 日页面访问" rows={data.trafficDaily} empty="站点产生访问后，这里会出现趋势。" />
         <div className="data-grid">
           <Distribution title="页面访问分布" rows={data.trafficPages} />
+          <Distribution title="近 7 日访客来源" rows={data.trafficSources} />
+          <Distribution title="近 7 日活动" rows={data.trafficCampaigns} />
+          <Distribution title="近 7 日素材" rows={data.trafficContents} />
           <section className="data-card metric-note">
             <h2>统计口径</h2>
             <dl>
+              <div><dt>累计访客</dt><dd>{data.siteVisitors.total}</dd></div>
               <div><dt>累计 PV</dt><dd>{data.pageViews.total}</dd></div>
               <div><dt>今日下载</dt><dd>{data.downloads.today}</dd></div>
               <div><dt>7 日下载</dt><dd>{data.downloads.recent7d}</dd></div>

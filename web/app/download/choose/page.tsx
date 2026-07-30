@@ -5,6 +5,7 @@ import { SiteHeader } from "../../site-chrome";
 export const metadata: Metadata = {
   title: "选择下载版本",
   description: "选择适合当前电脑的月海安装包",
+  robots: { index: false, follow: false },
 };
 
 export default function DownloadChoosePage() {

@@ -1,7 +1,23 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { getTheme } from "../lib/theme-catalog";
 import { ProCodexPreview } from "./codex-preview";
 import { MoonseaRipple } from "./moonsea-ripple";
 import { DOWNLOAD_URL, SiteHeader } from "./site-chrome";
+
+const featuredTheme = getTheme("moonlit-silent");
+if (!featuredTheme || featuredTheme.edition !== "pro") {
+  throw new Error("首页精选主题 moonlit-silent 不存在");
+}
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "免费主题，让 Codex 更沉浸",
+    description: "保持安静、专注、氛围编程。",
+    url: "/",
+  },
+};
 
 export default function Home() {
   return (
@@ -23,12 +39,7 @@ export default function Home() {
           <div className="landing-hero__showcase">
             <ProCodexPreview
               className="landing-codex-preview"
-              theme={{
-                name: "潮汐龙境",
-                mode: "dark",
-                previewGradient: "linear-gradient(145deg, #123a4b, #061722)",
-                previewImage: "./wallpapers/tide-dragon-realm.webp",
-              }}
+              theme={featuredTheme}
             />
             <div className="landing-hero__interaction" aria-hidden="true">
               <span className="landing-hero__signal" />

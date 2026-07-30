@@ -8,19 +8,25 @@ import { WALLPAPERS } from "../src/wallpaper-catalog.mjs";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const sourceRoot = path.join(projectRoot, "assets", "wallpapers");
-const outputRoot = path.join(projectRoot, "site", "wallpapers");
-const stagingRoot = path.join(projectRoot, "site", `.wallpapers-staging-${process.pid}`);
-const catalogPath = path.join(projectRoot, "site", "catalog.json");
-const catalogStagingPath = path.join(projectRoot, "site", `.catalog-staging-${process.pid}.json`);
+const publicRoots = [
+  path.join(projectRoot, "site"),
+  path.join(projectRoot, "web", "public"),
+];
+const targets = publicRoots.map((publicRoot, index) => ({
+  outputRoot: path.join(publicRoot, "wallpapers"),
+  stagingRoot: path.join(publicRoot, `.wallpapers-staging-${process.pid}-${index}`),
+  catalogPath: path.join(publicRoot, "catalog.json"),
+  catalogStagingPath: path.join(publicRoot, `.catalog-staging-${process.pid}-${index}.json`),
+}));
 
-function assertInsideSite(target) {
-  const siteRoot = `${path.join(projectRoot, "site")}${path.sep}`;
-  if (!`${path.resolve(target)}${path.sep}`.startsWith(siteRoot)) {
-    throw new Error(`拒绝写入网站目录之外：${target}`);
+function assertInsidePublicRoot(target) {
+  const resolved = path.resolve(target);
+  if (!publicRoots.some((root) => resolved.startsWith(`${root}${path.sep}`))) {
+    throw new Error(`拒绝写入公开资源目录之外：${target}`);
   }
 }
 
-async function generatePreview(wallpaper) {
+async function generatePreview(wallpaper, stagingRoot) {
   const source = path.join(sourceRoot, wallpaper.file);
   if (!fs.existsSync(source) || !fs.statSync(source).isFile()) {
     throw new Error(`壁纸原图不存在：${source}`);
@@ -32,33 +38,43 @@ async function generatePreview(wallpaper) {
     .toFile(path.join(stagingRoot, wallpaper.previewFile));
 }
 
-assertInsideSite(outputRoot);
-assertInsideSite(stagingRoot);
-assertInsideSite(catalogPath);
-assertInsideSite(catalogStagingPath);
-fs.rmSync(stagingRoot, { recursive: true, force: true });
-fs.mkdirSync(stagingRoot, { recursive: true });
+for (const target of targets) {
+  assertInsidePublicRoot(target.outputRoot);
+  assertInsidePublicRoot(target.stagingRoot);
+  assertInsidePublicRoot(target.catalogPath);
+  assertInsidePublicRoot(target.catalogStagingPath);
+  fs.rmSync(target.stagingRoot, { recursive: true, force: true });
+  fs.mkdirSync(target.stagingRoot, { recursive: true });
+}
+
+const catalog = `${JSON.stringify({
+  catalogVersion: 3,
+  themes: [
+    ...STANDARD_THEMES.map(toPublicTheme),
+    ...PRO_THEMES.map(toPublicProTheme),
+  ],
+}, null, 2)}\n`;
 
 try {
-  for (const wallpaper of WALLPAPERS) await generatePreview(wallpaper);
-  fs.writeFileSync(
-    catalogStagingPath,
-    `${JSON.stringify({
-      catalogVersion: 3,
-      themes: [
-        ...STANDARD_THEMES.map(toPublicTheme),
-        ...PRO_THEMES.map(toPublicProTheme),
-      ],
-    }, null, 2)}\n`,
-    "utf8",
+  for (const target of targets) {
+    for (const wallpaper of WALLPAPERS) {
+      await generatePreview(wallpaper, target.stagingRoot);
+    }
+    fs.writeFileSync(target.catalogStagingPath, catalog, "utf8");
+  }
+  for (const target of targets) {
+    fs.rmSync(target.outputRoot, { recursive: true, force: true });
+    fs.renameSync(target.stagingRoot, target.outputRoot);
+    fs.rmSync(target.catalogPath, { force: true });
+    fs.renameSync(target.catalogStagingPath, target.catalogPath);
+  }
+  console.log(
+    `已同步 ${WALLPAPERS.length} 张壁纸预览到安装包与生产站：${targets.map(({ outputRoot }) => outputRoot).join("、")}`,
   );
-  fs.rmSync(outputRoot, { recursive: true, force: true });
-  fs.renameSync(stagingRoot, outputRoot);
-  fs.rmSync(catalogPath, { force: true });
-  fs.renameSync(catalogStagingPath, catalogPath);
-  console.log(`已生成 ${WALLPAPERS.length} 张官网壁纸预览：${outputRoot}`);
 } catch (error) {
-  fs.rmSync(stagingRoot, { recursive: true, force: true });
-  fs.rmSync(catalogStagingPath, { force: true });
+  for (const target of targets) {
+    fs.rmSync(target.stagingRoot, { recursive: true, force: true });
+    fs.rmSync(target.catalogStagingPath, { force: true });
+  }
   throw error;
 }
