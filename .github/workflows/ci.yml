@@ -32,12 +32,22 @@ jobs:
         run: |
           choco install innosetup --no-progress -y
           ./scripts/windows/Build-Moonsea-Setup.ps1 -OutputDirectory "$PWD/.build/ci-windows-release"
+          ./scripts/windows/Build-WorkBuddy-Setup.ps1 -OutputDirectory "$PWD/.build/ci-workbuddy-windows-release"
       - name: 验证 macOS 安装与卸载
         if: runner.os == 'macOS'
-        run: zsh ./tests/macos-installer-smoke.sh
+        run: |
+          zsh ./tests/macos-installer-smoke.sh
+          MOONSEA_TEST_CLIENT=workbuddy zsh ./tests/macos-installer-smoke.sh
       - name: 验证 macOS 应用内更新
         if: runner.os == 'macOS'
         env:
+          MOONSEA_BUILDER_PATH: ${{ github.workspace }}/tools/moonsea-builder.mjs
+          MOONSEA_MANAGER_PATH: ${{ github.workspace }}/tools/moonsea-manager.mjs
+        run: zsh ./tests/macos-updater-smoke.sh
+      - name: 验证 WorkBuddy macOS 应用内更新
+        if: runner.os == 'macOS'
+        env:
+          MOONSEA_TEST_CLIENT: workbuddy
           MOONSEA_BUILDER_PATH: ${{ github.workspace }}/tools/moonsea-builder.mjs
           MOONSEA_MANAGER_PATH: ${{ github.workspace }}/tools/moonsea-manager.mjs
         run: zsh ./tests/macos-updater-smoke.sh
@@ -59,7 +69,9 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           zsh -n Install.command
+          zsh -n Install-WorkBuddy.command
           zsh -n Uninstall.command
+          zsh -n Uninstall-WorkBuddy.command
           zsh -n scripts/macos/*.sh
           zsh -n scripts/macos/*.command
 

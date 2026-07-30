@@ -161,6 +161,29 @@ html.codex-moonsea #root {
   text-shadow: var(--moonsea-text-shadow);
 }
 
+/*
+ * WorkBuddy 的双栏布局在 grid item、语义主区和语义侧栏上各绘制一次不透明底色。
+ * 只处理其稳定容器边界，避免把弹窗、输入框和业务卡片一并透明化。
+ */
+html.codex-moonsea:is(.cb-dark, .cb-light)
+  .teams-container [class*="_gridViewItem_"] {
+  background: transparent !important;
+}
+
+html.codex-moonsea:is(.cb-dark, .cb-light) .main-content {
+  background: var(--moonsea-panel) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+}
+
+html.codex-moonsea:is(.cb-dark, .cb-light) .conversation-list {
+  background: var(--moonsea-sidebar) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(2px) saturate(1.02);
+}
+
 html.codex-moonsea #root :where(
   [class*="text-token-text-secondary"],
   [class*="text-token-text-tertiary"],

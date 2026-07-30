@@ -14,8 +14,11 @@ export const PUBLIC_SITE_ORIGIN = "https://moonsea-codex-theme.suguowen5.chatgpt
 // 客户端身份：codex（默认）或 workbuddy。WorkBuddy 通过环境变量注入，
 // 其官方应用包名、调试端口与主题桥名由对应安装包/启动脚本提供。
 export const CLIENT = (process.env.MOONSEA_CLIENT ?? "codex").toLowerCase();
+if (!["codex", "workbuddy"].includes(CLIENT)) {
+  throw new Error(`不支持的月海客户端：${CLIENT}`);
+}
 export const CLIENT_LABEL = process.env.MOONSEA_CLIENT_LABEL ?? (CLIENT === "workbuddy" ? "WorkBuddy" : "Codex");
-export const THEME_BRIDGE = process.env.MOONSEA_BRIDGE ?? "${THEME_BRIDGE}";
+export const THEME_BRIDGE = "window.moonseaThemeBridge";
 
 const LOCAL_ORIGINS = new Set([
   `http://127.0.0.1:${MANAGER_PORT}`,
@@ -47,7 +50,7 @@ export function parseDevToolsActivePort(content) {
   const [portLine, socketPath] = String(content).trim().split(/\r?\n/);
   const port = Number.parseInt(portLine, 10);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error("Codex 调试端口无效，请重新打开月海版");
+    throw new Error(`${CLIENT_LABEL} 调试端口无效，请重新打开月海版`);
   }
   return { port, socketPath: socketPath || null };
 }
@@ -55,7 +58,7 @@ export function parseDevToolsActivePort(content) {
 export function readDevToolsEndpoint(profilePath) {
   const activePortPath = path.join(profilePath, "DevToolsActivePort");
   if (!fs.existsSync(activePortPath)) {
-    throw new Error("还没有连接到 Codex，请先打开“Codex 月海版”");
+    throw new Error(`还没有连接到 ${CLIENT_LABEL}，请先打开“${CLIENT_LABEL} 月海版”`);
   }
   return parseDevToolsActivePort(fs.readFileSync(activePortPath, "utf8"));
 }
@@ -115,17 +118,33 @@ class CdpClient {
   }
 }
 
+export function getClientTargetConfig(client = CLIENT) {
+  if (client === "workbuddy") {
+    return {
+      url: null,
+      pattern: /\/renderer\/index\.html(?:$|[?#])/i,
+    };
+  }
+  if (client === "codex") {
+    return {
+      url: "app://-/index.html",
+      pattern: /\/webview\/index\.html(?:$|[?#])/i,
+    };
+  }
+  throw new Error(`不支持的月海客户端：${client}`);
+}
+
 async function findClientTarget(port) {
   const response = await fetch(`http://127.0.0.1:${port}/json/list`);
   if (!response.ok) throw new Error(`无法读取 ${CLIENT_LABEL} 窗口`);
   const targets = await response.json();
   const pages = targets.filter((item) => item.type === "page");
-  const url = process.env.MOONSEA_TARGET_URL ?? "app://-/index.html";
-  const webviewPattern = process.env.MOONSEA_TARGET_WEBVIEW
-    ? new RegExp(process.env.MOONSEA_TARGET_WEBVIEW)
-    : /webview\/index\.html(?:$|[?#])/i;
-  const target = pages.find((item) => item.url === url)
-    ?? pages.find((item) => webviewPattern.test(item.url ?? ""));
+  const targetConfig = getClientTargetConfig();
+  const target = (
+    targetConfig.url
+      ? pages.find((item) => item.url === targetConfig.url)
+      : null
+  ) ?? pages.find((item) => targetConfig.pattern.test(item.url ?? ""));
   if (!target?.webSocketDebuggerUrl) {
     throw new Error(`没有找到可切换主题的 ${CLIENT_LABEL} 窗口`);
   }

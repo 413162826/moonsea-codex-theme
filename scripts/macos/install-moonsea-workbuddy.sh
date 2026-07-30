@@ -15,6 +15,7 @@ fi
 INSTALL_ROOT="${MOONSEA_INSTALL_ROOT:-$HOME/Library/Application Support/MoonseaWorkBuddy}"
 BUILDS_ROOT="$INSTALL_ROOT/builds"
 PROFILE_PATH="$INSTALL_ROOT/BrowserProfile"
+CONFIG_PATH="$PROFILE_PATH/config"
 MANIFEST_PATH="$INSTALL_ROOT/install.plist"
 START_SOURCE="$SCRIPT_DIR/Start-Moonsea-WorkBuddy-macOS.command"
 START_INSTALLED="$INSTALL_ROOT/Start-Moonsea-WorkBuddy-macOS.command"
@@ -39,7 +40,10 @@ fail() {
 }
 
 is_valid_app() {
-  [[ -d "$1" && -f "$1/Contents/Resources/app.asar" ]]
+  [[ -d "$1" \
+    && -f "$1/Contents/Resources/app.asar" \
+    && -x "$1/Contents/MacOS/WorkBuddy" \
+    && -f "$1/Contents/Info.plist" ]]
 }
 
 find_official_app() {
@@ -49,8 +53,6 @@ find_official_app() {
   fi
   local candidate
   for candidate in \
-    "/Applications/WorkBuddy.app" \
-    "$HOME/Applications/WorkBuddy.app" \
     "/Applications/WorkBuddy.app" \
     "$HOME/Applications/WorkBuddy.app"; do
     if is_valid_app "$candidate"; then
@@ -121,7 +123,7 @@ is_valid_app "$SOURCE_APP" || fail "所选应用不是有效的官方 WorkBuddy�
 OFFICIAL_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$SOURCE_APP/Contents/Info.plist" 2>/dev/null || true)"
 [[ -n "$OFFICIAL_VERSION" ]] || OFFICIAL_VERSION="unknown"
 OFFICIAL_VERSION="${OFFICIAL_VERSION//[^A-Za-z0-9._-]/-}"
-THEME_VERSION="$(run_builder --edition standard --theme-version | tail -n 1)"
+THEME_VERSION="$(run_builder --client workbuddy --edition standard --theme-version | tail -n 1)"
 [[ "$THEME_VERSION" =~ ^[a-f0-9]{12}$ ]] || fail "无法读取主题版本：$THEME_VERSION"
 
 BUILD_NAME="Moonsea-WorkBuddy-standard-$OFFICIAL_VERSION-$THEME_VERSION"
@@ -132,7 +134,7 @@ STAGING_BUILD="$BUILDS_ROOT/$BUILD_NAME-staging.app"
 
 NEEDS_BUILD=1
 if [[ -d "$ACTIVE_BUILD" ]]; then
-  if run_builder --edition standard --verify "$ACTIVE_BUILD" >/dev/null; then
+  if run_builder --client workbuddy --edition standard --verify "$ACTIVE_BUILD" >/dev/null; then
     NEEDS_BUILD=0
     echo "当前版本已经安装，正在刷新启动入口…"
   else
@@ -144,7 +146,7 @@ if [[ $NEEDS_BUILD -eq 1 ]]; then
   [[ ! -e "$STAGING_BUILD" ]] || safe_remove_build "$STAGING_BUILD"
   echo "正在复制官方客户端…"
   /usr/bin/ditto "$SOURCE_APP" "$STAGING_BUILD"
-  if ! run_builder --edition standard --patch "$STAGING_BUILD"; then
+  if ! run_builder --client workbuddy --edition standard --patch "$STAGING_BUILD"; then
     safe_remove_build "$STAGING_BUILD"
     fail "写入月海主题失败"
   fi
@@ -190,7 +192,8 @@ fi
 
 TEMP_MANIFEST="$INSTALL_ROOT/install.plist.tmp"
 /usr/bin/plutil -create xml1 "$TEMP_MANIFEST"
-/usr/bin/plutil -insert schemaVersion -integer 2 "$TEMP_MANIFEST"
+/usr/bin/plutil -insert schemaVersion -integer 3 "$TEMP_MANIFEST"
+/usr/bin/plutil -insert client -string "workbuddy" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert platform -string "macos" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert edition -string "standard" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert appVersion -string "$APP_VERSION" "$TEMP_MANIFEST"
@@ -199,6 +202,7 @@ TEMP_MANIFEST="$INSTALL_ROOT/install.plist.tmp"
 /usr/bin/plutil -insert sourceApp -string "$SOURCE_APP" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert activeBuild -string "$ACTIVE_BUILD" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert profilePath -string "$PROFILE_PATH" "$TEMP_MANIFEST"
+/usr/bin/plutil -insert configPath -string "$CONFIG_PATH" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert managerPath -string "$MANAGER_INSTALLED" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert updaterPath -string "$UPDATER_INSTALLED" "$TEMP_MANIFEST"
 /usr/bin/plutil -insert releasePath -string "$RELEASE_ROOT" "$TEMP_MANIFEST"
@@ -227,7 +231,7 @@ echo
 echo "安装完成：WorkBuddy 月海版"
 echo "接下来只做两步："
 echo "1. 打开桌面的“WorkBuddy 月海版”"
-echo "2. 回到月海主题官网，选择皮肤并点击“应用到 Codex”"
+echo "2. 回到 WorkBuddy 主题墙，选择皮肤并点击“应用到 WorkBuddy”"
 
 if [[ -z "${MOONSEA_SKIP_LAUNCH:-}" ]]; then
   /bin/zsh "$START_INSTALLED"

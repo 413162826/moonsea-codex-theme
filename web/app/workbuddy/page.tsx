@@ -6,11 +6,11 @@ import { ThemeGallery } from "../theme-gallery";
 
 export const metadata: Metadata = {
   title: { absolute: "WorkBuddy 主题墙" },
-  description: "浏览并应用 WorkBuddy 为 Codex 制作的渐变与 Pro 壁纸。",
+  description: "浏览并应用为 WorkBuddy 制作的渐变与 Pro 壁纸。",
   alternates: { canonical: "/workbuddy" },
   openGraph: {
     title: "WorkBuddy 主题墙",
-    description: "浏览免费渐变主题与 Pro 精选壁纸，为 Codex 选择工作氛围。",
+    description: "浏览免费渐变主题与 Pro 精选壁纸，为 WorkBuddy 选择工作氛围。",
     url: "/workbuddy",
   },
 };

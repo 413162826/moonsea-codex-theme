@@ -19,14 +19,14 @@ function Decode-Text([string]$Value) {
 }
 
 function Get-FriendlyError([string]$TechnicalError) {
-    if ($TechnicalError -match "Official Codex was not found|not a valid official Codex app") {
-        return Decode-Text "5pyq5om+5Yiw5pyJ5pWI55qEIENvZGV4IOWumOaWueW6lOeUqOOAguivt+WFiOWuieijheW5tuaJk+W8gOS4gOasoeWumOaWuSBDb2RleO+8jOeEtuWQjumHjeivleOAgg=="
+    if ($TechnicalError -match "official WorkBuddy|WorkBuddy registration") {
+        return Decode-Text "5pyq5om+5Yiw5pyJ5pWI55qEIFdvcmtCdWRkeSDlrpjmlrnlupTnlKjjgILor7flhYjlronoo4XlubbmiZPlvIDkuIDmrKHlrpjmlrkgV29ya0J1ZGR577yM54S25ZCO6YeN6K+V44CC"
     }
     if ($TechnicalError -match "package is incomplete|script is missing|resources are missing|manager is missing") {
         return Decode-Text "5a6J6KOF5YyF5LiN5a6M5pW044CC6K+36YeN5paw5LiL6L295bm25a6M5pW06Kej5Y6L5ZCO5YaN6K+V44CC"
     }
     if ($TechnicalError -match "copy the official app|Robocopy") {
-        return Decode-Text "5aSN5Yi2IENvZGV4IOaWh+S7tuWksei0peOAguivt+ajgOafpeejgeebmOepuumXtOWSjOWuieWFqOi9r+S7tuWQjumHjeivleOAgg=="
+        return Decode-Text "5aSN5Yi2IFdvcmtCdWRkeSDmlofku7blpLHotKXjgILor7fmo4Dmn6Xno4Hnm5jnqbrpl7Tlkozlronlhajova/ku7blkI7ph43or5XjgII="
     }
     if ($TechnicalError -match "builder failed|theme version") {
         return Decode-Text "55Sf5oiQ5pyI5rW354mI5aSx6LSl44CC6K+35p+l55yL5a6M5pW05pel5b+X5ZCO6YeN6K+V44CC"
@@ -98,7 +98,7 @@ try {
     Write-InstallResult "succeeded" $null $null
     Write-Host ""
     Write-Host (Decode-Text "5a6J6KOF5a6M5oiQ") -ForegroundColor Green
-    Write-Host (Decode-Text "5omT5byA5qGM6Z2i55qE4oCcQ29kZXgg5pyI5rW354mI4oCd5Y2z5Y+v57un57ut5L2/55So44CC")
+    Write-Host (Decode-Text "5omT5byA5qGM6Z2i55qE4oCcV29ya0J1ZGR5IOaciOa1t+eJiOKAneWNs+WPr+e7p+e7reS9v+eUqOOAgg==")
 }
 catch {
     $exitCode = 1

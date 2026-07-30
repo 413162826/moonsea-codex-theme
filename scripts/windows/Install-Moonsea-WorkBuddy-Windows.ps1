@@ -130,48 +130,77 @@ function Invoke-MoonseaBuilder([string[]]$Arguments, [switch]$Capture) {
     }
 }
 
+function Test-OfficialWorkBuddyPath([string]$AppPath) {
+    if ([string]::IsNullOrWhiteSpace($AppPath)) { return $false }
+    $fullPath = Get-FullPath $AppPath
+    return (
+        (Test-Path -LiteralPath (Join-Path $fullPath "WorkBuddy.exe") -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $fullPath "resources\app.asar") -PathType Leaf)
+    )
+}
+
+function Get-PathFromDisplayIcon([string]$DisplayIcon) {
+    if ([string]::IsNullOrWhiteSpace($DisplayIcon)) { return $null }
+    $iconPath = $DisplayIcon.Trim()
+    if ($iconPath.StartsWith('"')) {
+        $closingQuote = $iconPath.IndexOf('"', 1)
+        if ($closingQuote -lt 2) { return $null }
+        $iconPath = $iconPath.Substring(1, $closingQuote - 1)
+    }
+    else {
+        $iconPath = $iconPath -replace ",\d+$", ""
+    }
+    if ([System.IO.Path]::GetFileName($iconPath) -ne "WorkBuddy.exe") { return $null }
+    return Split-Path -Parent $iconPath
+}
+
 function Find-OfficialWorkBuddyApp {
     if (-not [string]::IsNullOrWhiteSpace($SourceApp)) {
-        return [pscustomobject]@{ Path = (Get-FullPath $SourceApp); Version = $null }
+        $fullPath = Get-FullPath $SourceApp
+        if (-not (Test-OfficialWorkBuddyPath $fullPath)) {
+            throw "The selected directory is not a valid official WorkBuddy app: $fullPath"
+        }
+        return [pscustomobject]@{ Path = $fullPath; Version = $null }
     }
     if ($env:MOONSEA_SOURCE_APP) {
-        return [pscustomobject]@{ Path = (Get-FullPath $env:MOONSEA_SOURCE_APP); Version = $null }
+        $fullPath = Get-FullPath $env:MOONSEA_SOURCE_APP
+        if (-not (Test-OfficialWorkBuddyPath $fullPath)) {
+            throw "MOONSEA_SOURCE_APP is not a valid official WorkBuddy app: $fullPath"
+        }
+        return [pscustomobject]@{ Path = $fullPath; Version = $null }
     }
-
-    # WorkBuddy 是独立安装的 Electron 应用（非 Microsoft Store），默认安装路径：
-    #   %LOCALAPPDATA%\Programs\WorkBuddy\
-    # 可通过环境变量 MONSEA_OFFICIAL_PATH 覆盖。
-    $defaultPath = Join-Path $env:LOCALAPPDATA "Programs\WorkBuddy"
-    $searchPath = if ($env:MOONSEA_OFFICIAL_PATH) { $env:MOONSEA_OFFICIAL_PATH } else { $defaultPath }
-    $fullPath = Get-FullPath $searchPath
-    if (Test-Path -LiteralPath (Join-Path $fullPath "resources\app.asar")) {
+    if ($env:MOONSEA_OFFICIAL_PATH) {
+        $fullPath = Get-FullPath $env:MOONSEA_OFFICIAL_PATH
+        if (-not (Test-OfficialWorkBuddyPath $fullPath)) {
+            throw "MOONSEA_OFFICIAL_PATH is not a valid official WorkBuddy app: $fullPath"
+        }
         return [pscustomobject]@{ Path = $fullPath; Version = $null }
     }
 
-    # 回退：按进程名找正在运行的 WorkBuddy
-    $running = Get-CimInstance Win32_Process -Filter "Name = 'WorkBuddy.exe'" -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if ($running -and $running.ExecutablePath) {
-        $exeDir = Split-Path $running.ExecutablePath -Parent
-        if (Test-Path -LiteralPath (Join-Path $exeDir "resources\app.asar")) {
-            return [pscustomobject]@{ Path = $exeDir; Version = $null }
+    $uninstallRoot = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+    $registrations = @(Get-ItemProperty $uninstallRoot -ErrorAction SilentlyContinue | Where-Object {
+        [string]$_.DisplayName -match "^WorkBuddy(?:\s+\d+(?:\.\d+){1,3})?$"
+    })
+    $candidates = @()
+    foreach ($registration in $registrations) {
+        $candidatePath = Get-PathFromDisplayIcon ([string]$registration.DisplayIcon)
+        if ($candidatePath -and (Test-OfficialWorkBuddyPath $candidatePath)) {
+            $candidates += [pscustomobject]@{
+                Path = Get-FullPath $candidatePath
+                Version = [string]$registration.DisplayVersion
+            }
         }
     }
-
-    throw "Official WorkBuddy was not found. Install and open the official app once, then retry."
+    $uniqueCandidates = @($candidates | Sort-Object Path -Unique)
+    if ($uniqueCandidates.Count -ne 1) {
+        throw "Expected one official WorkBuddy registration, found $($uniqueCandidates.Count)."
+    }
+    return $uniqueCandidates[0]
 }
 
 function Get-AppVersion([string]$AppPath, [string]$DetectedVersion) {
-    $version = $DetectedVersion
-    if ([string]::IsNullOrWhiteSpace($version) -and $AppPath -match "WorkBuddy_([^_]+)_") {
-        $version = $Matches[1]
-    }
-    if ([string]::IsNullOrWhiteSpace($version)) {
-        $executable = Join-Path $AppPath "WorkBuddy.exe"
-        if (Test-Path -LiteralPath $executable -PathType Leaf) {
-            $version = (Get-Item -LiteralPath $executable).VersionInfo.ProductVersion
-        }
-    }
+    $version = (Get-Item -LiteralPath (Join-Path $AppPath "WorkBuddy.exe")).VersionInfo.ProductVersion
+    if ([string]::IsNullOrWhiteSpace($version)) { $version = $DetectedVersion }
     if ([string]::IsNullOrWhiteSpace($version)) { $version = "unknown" }
     return [regex]::Replace($version, "[^A-Za-z0-9._-]", "-")
 }
@@ -182,7 +211,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $SourceApp "resources\app.asar") -Pa
     throw "The selected directory is not a valid official WorkBuddy app: $SourceApp"
 }
 
-$themeVersionOutput = Invoke-MoonseaBuilder -Arguments @("--edition", "standard", "--theme-version") -Capture
+$themeVersionOutput = Invoke-MoonseaBuilder -Arguments @("--client", "workbuddy", "--edition", "standard", "--theme-version") -Capture
 $themeVersion = ($themeVersionOutput | Select-Object -Last 1).Trim()
 if ($themeVersion -notmatch "^[a-f0-9]{12}$") {
     throw "Could not read the theme version: $themeVersion"
@@ -202,7 +231,7 @@ New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
 $needsBuild = $true
 if (Test-Path -LiteralPath $activeBuild -PathType Container) {
     try {
-        Invoke-MoonseaBuilder -Arguments @("--edition", "standard", "--verify", $activeBuild)
+        Invoke-MoonseaBuilder -Arguments @("--client", "workbuddy", "--edition", "standard", "--verify", $activeBuild)
         $needsBuild = $false
         Write-Host "This version is already installed. Refreshing the launcher..."
     }
@@ -224,7 +253,7 @@ if ($needsBuild) {
         throw "Could not copy the official app. Robocopy exit code: $robocopyExit"
     }
     try {
-        Invoke-MoonseaBuilder -Arguments @("--edition", "standard", "--patch", $stagingBuild)
+        Invoke-MoonseaBuilder -Arguments @("--client", "workbuddy", "--edition", "standard", "--patch", $stagingBuild)
         Move-Item -LiteralPath $stagingBuild -Destination $activeBuild
     }
     catch {
@@ -285,7 +314,8 @@ catch {
     throw
 }
 $manifest = [ordered]@{
-    schemaVersion = 2
+    schemaVersion = 3
+    client = "workbuddy"
     platform = "windows"
     edition = "standard"
     appVersion = $appVersion
@@ -294,6 +324,7 @@ $manifest = [ordered]@{
     sourceApp = $SourceApp
     activeBuild = $activeBuild
     profilePath = $profilePath
+    configPath = (Join-Path $profilePath "config")
     managerPath = $installedManagerPath
     updaterPath = $installedUpdaterPath
     releasePath = $releaseRoot
@@ -310,7 +341,7 @@ Move-Item -LiteralPath $launcherStagingPath -Destination $installedLauncherPath 
 
 if (-not $SkipShortcut -and -not $env:MOONSEA_SKIP_SHORTCUT) {
     New-Item -ItemType Directory -Path $DesktopPath -Force | Out-Null
-    $shortcutName = "Codex " + [char]0x6708 + [char]0x6D77 + [char]0x7248 + ".lnk"
+    $shortcutName = "WorkBuddy " + [char]0x6708 + [char]0x6D77 + [char]0x7248 + ".lnk"
     $shortcutPath = Join-Path $DesktopPath $shortcutName
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($shortcutPath)

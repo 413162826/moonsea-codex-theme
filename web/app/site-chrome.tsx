@@ -37,10 +37,10 @@ const TONE: Record<SiteTone, ToneConfig> = {
     brandMark: "✦",
     home: "/workbuddy",
     themes: "/workbuddy",
-    sisterLabel: "月海壁纸",
+    sisterLabel: "Codex 壁纸",
     sisterHref: "/themes",
     download: "/download?client=workbuddy",
-    footer: "WorkBuddy · Codex 主题与壁纸",
+    footer: "月海 · WorkBuddy 主题与壁纸",
   },
   light: {
     brandName: "月海",

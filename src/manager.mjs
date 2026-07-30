@@ -4,7 +4,13 @@ import path from "node:path";
 import process from "node:process";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { createRequestHandler, exchangeAssistantUpdate, MANAGER_PORT } from "./manager-core.mjs";
+import {
+  CLIENT,
+  CLIENT_LABEL,
+  createRequestHandler,
+  exchangeAssistantUpdate,
+  MANAGER_PORT,
+} from "./manager-core.mjs";
 import { ThemeDeliveryService } from "./theme-delivery-service.mjs";
 import { UpdateService } from "./update-service.mjs";
 import { TELEMETRY_INTERVAL_MS, TelemetryService } from "./telemetry-service.mjs";
@@ -36,7 +42,10 @@ function findProjectRoot() {
 const installRoot = path.resolve(
   readArgument("--install-root")
     ?? process.env.MOONSEA_INSTALL_ROOT
-    ?? path.join(process.env.LOCALAPPDATA ?? process.cwd(), "MoonseaCodex"),
+    ?? path.join(
+      process.env.LOCALAPPDATA ?? process.cwd(),
+      CLIENT === "workbuddy" ? "MoonseaWorkBuddy" : "MoonseaCodex",
+    ),
 );
 const profilePath = path.resolve(
   readArgument("--profile-path") ?? path.join(installRoot, "BrowserProfile"),
@@ -44,14 +53,28 @@ const profilePath = path.resolve(
 const appPidArgument = readArgument("--app-pid");
 const appPid = appPidArgument === null ? null : Number.parseInt(appPidArgument, 10);
 if (appPidArgument !== null && (!Number.isInteger(appPid) || appPid < 1)) {
-  throw new Error("月海 Codex 进程 ID 无效");
+  throw new Error(`月海 ${CLIENT_LABEL} 进程 ID 无效`);
 }
 const projectRoot = findProjectRoot();
 const pidPath = path.join(installRoot, "manager.pid");
 const adminAccess = fs.existsSync(path.join(installRoot, "admin-access.enabled"));
 const updaterPath = process.platform === "win32"
-  ? path.join(projectRoot, "scripts", "windows", "Update-Moonsea-Windows.ps1")
-  : path.join(projectRoot, "scripts", "macos", "update-moonsea.sh");
+  ? path.join(
+      projectRoot,
+      "scripts",
+      "windows",
+      CLIENT === "workbuddy"
+        ? "Update-Moonsea-WorkBuddy-Windows.ps1"
+        : "Update-Moonsea-Windows.ps1",
+    )
+  : path.join(
+      projectRoot,
+      "scripts",
+      "macos",
+      CLIENT === "workbuddy"
+        ? "update-moonsea-workbuddy.sh"
+        : "update-moonsea.sh",
+    );
 
 function launchUpdater({ packagePath, packageKind, currentVersion, targetVersion }) {
   if (process.platform === "win32" && packageKind === "installer") {
@@ -170,6 +193,7 @@ fs.mkdirSync(installRoot, { recursive: true });
 let shutdownRequested = false;
 let assistantSyncRunning = false;
 const updateService = new UpdateService({
+  client: CLIENT,
   currentVersion: APP_VERSION,
   platform: process.platform,
   installRoot,
@@ -220,7 +244,7 @@ async function syncAssistantUpdate() {
     if (exchange?.command === "download") await updateService.startDownload({ autoInstall: true });
     if (exchange?.command === "install") await updateService.startInstall();
   } catch {
-    // Codex 可能还没有打开，下一轮会重新连接活动窗口。
+    // The client may not be open yet. The next cycle reconnects to the active window.
   } finally {
     assistantSyncRunning = false;
   }

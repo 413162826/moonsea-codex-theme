@@ -12,6 +12,13 @@ type Connection = {
   message: string;
 };
 
+const DISCONNECTED: Connection = Object.freeze({
+  connected: false,
+  runtimeCapable: false,
+  activeThemeId: null,
+  message: "未连接",
+});
+
 export function ThemeGallery({
   initialThemes,
   basePath = "/themes",
@@ -25,16 +32,10 @@ export function ThemeGallery({
   clientLabel?: string;
   client?: string;
 }) {
-  const initialConnection: Connection = {
-    connected: false,
-    runtimeCapable: false,
-    activeThemeId: null,
-    message: "未连接",
-  };
   const [themes] = useState(initialThemes);
   const [filter, setFilter] = useState<"all" | "light" | "dark" | "pro">("all");
   const [query, setQuery] = useState("");
-  const [connection, setConnection] = useState(initialConnection);
+  const [connection, setConnection] = useState(DISCONNECTED);
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [pendingThemeId, setPendingThemeId] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -76,7 +77,7 @@ export function ThemeGallery({
           );
         }
       } catch {
-        if (active) setConnection(initialConnection);
+        if (active) setConnection(DISCONNECTED);
       }
     };
     void connect();
@@ -85,7 +86,7 @@ export function ThemeGallery({
       active = false;
       window.clearInterval(timer);
     };
-  }, [themes]);
+  }, [apiRoot, themes]);
 
   const visibleThemes = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase("zh-CN");

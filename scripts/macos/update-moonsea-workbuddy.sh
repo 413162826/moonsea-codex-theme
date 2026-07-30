@@ -134,11 +134,11 @@ perform_update() {
   /usr/bin/ditto -x -k "$PACKAGE_PATH" "$EXTRACT_ROOT" || return 1
 
   PACKAGE_ROOT=""
-  if [[ -f "$EXTRACT_ROOT/scripts/macos/install-moonsea.sh" ]]; then
+  if [[ -f "$EXTRACT_ROOT/scripts/macos/install-moonsea-workbuddy.sh" ]]; then
     PACKAGE_ROOT="$EXTRACT_ROOT"
   else
     for candidate in "$EXTRACT_ROOT"/*(N/); do
-      if [[ -f "$candidate/scripts/macos/install-moonsea.sh" ]]; then
+      if [[ -f "$candidate/scripts/macos/install-moonsea-workbuddy.sh" ]]; then
         PACKAGE_ROOT="$candidate"
         break
       fi
@@ -150,7 +150,7 @@ perform_update() {
   fi
 
   MOONSEA_INSTALL_ROOT="$INSTALL_ROOT" MOONSEA_SOURCE_APP="$SOURCE_APP" MOONSEA_SKIP_LAUNCH=1 \
-    /bin/zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea.sh" || return 1
+    /bin/zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea-workbuddy.sh" || return 1
   /usr/bin/nohup /bin/zsh "$LAUNCHER_PATH" >/dev/null 2>&1 &
   wait_for_manager || return 1
 }

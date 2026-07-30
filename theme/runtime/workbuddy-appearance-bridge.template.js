@@ -1,0 +1,135 @@
+const THEME_MODULE_PATH = "__MOONSEA_THEME_MODULE_PATH__";
+const THEME_VERSION = "__MOONSEA_THEME_VERSION__";
+const APPEARANCE_STATE_KEY = "workbuddy-moonsea-appearance-state-v1";
+
+let themeModulePromise;
+let restoredAppearanceState = null;
+let restoreError = null;
+let restorationPromise = Promise.resolve();
+
+function getThemeModule() {
+  themeModulePromise ??= import(THEME_MODULE_PATH).then((module) => {
+    if (typeof module.moonseaSetTheme !== "function") {
+      throw new Error("当前 WorkBuddy 版本没有可用的外观控制入口");
+    }
+    return module;
+  });
+  return themeModulePromise;
+}
+
+function assertRuntimeTheme(theme) {
+  if (!theme || !["standard", "pro"].includes(theme.edition)) {
+    throw new Error("壁纸业务类型无效");
+  }
+  if (!["light", "dark"].includes(theme.mode)) throw new Error("壁纸模式无效");
+  if (!theme.runtime || typeof theme.runtime !== "object") {
+    throw new Error("壁纸运行时配置无效");
+  }
+  if (theme.runtime.tier !== theme.edition) {
+    throw new Error("壁纸业务类型与运行时不一致");
+  }
+}
+
+function readAppearanceState() {
+  const raw = localStorage.getItem(APPEARANCE_STATE_KEY);
+  if (!raw) return null;
+  const state = JSON.parse(raw);
+  if (
+    state?.schemaVersion !== 1
+    || (state.edition !== "standard" && state.edition !== "pro")
+    || typeof state.themeId !== "string"
+    || !/^[a-z0-9-]+$/.test(state.themeId)
+    || (state.runtime != null && typeof state.runtime !== "object")
+    || (state.mode != null && !["light", "dark"].includes(state.mode))
+  ) {
+    throw new Error("已保存的月海外观状态无效");
+  }
+  return state;
+}
+
+function saveAppearanceState(theme) {
+  const runtime = theme.runtime ? { ...theme.runtime } : null;
+  if (runtime) delete runtime.wallpaperDataUrl;
+  const state = {
+    schemaVersion: 1,
+    edition: theme.edition,
+    themeId: theme.id,
+    mode: theme.mode,
+    runtime,
+  };
+  localStorage.setItem(APPEARANCE_STATE_KEY, JSON.stringify(state));
+  restoredAppearanceState = state;
+  restoreError = null;
+}
+
+async function ensureProRuntime() {
+  if (window.moonseaProRuntime) return window.moonseaProRuntime;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.id = "codex-moonsea-pro-runtime-script";
+    script.src = `./moonsea/theme.js?v=${THEME_VERSION}`;
+    script.addEventListener("load", resolve, { once: true });
+    script.addEventListener(
+      "error",
+      () => reject(new Error("月海壁纸运行时加载失败")),
+      { once: true },
+    );
+    document.body.appendChild(script);
+  });
+  if (!window.moonseaProRuntime) throw new Error("月海壁纸运行时没有完成初始化");
+  return window.moonseaProRuntime;
+}
+
+async function applyRuntimeTheme(theme) {
+  assertRuntimeTheme(theme);
+  await restorationPromise;
+  const startedAt = performance.now();
+  const themeModule = await getThemeModule();
+  themeModule.moonseaSetTheme(theme.mode);
+  const runtime = await ensureProRuntime();
+  await runtime.enable(theme.runtime, { selectTheme: true });
+  saveAppearanceState(theme);
+  return {
+    themeId: theme.id,
+    edition: theme.edition,
+    rendererMs: Math.round((performance.now() - startedAt) * 10) / 10,
+  };
+}
+
+async function getStatus() {
+  await restorationPromise;
+  await getThemeModule();
+  return {
+    ready: true,
+    runtimeActive: window.moonseaProRuntime?.isActive() === true,
+    edition: restoredAppearanceState?.edition ?? null,
+    themeId: restoredAppearanceState?.themeId ?? null,
+    restoreError,
+  };
+}
+
+async function restoreSavedAppearance() {
+  const state = readAppearanceState();
+  restoredAppearanceState = state;
+  const runtime = await ensureProRuntime();
+  if (state?.mode) {
+    const themeModule = await getThemeModule();
+    themeModule.moonseaSetTheme(state.mode);
+  }
+  if (state?.runtime) {
+    await runtime.enable(state.runtime);
+  } else {
+    runtime.disable();
+  }
+}
+
+Object.defineProperty(window, "moonseaThemeBridge", {
+  configurable: false,
+  enumerable: false,
+  writable: false,
+  value: Object.freeze({ applyRuntimeTheme, getStatus }),
+});
+
+restorationPromise = restoreSavedAppearance().catch((error) => {
+  restoreError = error?.message || "月海外观恢复失败";
+});

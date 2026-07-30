@@ -2,8 +2,12 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-export const DEFAULT_UPDATE_MANIFEST_URL =
-  "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/update.json";
+export const DEFAULT_UPDATE_MANIFEST_URLS = Object.freeze({
+  codex: "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/update.json",
+  workbuddy:
+    "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/update-workbuddy.json",
+});
+export const DEFAULT_UPDATE_MANIFEST_URL = DEFAULT_UPDATE_MANIFEST_URLS.codex;
 
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 const MANIFEST_MAX_ATTEMPTS = 3;
@@ -154,11 +158,12 @@ async function hashFile(filePath) {
 
 export class UpdateService {
   constructor({
+    client = "codex",
     currentVersion,
     platform,
     installRoot,
     updaterPath,
-    manifestUrl = process.env.MOONSEA_UPDATE_MANIFEST_URL ?? DEFAULT_UPDATE_MANIFEST_URL,
+    manifestUrl,
     fetchImpl = globalThis.fetch,
     launchUpdater,
     requestShutdown,
@@ -166,11 +171,20 @@ export class UpdateService {
     sleep = (duration) => new Promise((resolve) => setTimeout(resolve, duration)),
     downloadPolicy = {},
   }) {
+    if (!Object.hasOwn(DEFAULT_UPDATE_MANIFEST_URLS, client)) {
+      throw new Error(`不支持的月海客户端：${client}`);
+    }
+    this.client = client;
     this.currentVersion = currentVersion;
     this.platform = platform;
     this.installRoot = path.resolve(installRoot);
     this.updaterPath = path.resolve(updaterPath);
-    this.manifestUrl = assertHttpsUrl(manifestUrl, "更新清单地址");
+    this.manifestUrl = assertHttpsUrl(
+      manifestUrl
+        ?? process.env.MOONSEA_UPDATE_MANIFEST_URL
+        ?? DEFAULT_UPDATE_MANIFEST_URLS[client],
+      "更新清单地址",
+    );
     this.fetchImpl = fetchImpl;
     this.launchUpdater = launchUpdater;
     this.requestShutdown = requestShutdown;
@@ -217,7 +231,7 @@ export class UpdateService {
     return path.join(
       this.installRoot,
       "updates",
-      `Moonsea-Codex-${update.version}-${extension}`,
+      `Moonsea-${this.client === "workbuddy" ? "WorkBuddy" : "Codex"}-${update.version}-${extension}`,
     );
   }
 

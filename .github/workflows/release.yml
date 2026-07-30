@@ -76,6 +76,11 @@ jobs:
           ./tests/windows-updater-smoke.ps1 -PackageRoot $stage
           Compress-Archive -Path "$stage/*" -DestinationPath "$PWD/Moonsea-Codex-Windows-x64.zip"
           Copy-Item -LiteralPath $setupPath -Destination "$PWD/Moonsea-Codex-Windows-x64-Setup.exe"
+          $workBuddyReleaseRoot = Join-Path $PWD ".build/workbuddy-windows-release"
+          $workBuddySetupPath = (& ./scripts/windows/Build-WorkBuddy-Setup.ps1 -OutputDirectory $workBuddyReleaseRoot | Select-Object -Last 1)
+          $workBuddyStage = Join-Path $workBuddyReleaseRoot "Moonsea-WorkBuddy-Windows-x64"
+          Compress-Archive -Path "$workBuddyStage/*" -DestinationPath "$PWD/Moonsea-WorkBuddy-Windows-x64.zip"
+          Copy-Item -LiteralPath $workBuddySetupPath -Destination "$PWD/Moonsea-WorkBuddy-Windows-x64-Setup.exe"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: windows-candidate
@@ -83,6 +88,8 @@ jobs:
           path: |
             Moonsea-Codex-Windows-x64.zip
             Moonsea-Codex-Windows-x64-Setup.exe
+            Moonsea-WorkBuddy-Windows-x64.zip
+            Moonsea-WorkBuddy-Windows-x64-Setup.exe
 
   macos_candidate:
     name: 构建 macOS 候选包
@@ -127,11 +134,40 @@ jobs:
             zsh ./tests/macos-installer-smoke.sh
           MOONSEA_TEST_PACKAGE_ROOT="$stage" zsh ./tests/macos-updater-smoke.sh
           ditto -c -k --sequesterRsrc --keepParent "$stage" "$PWD/Moonsea-Codex-macOS.zip"
+          workbuddy_stage="$PWD/.build/Moonsea-WorkBuddy-macOS"
+          mkdir -p "$workbuddy_stage/tools" "$workbuddy_stage/scripts/macos"
+          cp README.md LICENSE ASSET-LICENSE.md package.json "$workbuddy_stage/"
+          cp Install-WorkBuddy.command "$workbuddy_stage/Install.command"
+          cp Uninstall-WorkBuddy.command "$workbuddy_stage/Uninstall.command"
+          cp -R theme assets site admin "$workbuddy_stage/"
+          cp \
+            scripts/macos/install-moonsea-workbuddy.sh \
+            scripts/macos/Start-Moonsea-WorkBuddy-macOS.command \
+            scripts/macos/update-moonsea-workbuddy.sh \
+            scripts/macos/uninstall-moonsea-workbuddy.sh \
+            scripts/macos/MoonseaWorkBuddyLauncher.applescript \
+            "$workbuddy_stage/scripts/macos/"
+          lipo -create "$tool_stage/moonsea-builder-arm64" "$tool_stage/moonsea-builder-x64" -output "$workbuddy_stage/tools/moonsea-builder"
+          lipo -create "$tool_stage/moonsea-manager-arm64" "$tool_stage/moonsea-manager-x64" -output "$workbuddy_stage/tools/moonsea-manager"
+          codesign --force --sign - "$workbuddy_stage/tools/moonsea-builder"
+          codesign --force --sign - "$workbuddy_stage/tools/moonsea-manager"
+          chmod +x "$workbuddy_stage"/*.command "$workbuddy_stage/tools/moonsea-builder" "$workbuddy_stage/tools/moonsea-manager" "$workbuddy_stage/scripts/macos"/*.sh "$workbuddy_stage/scripts/macos"/*.command
+          MOONSEA_PROJECT_ROOT="$workbuddy_stage" "$workbuddy_stage/tools/moonsea-builder" --client workbuddy --theme-version
+          MOONSEA_TEST_CLIENT=workbuddy \
+            MOONSEA_TEST_PACKAGE_ROOT="$workbuddy_stage" \
+            MOONSEA_TEST_BUILDER_PATH="$workbuddy_stage/tools/moonsea-builder" \
+            zsh ./tests/macos-installer-smoke.sh
+          MOONSEA_TEST_CLIENT=workbuddy \
+            MOONSEA_TEST_PACKAGE_ROOT="$workbuddy_stage" \
+            zsh ./tests/macos-updater-smoke.sh
+          ditto -c -k --sequesterRsrc --keepParent "$workbuddy_stage" "$PWD/Moonsea-WorkBuddy-macOS.zip"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: macos-candidate
           retention-days: 14
-          path: Moonsea-Codex-macOS.zip
+          path: |
+            Moonsea-Codex-macOS.zip
+            Moonsea-WorkBuddy-macOS.zip
 
   windows_release_gate:
     name: Windows 真实软件内更新准入
@@ -180,10 +216,27 @@ jobs:
             .build/windows-release-gate/*.log
             .build/windows-release-gate/custom install/MoonseaCodex/updates/*.log
 
+  workbuddy_windows_release_gate:
+    name: WorkBuddy Windows 候选安装包准入
+    needs: windows_candidate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: windows-candidate
+          path: .build/candidate
+      - name: 验证发布候选安装包
+        shell: powershell
+        run: |
+          ./tests/windows-setup-smoke.ps1 `
+            -SetupPath "$PWD/.build/candidate/Moonsea-WorkBuddy-Windows-x64-Setup.exe" `
+            -Client workbuddy
+
   publish:
     name: 发布已通过准入的同一批产物
     if: inputs.publish && github.ref == 'refs/heads/main'
-    needs: [web_gate, windows_candidate, macos_candidate, windows_release_gate]
+    needs: [web_gate, windows_candidate, macos_candidate, windows_release_gate, workbuddy_windows_release_gate]
     runs-on: ubuntu-latest
     environment: production-release
     steps:
@@ -202,9 +255,15 @@ jobs:
           windows_file="artifacts/Moonsea-Codex-Windows-x64.zip"
           windows_installer="artifacts/Moonsea-Codex-Windows-x64-Setup.exe"
           macos_file="artifacts/Moonsea-Codex-macOS.zip"
+          workbuddy_windows_file="artifacts/Moonsea-WorkBuddy-Windows-x64.zip"
+          workbuddy_windows_installer="artifacts/Moonsea-WorkBuddy-Windows-x64-Setup.exe"
+          workbuddy_macos_file="artifacts/Moonsea-WorkBuddy-macOS.zip"
           windows_sha="$(sha256sum "$windows_file" | cut -d' ' -f1)"
           windows_installer_sha="$(sha256sum "$windows_installer" | cut -d' ' -f1)"
           macos_sha="$(sha256sum "$macos_file" | cut -d' ' -f1)"
+          workbuddy_windows_sha="$(sha256sum "$workbuddy_windows_file" | cut -d' ' -f1)"
+          workbuddy_windows_installer_sha="$(sha256sum "$workbuddy_windows_installer" | cut -d' ' -f1)"
+          workbuddy_macos_sha="$(sha256sum "$workbuddy_macos_file" | cut -d' ' -f1)"
           jq -n \
             --arg version "$RELEASE_VERSION" \
             --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -237,7 +296,39 @@ jobs:
                 macos: { url: $macosUrl, sha256: $macosSha, size: $macosSize }
               }
             }' > artifacts/update.json
-          gh release create "$tag" artifacts/*.zip artifacts/*.exe artifacts/update.json \
+          jq -n \
+            --arg version "$RELEASE_VERSION" \
+            --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg notes "$RELEASE_NOTES" \
+            --arg windowsUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/Moonsea-WorkBuddy-Windows-x64.zip" \
+            --arg windowsSha "$workbuddy_windows_sha" \
+            --argjson windowsSize "$(stat -c%s "$workbuddy_windows_file")" \
+            --arg windowsInstallerUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/Moonsea-WorkBuddy-Windows-x64-Setup.exe" \
+            --arg windowsInstallerSha "$workbuddy_windows_installer_sha" \
+            --argjson windowsInstallerSize "$(stat -c%s "$workbuddy_windows_installer")" \
+            --arg macosUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/Moonsea-WorkBuddy-macOS.zip" \
+            --arg macosSha "$workbuddy_macos_sha" \
+            --argjson macosSize "$(stat -c%s "$workbuddy_macos_file")" \
+            '{
+              schemaVersion: 1,
+              version: $version,
+              publishedAt: $publishedAt,
+              notes: $notes,
+              platforms: {
+                windows: {
+                  url: $windowsUrl,
+                  sha256: $windowsSha,
+                  size: $windowsSize,
+                  installer: {
+                    url: $windowsInstallerUrl,
+                    sha256: $windowsInstallerSha,
+                    size: $windowsInstallerSize
+                  }
+                },
+                macos: { url: $macosUrl, sha256: $macosSha, size: $macosSize }
+              }
+            }' > artifacts/update-workbuddy.json
+          gh release create "$tag" artifacts/*.zip artifacts/*.exe artifacts/update.json artifacts/update-workbuddy.json \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "$tag" \

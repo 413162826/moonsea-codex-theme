@@ -244,7 +244,7 @@ begin
     Exit;
 
   PowerShellPath := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
-  InstallerPath := ExpandConstant('{app}\payload\scripts\windows\Invoke-Moonsea-Install.ps1');
+  InstallerPath := ExpandConstant('{app}\payload\scripts\windows\Invoke-Moonsea-WorkBuddy-Install.ps1');
   Parameters :=
     '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' +
     InstallerPath + '" -InstallRoot "' + ExpandConstant('{app}') +

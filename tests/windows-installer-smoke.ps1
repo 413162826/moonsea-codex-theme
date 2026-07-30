@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [string]$PackageRoot,
-    [string]$BuilderPath
+    [string]$BuilderPath,
+    [ValidateSet("codex", "workbuddy")]
+    [string]$Client = "codex"
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,11 +15,21 @@ $PackageRoot = [System.IO.Path]::GetFullPath($PackageRoot)
 $BuilderPath = [System.IO.Path]::GetFullPath($BuilderPath)
 $testRoot = Join-Path $sourceRoot ".build\windows-installer-smoke"
 $sourceApp = Join-Path $testRoot "Official-Windows"
-$installRoot = Join-Path $testRoot "MoonseaCodex"
+$installRoot = Join-Path $testRoot $(if ($Client -eq "workbuddy") { "MoonseaWorkBuddy" } else { "MoonseaCodex" })
 $desktopPath = Join-Path $testRoot "Desktop"
-$installer = Join-Path $PackageRoot "scripts\windows\Install-Moonsea-Windows.ps1"
-$uninstaller = Join-Path $PackageRoot "scripts\windows\Uninstall-Moonsea-Windows.ps1"
-$launcher = Join-Path $PackageRoot "Install.cmd"
+$installerName = if ($Client -eq "workbuddy") { "Install-Moonsea-WorkBuddy-Windows.ps1" } else { "Install-Moonsea-Windows.ps1" }
+$uninstallerName = if ($Client -eq "workbuddy") { "Uninstall-Moonsea-WorkBuddy-Windows.ps1" } else { "Uninstall-Moonsea-Windows.ps1" }
+$installer = Join-Path $PackageRoot "scripts\windows\$installerName"
+$uninstaller = Join-Path $PackageRoot "scripts\windows\$uninstallerName"
+$launcher = if (
+    $Client -eq "workbuddy" -and
+    (Test-Path -LiteralPath (Join-Path $PackageRoot "Install-WorkBuddy.cmd") -PathType Leaf)
+) {
+    Join-Path $PackageRoot "Install-WorkBuddy.cmd"
+}
+else {
+    Join-Path $PackageRoot "Install.cmd"
+}
 $expectedVersion = [string](Get-Content -LiteralPath (Join-Path $PackageRoot "package.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version
 $managerPort = 18320
 $previousManagerPort = $env:MOONSEA_MANAGER_PORT
@@ -27,6 +39,7 @@ $previousDesktopPath = $env:MOONSEA_DESKTOP_PATH
 $previousNonInteractive = $env:MOONSEA_NONINTERACTIVE
 $previousSkipShortcut = $env:MOONSEA_SKIP_SHORTCUT
 $previousSkipLaunch = $env:MOONSEA_SKIP_LAUNCH
+$previousClient = $env:MOONSEA_CLIENT
 
 function Invoke-TestBuilder([string[]]$Arguments) {
     if ([System.IO.Path]::GetExtension($BuilderPath) -eq ".mjs") {
@@ -49,11 +62,12 @@ try {
     $env:MOONSEA_NONINTERACTIVE = "1"
     $env:MOONSEA_SKIP_SHORTCUT = "1"
     $env:MOONSEA_SKIP_LAUNCH = "1"
-    node (Join-Path $sourceRoot "tests\create-fixture.mjs") windows $sourceApp | Out-Null
+    $env:MOONSEA_CLIENT = $Client
+    node (Join-Path $sourceRoot "tests\create-fixture.mjs") windows $sourceApp $Client | Out-Null
     $env:MOONSEA_SOURCE_APP = $sourceApp
     Push-Location $PackageRoot
     try {
-        $launcherOutput = @(& cmd.exe /d /c "Install.cmd" 2>&1)
+        $launcherOutput = @(& cmd.exe /d /c "`"$launcher`"" 2>&1)
         $launcherExitCode = $LASTEXITCODE
     }
     finally {
@@ -75,7 +89,9 @@ try {
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Manifest was not created" }
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($manifest.edition -ne "standard") { throw "Installer did not select the standard edition" }
-    if ($manifest.schemaVersion -ne 2 -or $manifest.appVersion -ne $expectedVersion) { throw "Installer did not write the application version" }
+    $expectedSchema = if ($Client -eq "workbuddy") { 3 } else { 2 }
+    if ($manifest.schemaVersion -ne $expectedSchema -or $manifest.appVersion -ne $expectedVersion) { throw "Installer did not write the application version" }
+    if ($Client -eq "workbuddy" -and $manifest.client -ne "workbuddy") { throw "Installer did not write the WorkBuddy client identity" }
     if (-not (Test-Path -LiteralPath $manifest.managerPath -PathType Leaf)) { throw "Manager was not installed" }
     if (-not (Test-Path -LiteralPath $manifest.updaterPath -PathType Leaf)) { throw "Updater was not installed" }
     if (-not (Test-Path -LiteralPath (Join-Path $manifest.releasePath "site\index.html") -PathType Leaf)) { throw "Website was not installed" }
@@ -98,7 +114,13 @@ try {
     }
     if (-not $managerReady) { throw "Installed manager did not serve the theme website" }
     & $installer -SourceApp $sourceApp -InstallRoot $installRoot -DesktopPath $desktopPath -BuilderPath $BuilderPath -SkipShortcut -SkipLaunch
-    Invoke-TestBuilder -Arguments @("--verify", $manifest.activeBuild)
+    $verifyArguments = if ($Client -eq "workbuddy") {
+        @("--client", "workbuddy", "--verify", $manifest.activeBuild)
+    }
+    else {
+        @("--verify", $manifest.activeBuild)
+    }
+    Invoke-TestBuilder -Arguments $verifyArguments
     & $uninstaller -InstallRoot $installRoot -DesktopPath $desktopPath -NonInteractive
     if (Test-Path -LiteralPath (Join-Path $installRoot "builds")) { throw "Default uninstall did not remove builds" }
     if (Test-Path -LiteralPath (Join-Path $installRoot "releases")) { throw "Default uninstall did not remove release files" }
@@ -113,7 +135,7 @@ try {
     $env:MOONSEA_SOURCE_APP = Join-Path $testRoot "missing-official-app"
     Push-Location $PackageRoot
     try {
-        $failureOutput = @(& cmd.exe /d /c "Install.cmd" 2>&1)
+        $failureOutput = @(& cmd.exe /d /c "`"$launcher`"" 2>&1)
         $failureExitCode = $LASTEXITCODE
     }
     finally {
@@ -140,6 +162,7 @@ finally {
     $env:MOONSEA_NONINTERACTIVE = $previousNonInteractive
     $env:MOONSEA_SKIP_SHORTCUT = $previousSkipShortcut
     $env:MOONSEA_SKIP_LAUNCH = $previousSkipLaunch
+    $env:MOONSEA_CLIENT = $previousClient
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
     }

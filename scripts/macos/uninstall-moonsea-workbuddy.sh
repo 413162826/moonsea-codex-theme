@@ -57,7 +57,7 @@ if [[ -d "$INSTALL_ROOT" ]]; then
   fi
 fi
 
-echo "卸载完成。官方 Codex 没有被修改。"
+echo "卸载完成。官方 WorkBuddy 没有被修改。"
 if [[ "$REMOVE_USER_DATA" != "1" ]]; then
   echo "月海版的登录、壁纸和设置已保留。"
 fi

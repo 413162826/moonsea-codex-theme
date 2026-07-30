@@ -39,10 +39,10 @@ $running = @(Get-CimInstance Win32_Process -Filter "Name = 'WorkBuddy.exe'" -Err
     $_.ExecutablePath -and $_.ExecutablePath.StartsWith($buildsRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
 })
 if ($running.Count -gt 0) {
-    throw "Close Moonsea Codex, then run the uninstaller again."
+    throw "Close Moonsea WorkBuddy, then run the uninstaller again."
 }
 
-$shortcutName = "Codex " + [char]0x6708 + [char]0x6D77 + [char]0x7248 + ".lnk"
+$shortcutName = "WorkBuddy " + [char]0x6708 + [char]0x6D77 + [char]0x7248 + ".lnk"
 $shortcutPath = Join-Path $DesktopPath $shortcutName
 if (Test-Path -LiteralPath $shortcutPath) {
     Remove-Item -LiteralPath $shortcutPath -Force
@@ -62,7 +62,7 @@ if (Test-Path -LiteralPath $InstallRoot -PathType Container) {
     }
 }
 
-Write-Host "Moonsea Codex was removed. The official app was not changed."
+Write-Host "Moonsea WorkBuddy was removed. The official app was not changed."
 if (-not $RemoveUserData) {
     Write-Host "Moonsea login, wallpaper, and settings were kept."
 }

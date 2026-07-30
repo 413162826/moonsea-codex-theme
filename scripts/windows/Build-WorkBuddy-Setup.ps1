@@ -61,34 +61,43 @@ try {
         (Join-Path $sourceRoot "README.md"),
         (Join-Path $sourceRoot "LICENSE"),
         (Join-Path $sourceRoot "ASSET-LICENSE.md"),
-        (Join-Path $sourceRoot "package.json"),
-        (Join-Path $sourceRoot "Install.cmd"),
-        (Join-Path $sourceRoot "Uninstall.cmd")
+        (Join-Path $sourceRoot "package.json")
     ) -Destination $stage
+    Copy-Item -LiteralPath (Join-Path $sourceRoot "Install-WorkBuddy.cmd") -Destination (Join-Path $stage "Install.cmd")
+    Copy-Item -LiteralPath (Join-Path $sourceRoot "Uninstall-WorkBuddy.cmd") -Destination (Join-Path $stage "Uninstall.cmd")
     foreach ($directory in @("theme", "assets", "site", "admin")) {
         Copy-Item -LiteralPath (Join-Path $sourceRoot $directory) -Destination $stage -Recurse
     }
-    Copy-Item -Path (Join-Path $sourceRoot "scripts\windows\*") -Destination (Join-Path $stage "scripts\windows")
+    foreach ($scriptName in @(
+        "Install-Moonsea-WorkBuddy-Windows.ps1",
+        "Invoke-Moonsea-WorkBuddy-Install.ps1",
+        "Start-Moonsea-WorkBuddy-Windows.ps1",
+        "Uninstall-Moonsea-WorkBuddy-Windows.ps1",
+        "Update-Moonsea-WorkBuddy-Windows.ps1"
+    )) {
+        Copy-Item -LiteralPath (Join-Path $sourceRoot "scripts\windows\$scriptName") -Destination (Join-Path $stage "scripts\windows")
+    }
 
     & $bunPath build ".\src\build-static.mjs" --compile --target=bun-windows-x64 --outfile (Join-Path $stage "tools\moonsea-builder.exe")
     if ($LASTEXITCODE -ne 0) { throw "Moonsea builder compilation failed." }
     & $bunPath build ".\src\manager.mjs" --compile --target=bun-windows-x64 --outfile (Join-Path $stage "tools\moonsea-manager.exe")
     if ($LASTEXITCODE -ne 0) { throw "Moonsea manager compilation failed." }
 
-    dotnet publish ".\installer\windows\launcher\MoonseaLauncher.csproj" `
+    dotnet publish ".\installer\windows\launcher-workbuddy\WorkBuddyLauncher.csproj" `
         -c Release `
         -o $launcherOutput `
         --nologo
     if ($LASTEXITCODE -ne 0) { throw "Moonsea launcher compilation failed." }
 
     $env:MOONSEA_PROJECT_ROOT = $stage
-    & (Join-Path $stage "tools\moonsea-builder.exe") --theme-version | Out-Null
+    & (Join-Path $stage "tools\moonsea-builder.exe") --client workbuddy --theme-version | Out-Null
     Remove-Item Env:MOONSEA_PROJECT_ROOT
 
     if (-not $SkipTests) {
         & ".\tests\windows-installer-smoke.ps1" `
             -PackageRoot $stage `
-            -BuilderPath (Join-Path $stage "tools\moonsea-builder.exe")
+            -BuilderPath (Join-Path $stage "tools\moonsea-builder.exe") `
+            -Client workbuddy
     }
 
     & $isccPath `
@@ -101,7 +110,7 @@ try {
 
     $setupPath = Join-Path $setupOutput "Moonsea-WorkBuddy-Windows-x64-Setup.exe"
     if (-not $SkipTests) {
-        & ".\tests\windows-setup-smoke.ps1" -SetupPath $setupPath
+        & ".\tests\windows-setup-smoke.ps1" -SetupPath $setupPath -Client workbuddy
     }
     Write-Output $setupPath
 }

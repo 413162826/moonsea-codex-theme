@@ -25,7 +25,9 @@ export default async function DownloadChoosePage({ searchParams }: ChooseProps) 
           <a href={withClient("windows")}>Windows</a>
           <a href={withClient("macos")}>macOS</a>
         </div>
-        <Link href="/">返回月海首页</Link>
+        <Link href={clientParam === "workbuddy" ? "/workbuddy" : "/"}>
+          返回{clientParam === "workbuddy" ? " WorkBuddy 主题墙" : "月海首页"}
+        </Link>
       </main>
     </>
   );

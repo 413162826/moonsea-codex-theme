@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: ThemePageProps): Promise<Meta
   const theme = await getThemeWithUploads(env.DB, id);
   if (!theme) return {};
 
-  const title = `${theme.name} Codex 主题`;
+  const title = `${theme.name} WorkBuddy 主题`;
   const description = `${theme.description}。下载安装 WorkBuddy 版后，可从网页直接应用。`;
   const url = `/workbuddy/${theme.id}`;
   return {
@@ -62,7 +62,7 @@ export default async function ThemePage({ params }: ThemePageProps) {
             {theme.edition === "pro" ? "精选 · PRO" : `免费渐变 · ${theme.mode === "dark" ? "深色" : "浅色"}`}
           </p>
           <h1>{theme.name}</h1>
-          <p>{theme.description}。打开 WorkBuddy Codex 后，即可从网页直接应用。</p>
+          <p>{theme.description}。打开 WorkBuddy 月海版后，即可从网页直接应用。</p>
           <ThemeActions themeId={theme.id} basePath="/workbuddy" client="workbuddy" />
           <Link className="theme-detail__back" href="/workbuddy">返回主题墙</Link>
         </div>

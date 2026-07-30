@@ -71,7 +71,9 @@ export function HEAD(request: Request) {
   const platform = detectPlatform(request);
   const client = detectClient(request);
   if (!platform) {
-    return Response.redirect(new URL("/download/choose", request.url), 302);
+    const chooseUrl = new URL("/download/choose", request.url);
+    chooseUrl.searchParams.set("client", client);
+    return Response.redirect(chooseUrl, 302);
   }
   return Response.redirect(DOWNLOADS[client][platform], 302);
 }
