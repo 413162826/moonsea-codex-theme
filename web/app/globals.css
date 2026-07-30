@@ -259,6 +259,17 @@ footer { position: relative; z-index: 2; display: flex; min-height: 110px; align
 .admin-header p:last-child { color: var(--muted); }
 .admin-account { display: grid; justify-items: end; gap: 8px; color: var(--muted); font-size: 13px; }
 .admin-account a { color: var(--ink); }
+.theme-upload-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; max-width: 880px; }
+.theme-upload-form label { display: grid; gap: 8px; }
+.theme-upload-form label > span { color: var(--muted); font-size: 13px; }
+.theme-upload-form input,
+.theme-upload-form select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font: inherit; }
+.theme-upload-form input[type="file"] { padding: 10px 12px; }
+.theme-upload-form__wide,
+.theme-upload-form__actions { grid-column: 1 / -1; }
+.theme-upload-form__actions { display: flex; align-items: center; gap: 16px; }
+.theme-upload-form__actions button { min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--ink); color: var(--paper); font: inherit; font-weight: 700; cursor: pointer; }
+.theme-upload-form__actions p { margin: 0; color: var(--muted); }
 .admin-section { margin-top: 68px; }
 .admin-section__heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
 .admin-section__heading h2 { margin: 0; font-size: 28px; letter-spacing: -.03em; }
@@ -301,6 +312,8 @@ footer { position: relative; z-index: 2; display: flex; min-height: 110px; align
 }
 
 @media (max-width: 680px) {
+  .theme-upload-form { grid-template-columns: 1fr; }
+  .theme-upload-form > * { grid-column: 1; }
   .site-header__inner, main, footer { width: min(100% - 28px, 1280px); }
   .site-nav > a:not(.download-link) { display: none; }
   .site-nav .download-link { padding-inline: 14px; font-size: 12px; }

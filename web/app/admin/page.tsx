@@ -275,6 +275,7 @@ export default async function AdminPage() {
         </div>
         <div className="admin-account">
           <span>{user.displayName}</span>
+          <Link href="/admin/themes">发布主题</Link>
           <Link href="/">返回官网</Link>
         </div>
       </header>

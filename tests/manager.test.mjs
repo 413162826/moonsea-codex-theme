@@ -416,9 +416,14 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
     fs.readFileSync(path.join(projectRoot, "site", "theme-catalog-v1.json"), "utf8"),
   );
   const productionManifest = JSON.parse(
-    fs.readFileSync(path.join(projectRoot, "web", "public", "theme-catalog-v1.json"), "utf8"),
+    fs.readFileSync(path.join(projectRoot, "web", "public", "base-theme-catalog-v1.json"), "utf8"),
   );
   assert.deepEqual(productionManifest, installerManifest);
+  assert.equal(
+    fs.existsSync(path.join(projectRoot, "web", "public", "theme-catalog-v1.json")),
+    false,
+    "生产站公开清单必须由动态接口返回",
+  );
   assert.equal(productionManifest.schemaVersion, 1);
   assert.equal(productionManifest.themes.length, STANDARD_THEMES.length + PRO_THEMES.length);
   for (const wallpaper of WALLPAPERS) {
