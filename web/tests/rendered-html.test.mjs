@@ -8,10 +8,11 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
 
+const previewHost = "127.0.0.1";
 const port = await new Promise((resolve, reject) => {
   const reservation = createServer();
   reservation.once("error", reject);
-  reservation.listen(0, "::1", () => {
+  reservation.listen(0, previewHost, () => {
     const address = reservation.address();
     if (!address || typeof address === "string") {
       reservation.close();
@@ -22,8 +23,9 @@ const port = await new Promise((resolve, reject) => {
     reservation.close((error) => error ? reject(error) : resolve(availablePort));
   });
 });
-const origin = `http://localhost:${port}`;
+const origin = `http://${previewHost}:${port}`;
 let server;
+let serverOutput = "";
 let localDatabasePath;
 
 const publicCatalog = JSON.parse(
@@ -66,16 +68,24 @@ async function ensureLocalVisitorSchema(root) {
 before(async () => {
   const root = fileURLToPath(new URL("../", import.meta.url));
   const cli = fileURLToPath(new URL("../node_modules/vinext/dist/cli.js", import.meta.url));
-  server = spawn(process.execPath, [cli, "dev", "-p", String(port)], {
+  server = spawn(process.execPath, [cli, "dev", "--hostname", previewHost, "-p", String(port)], {
     cwd: root,
     env: { ...process.env, WRANGLER_LOG_PATH: ".wrangler/test.log" },
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
+  for (const stream of [server.stdout, server.stderr]) {
+    stream.setEncoding("utf8");
+    stream.on("data", (chunk) => {
+      serverOutput = `${serverOutput}${chunk}`.slice(-8_000);
+    });
+  }
 
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) throw new Error(`预览服务提前退出：${server.exitCode}`);
+    if (server.exitCode !== null) {
+      throw new Error(`预览服务提前退出：${server.exitCode}\n${serverOutput}`);
+    }
     try {
       const response = await fetch(origin);
       if (response.ok) {
@@ -87,7 +97,7 @@ before(async () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  throw new Error("等待预览服务启动超时");
+  throw new Error(`等待预览服务启动超时\n${serverOutput}`);
 });
 
 after(() => {
