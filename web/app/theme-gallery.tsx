@@ -21,7 +21,13 @@ const initialConnection: Connection = {
   message: "打开月海版",
 };
 
-export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
+export function ThemeGallery({
+  initialThemes,
+  basePath = "/themes",
+}: {
+  initialThemes: Theme[];
+  basePath?: string;
+}) {
   const [themes] = useState(initialThemes);
   const [filter, setFilter] = useState<"all" | "light" | "dark" | "pro">("all");
   const [query, setQuery] = useState("");
@@ -177,7 +183,7 @@ export function ThemeGallery({ initialThemes }: { initialThemes: Theme[] }) {
               </div>
               <div className="theme-card__footer">
                 <div>
-                  <h3><Link href={`/themes/${theme.id}`}>{theme.name}</Link></h3>
+                  <h3><Link href={`${basePath}/${theme.id}`}>{theme.name}</Link></h3>
                   <p>{theme.description}</p>
                 </div>
                 <button

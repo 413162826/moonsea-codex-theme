@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SITE_URL } from "../../../lib/site";
 
-export function ThemeActions({ themeId }: { themeId: string }) {
+export function ThemeActions({ themeId, basePath = "/themes" }: { themeId: string; basePath?: string }) {
   const [shareLabel, setShareLabel] = useState("复制同款链接");
 
   const download = () => {
@@ -12,7 +12,7 @@ export function ThemeActions({ themeId }: { themeId: string }) {
   };
 
   const copyShareLink = async () => {
-    const shareUrl = new URL(`/themes/${themeId}`, SITE_URL);
+    const shareUrl = new URL(`${basePath}/${themeId}`, SITE_URL);
     shareUrl.searchParams.set("utm_source", "share");
     shareUrl.searchParams.set("utm_campaign", "theme_referral");
     shareUrl.searchParams.set("utm_content", themeId);

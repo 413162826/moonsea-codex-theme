@@ -8,16 +8,59 @@ export const DOWNLOAD_URL = "/download";
 export const WIKI_URL =
   "https://github.com/413162826/moonsea-codex-theme/wiki";
 
+export type SiteTone = "light" | "moonsea" | "workbuddy";
+
+type ToneConfig = {
+  brandName: string;
+  brandMark: string;
+  home: string;
+  themes: string;
+  sisterLabel: string;
+  sisterHref: string;
+  footer: string;
+};
+
+const TONE: Record<SiteTone, ToneConfig> = {
+  moonsea: {
+    brandName: "月海",
+    brandMark: "◐",
+    home: "/",
+    themes: "/themes",
+    sisterLabel: "WorkBuddy 壁纸",
+    sisterHref: "/workbuddy",
+    footer: "月海 · Codex 主题与壁纸",
+  },
+  workbuddy: {
+    brandName: "WorkBuddy",
+    brandMark: "✦",
+    home: "/workbuddy",
+    themes: "/workbuddy",
+    sisterLabel: "月海壁纸",
+    sisterHref: "/themes",
+    footer: "WorkBuddy · Codex 主题与壁纸",
+  },
+  light: {
+    brandName: "月海",
+    brandMark: "◐",
+    home: "/",
+    themes: "/themes",
+    sisterLabel: "WorkBuddy 壁纸",
+    sisterHref: "/workbuddy",
+    footer: "月海 · Codex 主题与壁纸",
+  },
+};
+
 export function SiteHeader({
   tone = "light",
   revealOnHover = false,
   hideNavigation = false,
 }: {
-  tone?: "light" | "moonsea";
+  tone?: SiteTone;
   revealOnHover?: boolean;
   hideNavigation?: boolean;
 }) {
   const [pointerRevealed, setPointerRevealed] = useState(false);
+  const config = TONE[tone];
 
   useEffect(() => {
     if (!revealOnHover) return;
@@ -46,14 +89,15 @@ export function SiteHeader({
       >
         {revealOnHover ? <span className="site-header__reveal-trigger" aria-hidden="true" /> : null}
         <div className="site-header__inner">
-          <Link className="brand" href="/" aria-label="月海首页">
-            <span className="brand-mark" aria-hidden="true">◐</span>
-            <span>月海</span>
+          <Link className="brand" href={config.home} aria-label={`${config.brandName}首页`}>
+            <span className="brand-mark" aria-hidden="true">{config.brandMark}</span>
+            <span>{config.brandName}</span>
           </Link>
           {hideNavigation ? null : (
             <nav className="site-nav" aria-label="主要导航">
-              <Link href="/themes">主题</Link>
+              <Link href={config.themes}>主题</Link>
               <OwnerAdminLink />
+              <Link className="sister-entry" href={config.sisterHref}>{config.sisterLabel}</Link>
               <a className="download-link" href={DOWNLOAD_URL}>
                 下载
               </a>
@@ -64,18 +108,20 @@ export function SiteHeader({
       {hideNavigation ? (
         <div className="employee-entry-floating">
           <OwnerAdminLink />
+          <Link className="sister-entry" href={config.sisterHref}>{config.sisterLabel}</Link>
         </div>
       ) : null}
     </>
   );
 }
 
-export function SiteFooter() {
+export function SiteFooter({ tone = "moonsea" }: { tone?: SiteTone }) {
+  const config = TONE[tone];
   return (
     <footer>
-      <p>月海 · Codex 主题与壁纸</p>
+      <p>{config.footer}</p>
       <div className="footer-links">
-        <Link href="/themes">浏览主题</Link>
+        <Link href={config.themes}>浏览主题</Link>
         <Link href="/privacy">隐私说明</Link>
         <a href={WIKI_URL}>使用帮助</a>
       </div>
