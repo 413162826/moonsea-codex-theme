@@ -1,5 +1,6 @@
+import { env } from "cloudflare:workers";
 import type { Metadata } from "next";
-import { THEMES } from "../../lib/theme-catalog";
+import { getThemesWithUploads } from "../../lib/theme-catalog";
 import { SiteFooter, SiteHeader } from "../site-chrome";
 import { ThemeGallery } from "../theme-gallery";
 
@@ -14,12 +15,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ThemesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ThemesPage() {
+  const themes = await getThemesWithUploads(env.DB);
   return (
     <div className="themes-shell">
       <SiteHeader tone="moonsea" />
       <main className="themes-page">
-        <ThemeGallery initialThemes={[...THEMES]} />
+        <ThemeGallery initialThemes={themes} />
       </main>
       <SiteFooter />
     </div>

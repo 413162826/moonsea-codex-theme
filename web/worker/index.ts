@@ -1,10 +1,16 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import {
+  handleThemeAsset,
+  handleThemeManifest,
+  handleThemeUpload,
+} from "../lib/uploaded-themes";
 
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  THEMES: R2Bucket;
   MOONSEA_ADMIN_EMAILS?: string;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -39,6 +45,19 @@ const worker = {
           return result.response();
         },
       }, allowedWidths);
+    }
+
+    if (url.pathname === "/theme-catalog-v1.json") {
+      return handleThemeManifest(request, env.DB);
+    }
+
+    if (url.pathname === "/api/admin/themes" && request.method === "POST") {
+      return handleThemeUpload(request, env, env.MOONSEA_ADMIN_EMAILS);
+    }
+
+    const themeAsset = url.pathname.match(/^\/api\/themes\/assets\/([a-z0-9-]+)$/);
+    if (themeAsset) {
+      return handleThemeAsset(request, env, themeAsset[1]);
     }
 
     return handler.fetch(request, env, ctx);

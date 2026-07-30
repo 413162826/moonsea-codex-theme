@@ -62,6 +62,7 @@ async function ensureLocalVisitorSchema() {
     "0002_green_young_avengers.sql",
     "0003_cloudy_hemingway.sql",
     "0004_sudden_giant_girl.sql",
+    "0005_luxuriant_skin.sql",
   ];
   const migrations = await Promise.all(
     migrationFiles.map((file) =>
@@ -79,6 +80,7 @@ before(async () => {
     env: {
       ...process.env,
       MOONSEA_TEST_STATE_PATH: testStatePath,
+      MOONSEA_ADMIN_EMAILS: "owner@example.com",
       WRANGLER_LOG_PATH: ".wrangler/test.log",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -200,6 +202,82 @@ test("每个主题有可索引、可下载和可分享的独立页面", async ()
 
   const missing = await fetch(`${origin}/themes/not-a-theme`);
   assert.equal(missing.status, 404);
+});
+
+test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即可见", async () => {
+  const unauthorized = await fetch(`${origin}/api/admin/themes`, {
+    method: "POST",
+    body: new FormData(),
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const wallpaper = await readFile(
+    new URL("../../assets/wallpapers/moonlit-silent.png", import.meta.url),
+  );
+  const form = new FormData();
+  form.set("metadata", JSON.stringify({
+    id: "neon-rain-town",
+    name: "霓虹雨町",
+    description: "海边雨站与原创动漫信使，适合沉浸式夜间编程",
+    mode: "dark",
+    accent: "#D9894E",
+    surface: "#081623",
+    ink: "#EDF4F6",
+    wallpaperPosition: "50% 50%",
+  }));
+  form.set(
+    "wallpaper",
+    new File([wallpaper], "neon-rain-town.png", { type: "image/png" }),
+  );
+  const uploaded = await fetch(`${origin}/api/admin/themes`, {
+    method: "POST",
+    headers: {
+      "oai-authenticated-user-email": "owner@example.com",
+    },
+    body: form,
+  });
+  const uploadedText = await uploaded.text();
+  assert.equal(uploaded.status, 201, uploadedText);
+  const result = JSON.parse(uploadedText);
+  assert.equal(result.theme.id, "neon-rain-town");
+  assert.equal(result.asset.contentType, "image/png");
+  assert.match(result.asset.sha256, /^[a-f0-9]{64}$/);
+
+  const manifest = await fetch(`${origin}/theme-catalog-v1.json`);
+  assert.equal(manifest.status, 200);
+  const manifestBody = await manifest.json();
+  const remoteTheme = manifestBody.themes.find(
+    (theme) => theme.id === "neon-rain-town",
+  );
+  assert.equal(remoteTheme.runtime.tier, "pro");
+  assert.equal(remoteTheme.asset.sha256, result.asset.sha256);
+  assert.equal(
+    new URL(remoteTheme.asset.url).pathname,
+    "/api/themes/assets/neon-rain-town",
+  );
+
+  const asset = await fetch(remoteTheme.asset.url);
+  assert.equal(asset.status, 200);
+  assert.equal(asset.headers.get("content-type"), "image/png");
+  assert.equal((await asset.arrayBuffer()).byteLength, wallpaper.length);
+
+  const wall = await fetch(`${origin}/themes`);
+  const wallHtml = await wall.text();
+  assert.match(wallHtml, /霓虹雨町/);
+  assert.match(wallHtml, /\/api\/themes\/assets\/neon-rain-town/);
+
+  const detail = await fetch(`${origin}/themes/neon-rain-town`);
+  assert.equal(detail.status, 200);
+  assert.match(await detail.text(), /<h1>霓虹雨町<\/h1>/);
+
+  const duplicate = await fetch(`${origin}/api/admin/themes`, {
+    method: "POST",
+    headers: {
+      "oai-authenticated-user-email": "owner@example.com",
+    },
+    body: form,
+  });
+  assert.equal(duplicate.status, 409);
 });
 
 test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
@@ -527,11 +605,16 @@ test("数据迁移能建立安装、聚合指标与匿名访客表", async () =>
     new URL("../drizzle/0004_sudden_giant_girl.sql", import.meta.url),
     "utf8",
   );
+  const uploadedThemesMigration = await readFile(
+    new URL("../drizzle/0005_luxuriant_skin.sql", import.meta.url),
+    "utf8",
+  );
   database.exec(installationMigration);
   database.exec(metricsMigration);
   database.exec(downloadVisitorsMigration);
   database.exec(siteVisitorsMigration);
   database.exec(contentAttributionMigration);
+  database.exec(uploadedThemesMigration);
   const columns = database.prepare("PRAGMA table_info(installations)").all();
   assert.deepEqual(
     columns.map((column) => column.name),
@@ -606,6 +689,21 @@ test("数据迁移能建立安装、聚合指标与匿名访客表", async () =>
       .sort((left, right) => left.pk - right.pk)
       .map((column) => column.name),
     ["day", "visitor_hash"],
+  );
+  const uploadedThemeColumns = database
+    .prepare("PRAGMA table_info(uploaded_themes)")
+    .all();
+  assert.deepEqual(
+    uploadedThemeColumns.map((column) => column.name),
+    [
+      "id",
+      "theme_json",
+      "object_key",
+      "content_type",
+      "sha256",
+      "size",
+      "created_at",
+    ],
   );
   database.close();
 });

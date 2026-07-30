@@ -20,8 +20,16 @@ const targets = publicRoots.map((publicRoot, index) => ({
   assetStagingRoot: path.join(publicRoot, `.theme-assets-staging-${process.pid}-${index}`),
   catalogPath: path.join(publicRoot, "catalog.json"),
   catalogStagingPath: path.join(publicRoot, `.catalog-staging-${process.pid}-${index}.json`),
-  manifestPath: path.join(publicRoot, "theme-catalog-v1.json"),
-  manifestStagingPath: path.join(publicRoot, `.theme-catalog-v1-staging-${process.pid}-${index}.json`),
+  manifestPath: path.join(
+    publicRoot,
+    index === 0 ? "theme-catalog-v1.json" : "base-theme-catalog-v1.json",
+  ),
+  manifestStagingPath: path.join(
+    publicRoot,
+    index === 0
+      ? `.theme-catalog-v1-staging-${process.pid}-${index}.json`
+      : `.base-theme-catalog-v1-staging-${process.pid}-${index}.json`,
+  ),
 }));
 
 function assertInsidePublicRoot(target) {

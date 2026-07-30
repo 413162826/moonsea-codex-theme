@@ -1,8 +1,9 @@
+import { env } from "cloudflare:workers";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SITE_URL } from "../../../lib/site";
-import { getTheme, THEMES } from "../../../lib/theme-catalog";
+import { getThemeWithUploads } from "../../../lib/theme-catalog";
 import { ProCodexPreview, StandardCodexPreview } from "../../codex-preview";
 import { SiteFooter, SiteHeader } from "../../site-chrome";
 import { ThemeActions } from "./theme-actions";
@@ -11,13 +12,11 @@ type ThemePageProps = {
   params: Promise<{ id: string }>;
 };
 
-export function generateStaticParams() {
-  return THEMES.map((theme) => ({ id: theme.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: ThemePageProps): Promise<Metadata> {
   const { id } = await params;
-  const theme = getTheme(id);
+  const theme = await getThemeWithUploads(env.DB, id);
   if (!theme) return {};
 
   const title = `${theme.name} Codex 主题`;
@@ -34,7 +33,7 @@ export async function generateMetadata({ params }: ThemePageProps): Promise<Meta
 
 export default async function ThemePage({ params }: ThemePageProps) {
   const { id } = await params;
-  const theme = getTheme(id);
+  const theme = await getThemeWithUploads(env.DB, id);
   if (!theme) notFound();
 
   const structuredData = {

@@ -32,6 +32,9 @@ const localBindingConfig = {
         },
       ]
     : [],
+  vars: {
+    MOONSEA_ADMIN_EMAILS: process.env.MOONSEA_ADMIN_EMAILS ?? "",
+  },
 };
 
 export default defineConfig(async () => {

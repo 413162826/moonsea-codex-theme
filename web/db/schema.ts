@@ -51,3 +51,13 @@ export const siteVisitorDays = sqliteTable("site_visitor_days", {
 }, (table) => [
   primaryKey({ columns: [table.day, table.visitorHash] }),
 ]);
+
+export const uploadedThemes = sqliteTable("uploaded_themes", {
+  id: text("id").primaryKey(),
+  themeJson: text("theme_json").notNull(),
+  objectKey: text("object_key").notNull().unique(),
+  contentType: text("content_type").notNull(),
+  sha256: text("sha256").notNull(),
+  size: integer("size").notNull(),
+  createdAt: text("created_at").notNull(),
+});
