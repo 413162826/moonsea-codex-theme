@@ -137,9 +137,10 @@ export function ThemeGallery({
   return (
     <section className="themes-section" id="themes" aria-labelledby="themes-title">
       <div className="gallery-toolbar">
-        <div>
-          <p className="section-kicker">主题墙</p>
-          <h1 id="themes-title">选一张，立即应用。</h1>
+        <div className="gallery-intro">
+          <p className="section-kicker">{clientLabel} 主题</p>
+          <h1 id="themes-title">为 {clientLabel} 选择今天的工作氛围。</h1>
+          <p>同一套月海主题，选择后由助手自动获取并应用。</p>
         </div>
         <div className={`connection-status ${connection.connected ? "is-connected" : ""}`}>
           <span aria-hidden="true" />

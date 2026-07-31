@@ -136,10 +136,11 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(html, /更沉浸/);
   assert.match(html, /保持安静、专注、氛围编程/);
   assert.match(html, /href="\/themes"/);
-  assert.match(html, />下载</);
+  assert.match(html, /浏览 WorkBuddy 主题/);
+  assert.match(html, /同一套主题，一键应用到 Codex 或 WorkBuddy/);
   assert.match(html, /href="\/download\?client=codex"/);
-  assert.match(html, /site-header--reveal/);
-  assert.doesNotMatch(html, /aria-label="主要导航"/);
+  assert.match(html, /aria-label="主要导航"/);
+  assert.match(html, /aria-label="选择应用"/);
   assert.match(html, /landing-codex-preview/);
   assert.match(html, /moonlit-silent\.webp/);
   assert.doesNotMatch(html, /今天想待在|BROWSE THE COLLECTION|home-theme-grid/);
@@ -151,7 +152,7 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   const response = await fetch(`${origin}/themes`);
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /选一张，立即应用/);
+  assert.match(html, /选择今天的工作氛围/);
   assert.match(html, /搜索主题/);
   assert.match(html, /Codex 未连接/);
   assert.match(html, /themes-shell/);
@@ -174,7 +175,9 @@ test("WorkBuddy 主题墙使用独立客户端文案与下载入口", async () =
   assert.match(html, /WorkBuddy 未连接/);
   assert.match(html, /site-header--workbuddy/);
   assert.match(html, /href="\/download\?client=workbuddy"/);
-  assert.match(html, /Codex 壁纸/);
+  assert.match(html, /月海/);
+  assert.match(html, /Codex/);
+  assert.match(html, /WorkBuddy/);
   assert.doesNotMatch(html, /WorkBuddy 为 Codex|WorkBuddy · Codex/);
 
   const detailResponse = await fetch(`${origin}/workbuddy/moon-white`);
@@ -456,20 +459,21 @@ test("页面访问接口按匿名浏览器设置站点级访客标识", async ()
   assert.equal(invalidThemeView.status, 400);
 });
 
-test("首页顶栏仅在顶部感应或键盘聚焦时显示", async () => {
+test("首页与两个主题墙使用同一套常驻导航和应用切换", async () => {
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(styles, /\.site-header--reveal\s*\{[^}]*position:\s*fixed[^}]*translateY\(calc\(-100% \+ 8px\)\)/s);
-  assert.match(styles, /\.site-header--reveal:hover,\s*\.site-header--reveal:focus-within,\s*\.site-header--reveal\.site-header--revealed\s*\{[^}]*translateY\(0\)/s);
+  assert.match(styles, /\.site-header\s*\{[^}]*position:\s*sticky/s);
+  assert.match(styles, /\.product-switch\s*\{/);
   const chrome = await readFile(new URL("../app/site-chrome.tsx", import.meta.url), "utf8");
-  assert.match(chrome, /event\.clientY <= 24/);
-  assert.match(chrome, /event\.clientY > 84/);
+  assert.match(chrome, /href="\/themes"/);
+  assert.match(chrome, /href="\/workbuddy"/);
+  assert.doesNotMatch(chrome, /revealOnHover|hideNavigation|pointermove/);
 });
 
 test("下载按钮悬浮时文字保持可见", async () => {
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(
     styles,
-    /\.site-nav\s+\.download-link:hover\s*\{[^}]*color:\s*var\(--paper\)/s,
+    /\.site-nav\s+\.download-link:hover\s*\{[^}]*color:\s*#061a24/s,
   );
 });
 
@@ -587,7 +591,7 @@ test("首页使用全页 WebGL 深海暮光层与交互鱼群并移除主题拼�
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
   assert.match(page, /<MoonseaRipple \/>/);
-  assert.match(page, /MOVE THROUGH THE DEEP/);
+  assert.match(page, /一套主题 · 两个工作台/);
   assert.match(page, /保持安静、专注、氛围编程/);
   assert.match(ripple, /getContext\("webgl"/);
   assert.match(ripple, /getContext\("2d"/);
