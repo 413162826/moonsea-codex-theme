@@ -534,6 +534,43 @@ test("月海品牌标识使用月牙与潮汐组合图形", async () => {
   assert.match(icon, /stroke="#6ea9aa"/);
 });
 
+test("管理员入口藏在页脚品牌文字中且普通访客不可点击", async () => {
+  const chrome = await readFile(new URL("../app/site-chrome.tsx", import.meta.url), "utf8");
+  const ownerLink = await readFile(
+    new URL("../app/owner-admin-link.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(chrome, /<OwnerAdminLink\s*\/>/);
+  assert.match(
+    chrome,
+    /<OwnerAdminLink className="footer-owner-entry">\s*月海 · 主题实验室\s*<\/OwnerAdminLink>/,
+  );
+  assert.match(ownerLink, /visible\s*\?\s*\(/);
+  assert.match(ownerLink, /<Link[^>]*href="\/admin"/);
+  assert.match(ownerLink, /<span[^>]*>\{children\}<\/span>/);
+  assert.match(ownerLink, /SITE_ADMIN_STATUS = "\/api\/admin\/access"/);
+  assert.match(ownerLink, /if \(allowed\) setVisible\(true\)/);
+  assert.doesNotMatch(ownerLink, /员工入口/);
+});
+
+test("管理员入口接口只识别站点管理员账号", async () => {
+  const anonymous = await fetch(`${origin}/api/admin/access`);
+  assert.equal(anonymous.status, 200);
+  assert.equal(anonymous.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(await anonymous.json(), { adminAccess: false });
+
+  const employee = await fetch(`${origin}/api/admin/access`, {
+    headers: { "oai-authenticated-user-email": "owner@example.com" },
+  });
+  assert.deepEqual(await employee.json(), { adminAccess: true });
+
+  const visitor = await fetch(`${origin}/api/admin/access`, {
+    headers: { "oai-authenticated-user-email": "visitor@example.com" },
+  });
+  assert.deepEqual(await visitor.json(), { adminAccess: false });
+});
+
 test("首页使用单一主题入口并提供最新主题切换器", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /dynamic = "force-static"/);
