@@ -94,21 +94,25 @@ before(async () => {
   }
 
   const deadline = Date.now() + 20_000;
+  let schemaReady = false;
   while (Date.now() < deadline) {
     if (server.exitCode !== null) {
       throw new Error(`预览服务提前退出：${server.exitCode}\n${serverOutput}`);
     }
-    let response;
     try {
-      response = await fetch(origin);
+      await fetch(`${origin}/api/health`);
+      if (!schemaReady) {
+        await ensureLocalVisitorSchema();
+        schemaReady = true;
+      }
     } catch {
       // 服务尚未监听，继续等待。
       await new Promise((resolve) => setTimeout(resolve, 150));
       continue;
     }
-    if (response.ok) {
-      await ensureLocalVisitorSchema();
-      return;
+    if (schemaReady) {
+      const response = await fetch(origin);
+      if (response.ok) return;
     }
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
@@ -132,16 +136,19 @@ test("官网服务端渲染月海产品内容", async () => {
   const html = await response.text();
   assert.match(html, /<title>月海 Codex 主题<\/title>/i);
   assert.match(html, /免费主题，/);
-  assert.match(html, /让 Codex/);
+  assert.match(html, /让 Codex \/ WorkBuddy/);
   assert.match(html, /更沉浸/);
   assert.match(html, /保持安静、专注、氛围编程/);
   assert.match(html, /href="\/themes"/);
+  assert.match(html, /浏览 Codex 主题/);
   assert.match(html, /浏览 WorkBuddy 主题/);
   assert.match(html, /同一套主题，一键应用到 Codex 或 WorkBuddy/);
   assert.match(html, /href="\/download\?client=codex"/);
   assert.match(html, /aria-label="主要导航"/);
   assert.match(html, /aria-label="选择应用"/);
   assert.match(html, /landing-codex-preview/);
+  assert.match(html, /切换精选主题/);
+  assert.match(html, /最新主题/);
   assert.match(html, /moonlit-silent\.webp/);
   assert.doesNotMatch(html, /今天想待在|BROWSE THE COLLECTION|home-theme-grid/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据|找到适合今天的工作氛围/);
@@ -466,7 +473,22 @@ test("首页与两个主题墙使用同一套常驻导航和应用切换", async
   const chrome = await readFile(new URL("../app/site-chrome.tsx", import.meta.url), "utf8");
   assert.match(chrome, /href="\/themes"/);
   assert.match(chrome, /href="\/workbuddy"/);
+  assert.match(chrome, /className="download-link"[^>]*>下载</);
+  assert.doesNotMatch(chrome, /下载 Codex 版|下载 WorkBuddy 版/);
   assert.doesNotMatch(chrome, /revealOnHover|hideNavigation|pointermove/);
+});
+
+test("首页两个主题入口保持平级并提供最新主题切换器", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.equal(page.match(/className="theme-action"/g)?.length, 2);
+  assert.doesNotMatch(page, /primary-action|secondary-action/);
+  assert.match(page, /FeaturedThemeSwitcher/);
+  const switcher = await readFile(
+    new URL("../app/featured-theme-switcher.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(switcher, /aria-pressed=\{selected\}/);
+  assert.match(switcher, /setSelectedId\(theme\.id\)/);
 });
 
 test("下载按钮悬浮时文字保持可见", async () => {
@@ -587,6 +609,10 @@ test("下载入口按系统跳转并为未知系统提供选择页", async () =>
 
 test("首页使用全页 WebGL 深海暮光层与交互鱼群并移除主题拼贴", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const switcher = await readFile(
+    new URL("../app/featured-theme-switcher.tsx", import.meta.url),
+    "utf8",
+  );
   const ripple = await readFile(new URL("../app/moonsea-ripple.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
@@ -615,8 +641,9 @@ test("首页使用全页 WebGL 深海暮光层与交互鱼群并移除主题拼�
   assert.match(styles, /\.moonsea-backdrop\s*\{[^}]*position:\s*fixed/s);
   assert.match(styles, /\.moonsea-backdrop__fish\s*\{/);
   assert.doesNotMatch(page, /home-collection|home-theme-grid|StandardCodexPreview|landing-stage/);
-  assert.match(page, /ProCodexPreview/);
-  assert.match(page, /getTheme\("moonlit-silent"\)/);
+  assert.match(page, /FeaturedThemeSwitcher/);
+  assert.match(page, /getThemesWithUploads\(env\.DB\)/);
+  assert.match(switcher, /ProCodexPreview/);
   assert.doesNotMatch(page, /previewImage:\s*"\.\/wallpapers\//);
 });
 
