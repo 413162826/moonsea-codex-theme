@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getTheme } from "../lib/theme-catalog";
 import { ProCodexPreview } from "./codex-preview";
 import { MoonseaRipple } from "./moonsea-ripple";
-import { DOWNLOAD_URL, SiteHeader } from "./site-chrome";
+import { SiteHeader } from "./site-chrome";
 
 const featuredTheme = getTheme("moonlit-silent");
 if (!featuredTheme || featuredTheme.edition !== "pro") {
@@ -22,28 +22,37 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
-      <SiteHeader tone="moonsea" revealOnHover hideNavigation />
+      <SiteHeader tone="moonsea" />
 
       <main className="landing-main">
         <MoonseaRipple />
         <section className="landing-hero">
           <div className="landing-hero__copy">
-            <p className="eyebrow">FREE THEMES / IMMERSIVE CODEX</p>
-            <h1>免费主题，<br />让 Codex<br />更沉浸。</h1>
-            <p>保持安静、专注、氛围编程。</p>
+            <p className="eyebrow">MOONSEA THEME LAB</p>
+            <h1>
+              <span>免费主题，</span>
+              <span>让 Codex</span>
+              <span>更沉浸。</span>
+            </h1>
+            <p className="landing-subtitle">保持安静、专注、氛围编程。</p>
             <div className="landing-actions">
-              <Link className="primary-action" href="/themes">进入主题墙 <span aria-hidden="true">↗</span></Link>
-              <a className="text-action" href={DOWNLOAD_URL}>下载</a>
+              <Link className="primary-action" href="/themes">浏览 Codex 主题 <span aria-hidden="true">↗</span></Link>
+              <Link className="secondary-action" href="/workbuddy">浏览 WorkBuddy 主题</Link>
             </div>
+            <p className="landing-proof">同一套主题，一键应用到 Codex 或 WorkBuddy。</p>
           </div>
           <div className="landing-hero__showcase">
+            <div className="landing-showcase__label">
+              <span>今日精选</span>
+              <strong>月海无声</strong>
+            </div>
             <ProCodexPreview
               className="landing-codex-preview"
               theme={featuredTheme}
             />
             <div className="landing-hero__interaction" aria-hidden="true">
               <span className="landing-hero__signal" />
-              <p>MOVE THROUGH THE DEEP<br />鱼群会让出你的方向</p>
+              <p>一套主题 · 两个工作台<br />网页选择，助手自动应用</p>
             </div>
           </div>
         </section>
