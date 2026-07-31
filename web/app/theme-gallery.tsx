@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CLIENT_TARGETS,
   type ClientTarget,
 } from "../lib/client-target";
 import type { Theme } from "../lib/theme-catalog";
+import { isThemeNewToday } from "../lib/theme-recency";
 import { ProCodexPreview, StandardCodexPreview } from "./codex-preview";
+import { ThemePreviewDialog } from "./theme-preview-dialog";
 import { useClientTarget } from "./use-client-target";
 
 type Connection = {
@@ -48,6 +50,8 @@ export function ThemeGallery({
       : window.localStorage.getItem("moonsea_pending_theme"),
   );
   const [notice, setNotice] = useState("");
+  const [previewTheme, setPreviewTheme] = useState<Theme | null>(null);
+  const previewTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const loadThemes = async () => {
@@ -162,13 +166,27 @@ export function ThemeGallery({
     }
   };
 
+  const closePreview = () => {
+    setPreviewTheme(null);
+    window.requestAnimationFrame(() => previewTriggerRef.current?.focus());
+  };
+
+  const getApplyLabel = (theme: Theme) => {
+    if (applyingId === theme.id) return "应用中…";
+    if (connection.activeThemeId === theme.id) return "正在使用";
+    if (connection.connected && connection.runtimeCapable) {
+      return pendingThemeId === theme.id ? "继续应用" : "应用";
+    }
+    return connection.connected ? "升级月海后应用" : "下载安装";
+  };
+
   return (
     <section className="themes-section" id="themes" aria-labelledby="themes-title">
       <div className="gallery-toolbar">
         <div className="gallery-intro">
           <p className="section-kicker">主题</p>
           <h1 id="themes-title">选择今天的工作氛围。</h1>
-          <p>选择喜欢的主题，月海助手会自动获取并应用到当前目标。</p>
+          <p>点击封面即可模拟预览；连接月海助手后可一键应用。</p>
         </div>
         <div className={`connection-status ${connection.connected ? "is-connected" : ""}`}>
           <span aria-hidden="true" />
@@ -203,16 +221,26 @@ export function ThemeGallery({
       <div className="theme-gallery">
         {visibleThemes.map((theme) => {
           const isActive = connection.activeThemeId === theme.id;
-          const isApplying = applyingId === theme.id;
-          const canApply = connection.connected
-            && connection.runtimeCapable;
+          const isNew = isThemeNewToday(theme);
           return (
             <article className="theme-card" key={theme.id}>
               <div className={`theme-preview ${theme.edition === "pro" ? "is-pro" : ""}`} style={{ background: theme.previewGradient }}>
                 <span className="theme-edition">{theme.edition === "pro" ? "精选 · Pro" : `渐变 · ${theme.mode === "dark" ? "深色" : "浅色"}`}</span>
+                {isNew ? <span className="theme-new-badge">NEW</span> : null}
                 {theme.edition === "pro"
                   ? <ProCodexPreview theme={theme} />
                   : <StandardCodexPreview theme={theme} />}
+                <button
+                  className="theme-preview-trigger"
+                  type="button"
+                  aria-label={`预览主题：${theme.name}`}
+                  onClick={(event) => {
+                    previewTriggerRef.current = event.currentTarget;
+                    setPreviewTheme(theme);
+                  }}
+                >
+                  <span>预览</span>
+                </button>
               </div>
               <div className="theme-card__footer">
                 <div>
@@ -228,19 +256,23 @@ export function ThemeGallery({
                   onClick={() => void applyTheme(theme)}
                   disabled={Boolean(applyingId) || isActive}
                 >
-                  {isApplying
-                    ? "应用中…"
-                    : isActive
-                      ? "正在使用"
-                      : canApply
-                        ? pendingThemeId === theme.id ? "继续应用" : "应用"
-                        : connection.connected ? "升级月海后应用" : "下载安装"}
+                  {getApplyLabel(theme)}
                 </button>
               </div>
             </article>
           );
         })}
       </div>
+      {previewTheme ? (
+        <ThemePreviewDialog
+          theme={previewTheme}
+          client={client}
+          actionLabel={getApplyLabel(previewTheme)}
+          actionDisabled={Boolean(applyingId) || connection.activeThemeId === previewTheme.id}
+          onApply={() => void applyTheme(previewTheme)}
+          onClose={closePreview}
+        />
+      ) : null}
     </section>
   );
 }

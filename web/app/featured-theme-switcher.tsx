@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Theme } from "../lib/theme-catalog";
+import { isThemeNewToday } from "../lib/theme-recency";
 import { ProCodexPreview } from "./codex-preview";
 
 function wallpaperUrl(theme: Theme) {
@@ -48,7 +49,10 @@ export function FeaturedThemeSwitcher({ themes: initialThemes }: { themes: Theme
   return (
     <>
       <div className="landing-showcase__label">
-        <span>今日精选</span>
+        <span>
+          今日精选
+          {isThemeNewToday(selectedTheme) ? <em>NEW</em> : null}
+        </span>
         <strong>{selectedTheme.name}</strong>
       </div>
       <ProCodexPreview

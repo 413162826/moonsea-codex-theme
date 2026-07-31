@@ -7,6 +7,7 @@ export type Theme = PreviewTheme & {
   description: string;
   edition: "standard" | "pro";
   preview?: string[];
+  createdAt?: string;
 };
 
 export const THEMES = Object.freeze(catalog.themes as Theme[]);

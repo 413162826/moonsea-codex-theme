@@ -35,6 +35,7 @@ type UploadedThemeRow = {
   contentType: string;
   sha256: string;
   size: number;
+  createdAt: string;
 };
 
 export type ThemeStorageEnv = {
@@ -156,7 +157,8 @@ export async function listUploadedThemeRows(db: D1Database) {
       object_key AS objectKey,
       content_type AS contentType,
       sha256,
-      size
+      size,
+      created_at AS createdAt
     FROM uploaded_themes
     ORDER BY created_at ASC, id ASC
   `).all<UploadedThemeRow>();
@@ -167,7 +169,7 @@ export async function listUploadedThemeRows(db: D1Database) {
 }
 
 export async function listUploadedPublicThemes(db: D1Database) {
-  return (await listUploadedThemeRows(db)).map(({ theme }) => ({
+  return (await listUploadedThemeRows(db)).map(({ theme, createdAt }) => ({
     id: theme.id,
     name: theme.name,
     description: theme.description,
@@ -175,6 +177,7 @@ export async function listUploadedPublicThemes(db: D1Database) {
     mode: theme.mode,
     previewImage: `/api/themes/assets/${theme.id}`,
     previewGradient: theme.previewGradient,
+    createdAt,
   }));
 }
 
@@ -279,6 +282,7 @@ export async function handleThemeUpload(
   const digest = await sha256(bytes);
   const objectKey = `themes/${metadata.id}/${digest}.png`;
   const theme = buildUploadedTheme(metadata);
+  const createdAt = new Date().toISOString();
   await env.THEMES.put(objectKey, bytes, {
     httpMetadata: {
       contentType: "image/png",
@@ -310,7 +314,7 @@ export async function handleThemeUpload(
       "image/png",
       digest,
       bytes.length,
-      new Date().toISOString(),
+      createdAt,
     ).run();
   } catch (error) {
     await env.THEMES.delete(objectKey);
@@ -327,6 +331,7 @@ export async function handleThemeUpload(
       mode: theme.mode,
       previewImage: `/api/themes/assets/${theme.id}`,
       previewGradient: theme.previewGradient,
+      createdAt,
     },
     asset: {
       contentType: "image/png",
