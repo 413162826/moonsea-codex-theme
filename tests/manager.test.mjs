@@ -678,6 +678,10 @@ test("WorkBuddy macOS 链路使用独立客户端协议与更新器", () => {
   );
   assert.match(installer, /--client workbuddy --edition standard --theme-version/);
   assert.match(installer, /client -string "workbuddy"/);
+  assert.match(
+    launcher,
+    /MOONSEA_MANAGER_PORT="\$\{MOONSEA_MANAGER_PORT:-17322\}"/,
+  );
   assert.match(launcher, /WORKBUDDY_REMOTE_DEBUGGING_PORT/);
   assert.match(launcher, /WORKBUDDY_USER_DATA_DIR/);
   assert.match(launcher, /WORKBUDDY_CONFIG_DIR/);

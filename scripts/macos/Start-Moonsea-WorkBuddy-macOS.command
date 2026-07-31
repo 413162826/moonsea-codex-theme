@@ -3,7 +3,7 @@
 set -euo pipefail
 
 export MOONSEA_CLIENT="workbuddy"
-export MOONSEA_MANAGER_PORT="17322"
+export MOONSEA_MANAGER_PORT="${MOONSEA_MANAGER_PORT:-17322}"
 
 INSTALL_ROOT="${MOONSEA_INSTALL_ROOT:-$HOME/Library/Application Support/MoonseaWorkBuddy}"
 MANIFEST_PATH="$INSTALL_ROOT/install.plist"
