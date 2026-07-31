@@ -32,7 +32,7 @@ export function ThemeGallery({
   clientLabel?: string;
   client?: string;
 }) {
-  const [themes] = useState(initialThemes);
+  const [themes] = useState(() => [...initialThemes].reverse());
   const [filter, setFilter] = useState<"all" | "light" | "dark" | "pro">("all");
   const [query, setQuery] = useState("");
   const [connection, setConnection] = useState(DISCONNECTED);
