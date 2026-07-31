@@ -168,6 +168,10 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.match(html, /潮汐龙境/);
   assert.match(html, /月海无声/);
   assert.match(html, /moonlit-silent\.webp/);
+  assert.ok(
+    html.indexOf("月海无声") < html.indexOf("月白"),
+    "主题墙应优先展示最新主题",
+  );
   assert.match(html, new RegExp(`显示 ${publicCatalog.themes.length} 个主题`));
   assert.match(html, /下载安装/);
   assert.match(html, /href="\/themes\/moon-white"/);
