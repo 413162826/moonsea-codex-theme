@@ -519,6 +519,21 @@ test("首页与统一主题墙使用常驻导航和即时应用切换", async ()
   assert.doesNotMatch(chrome, /revealOnHover|hideNavigation|pointermove/);
 });
 
+test("月海品牌标识使用月牙与潮汐组合图形", async () => {
+  const chrome = await readFile(new URL("../app/site-chrome.tsx", import.meta.url), "utf8");
+  const mark = await readFile(new URL("../app/moonsea-mark.tsx", import.meta.url), "utf8");
+  const icon = await readFile(new URL("../app/icon.svg", import.meta.url), "utf8");
+
+  assert.match(chrome, /<MoonseaMark \/>/);
+  assert.doesNotMatch(chrome, /◐/);
+  assert.match(mark, /moonsea-mark__moon/);
+  assert.match(mark, /moonsea-mark__tide--near/);
+  assert.match(mark, /moonsea-mark__tide--far/);
+  assert.match(mark, /moonsea-mark__star/);
+  assert.match(icon, /<svg[^>]*viewBox="0 0 48 48"/);
+  assert.match(icon, /stroke="#6ea9aa"/);
+});
+
 test("首页使用单一主题入口并提供最新主题切换器", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /dynamic = "force-static"/);
