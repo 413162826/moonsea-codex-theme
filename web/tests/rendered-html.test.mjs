@@ -330,6 +330,7 @@ test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即
   );
   assert.equal(publicTheme.name, "霓虹雨町");
   assert.equal(publicTheme.previewImage, "/api/themes/assets/neon-rain-town");
+  assert.match(publicTheme.createdAt, /^\d{4}-\d{2}-\d{2}T/);
 
   const detail = await fetch(`${origin}/themes/neon-rain-town`);
   assert.equal(detail.status, 200);
@@ -704,13 +705,33 @@ test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {
   assert.match(gallery, /className="pro-codex-body"/);
   assert.match(gallery, /url\("\$\{wallpaper\}"\)/);
   assert.doesNotMatch(gallery, /theme\.previewImage\s*\?\s*<img/);
-  assert.match(gallery, /主题 · \{theme\.name\}/);
-  assert.match(gallery, />工作台</);
+  assert.match(gallery, /productLabel = "主题"/);
+  assert.match(gallery, /\{productLabel\} · \{theme\.name\}/);
+  assert.match(gallery, /productLabel = "工作台"/);
   assert.doesNotMatch(gallery, />Codex</);
   assert.doesNotMatch(gallery, /Codex · \{theme\.name\}/);
   assert.match(styles, /\.pro-codex-window\s*\{/);
   assert.match(styles, /\.pro-codex-sidebar\s*\{/);
   assert.match(styles, /\.pro-codex-composer\s*\{/);
+});
+
+test("主题墙标记今日上新并允许未连接用户打开模拟预览", async () => {
+  const gallery = await readFile(new URL("../app/theme-gallery.tsx", import.meta.url), "utf8");
+  const featured = await readFile(new URL("../app/featured-theme-switcher.tsx", import.meta.url), "utf8");
+  const dialog = await readFile(new URL("../app/theme-preview-dialog.tsx", import.meta.url), "utf8");
+  const recency = await readFile(new URL("../lib/theme-recency.ts", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(gallery, /isThemeNewToday/);
+  assert.match(gallery, />NEW</);
+  assert.match(featured, /isThemeNewToday/);
+  assert.match(featured, />NEW</);
+  assert.match(recency, /getFullYear/);
+  assert.match(gallery, /theme-preview-trigger/);
+  assert.match(dialog, /showModal\(\)/);
+  assert.match(dialog, /预览无需安装或连接月海助手/);
+  assert.match(styles, /\.theme-preview-dialog::backdrop/);
+  assert.match(styles, /\.theme-new-badge/);
 });
 
 test("未知页面返回 404", async () => {

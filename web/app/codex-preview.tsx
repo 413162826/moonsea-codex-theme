@@ -5,10 +5,18 @@ export type PreviewTheme = {
   previewImage?: string;
 };
 
-export function StandardCodexPreview({ theme }: { theme: PreviewTheme }) {
+export function StandardCodexPreview({
+  theme,
+  className = "",
+  productLabel = "主题",
+}: {
+  theme: PreviewTheme;
+  className?: string;
+  productLabel?: string;
+}) {
   return (
-    <div className={`mock-window ${theme.mode}`} aria-hidden="true">
-      <div className="mock-titlebar"><i />主题 · {theme.name}</div>
+    <div className={`mock-window ${theme.mode} ${className}`.trim()} aria-hidden="true">
+      <div className="mock-titlebar"><i />{productLabel} · {theme.name}</div>
       <div className="mock-shell">
         <aside><span /><span /><span /></aside>
         <div><b>Build a product people remember</b><span /><span /><em /></div>
@@ -20,16 +28,18 @@ export function StandardCodexPreview({ theme }: { theme: PreviewTheme }) {
 export function ProCodexPreview({
   theme,
   className = "",
+  productLabel = "工作台",
 }: {
   theme: PreviewTheme;
   className?: string;
+  productLabel?: string;
 }) {
   const wallpaper = theme.previewImage?.replace("./", "/");
   return (
     <div className={`pro-codex-window ${className}`.trim()} aria-hidden="true">
       <div className="pro-codex-titlebar">
         <div className="pro-codex-menu">
-          <span>工作台</span>
+          <span>{productLabel}</span>
           <span>文件</span>
           <span>编辑</span>
         </div>
@@ -44,7 +54,7 @@ export function ProCodexPreview({
         }}
       >
         <aside className="pro-codex-sidebar">
-          <strong>工作台</strong>
+          <strong>{productLabel}</strong>
           <div className="pro-codex-nav"><span /><span /><span /><span /></div>
           <div className="pro-codex-project">
             <small>项目</small>
