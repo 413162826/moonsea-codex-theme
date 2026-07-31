@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CLIENT_TARGETS } from "../lib/client-target";
+import { MoonseaMark } from "./moonsea-mark";
 import { OwnerAdminLink } from "./owner-admin-link";
 import { setClientTarget, useClientTarget } from "./use-client-target";
 
@@ -18,7 +19,9 @@ export function SiteHeader() {
     <header className="site-header site-header--moonsea">
       <div className="site-header__inner">
         <Link className="brand" href="/" aria-label="月海首页">
-          <span className="brand-mark" aria-hidden="true">◐</span>
+          <span className="brand-mark" aria-hidden="true">
+            <MoonseaMark />
+          </span>
           <span className="brand-copy">
             <strong>月海</strong>
             <small>主题实验室</small>
