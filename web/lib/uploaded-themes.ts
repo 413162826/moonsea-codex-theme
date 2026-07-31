@@ -1,6 +1,10 @@
 import baseCatalog from "../public/catalog.json";
 import baseManifest from "../public/base-theme-catalog-v1.json";
 import { createWallpaperPalette } from "./theme-palette";
+import {
+  isThemeUploadAuthorized,
+  type ThemeUploadAuthConfig,
+} from "./theme-upload-auth";
 
 const THEME_ID = /^[a-z0-9-]+$/;
 const HEX_COLOR = /^#[0-9A-F]{6}$/;
@@ -58,20 +62,6 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { "Cache-Control": "no-store" },
   });
-}
-
-function isAllowedAdmin(request: Request, allowedEmails: string | undefined) {
-  const email = request.headers
-    .get("oai-authenticated-user-email")
-    ?.trim()
-    .toLowerCase();
-  if (!email) return false;
-  return new Set(
-    String(allowedEmails ?? "")
-      .split(",")
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean),
-  ).has(email);
 }
 
 function parseMetadata(value: FormDataEntryValue | null): ThemeUploadMetadata {
@@ -241,9 +231,9 @@ export async function handleThemeAsset(
 export async function handleThemeUpload(
   request: Request,
   env: ThemeStorageEnv,
-  allowedEmails: string | undefined,
+  auth: ThemeUploadAuthConfig,
 ) {
-  if (!isAllowedAdmin(request, allowedEmails)) {
+  if (!await isThemeUploadAuthorized(request, auth)) {
     return jsonResponse({ error: "需要月海管理员账号" }, 401);
   }
   if (!request.headers.get("content-type")?.startsWith("multipart/form-data")) {

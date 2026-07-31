@@ -81,6 +81,7 @@ before(async () => {
       ...process.env,
       MOONSEA_TEST_STATE_PATH: testStatePath,
       MOONSEA_ADMIN_EMAILS: "owner@example.com",
+      MOONSEA_THEME_UPLOAD_TOKEN: "machine-upload-token",
       WRANGLER_LOG_PATH: ".wrangler/test.log",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -244,6 +245,25 @@ test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即
   });
   assert.equal(unauthorized.status, 401);
 
+  const wrongToken = await fetch(`${origin}/api/admin/themes`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer wrong-token",
+    },
+    body: new FormData(),
+  });
+  assert.equal(wrongToken.status, 401);
+
+  const browserAdmin = await fetch(`${origin}/api/admin/themes`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "oai-authenticated-user-email": "owner@example.com",
+    },
+    body: "{}",
+  });
+  assert.equal(browserAdmin.status, 415);
+
   const wallpaper = await readFile(
     new URL("../../assets/wallpapers/moonlit-silent.png", import.meta.url),
   );
@@ -265,7 +285,7 @@ test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即
   const uploaded = await fetch(`${origin}/api/admin/themes`, {
     method: "POST",
     headers: {
-      "oai-authenticated-user-email": "owner@example.com",
+      authorization: "Bearer machine-upload-token",
     },
     body: form,
   });
@@ -318,7 +338,7 @@ test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即
   const duplicate = await fetch(`${origin}/api/admin/themes`, {
     method: "POST",
     headers: {
-      "oai-authenticated-user-email": "owner@example.com",
+      authorization: "Bearer machine-upload-token",
     },
     body: form,
   });
