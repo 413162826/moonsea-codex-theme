@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <div className="themes-shell">
-      <SiteHeader tone="moonsea" />
+      <SiteHeader />
       <main className="legal-page">
         <p className="eyebrow">PRIVACY / MEASUREMENT</p>
         <h1>只记录理解产品所需的最少信息。</h1>

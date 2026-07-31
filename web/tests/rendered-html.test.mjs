@@ -134,18 +134,18 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>月海 Codex 主题<\/title>/i);
+  assert.match(html, /<title>月海主题<\/title>/i);
   assert.match(html, /免费主题，/);
   assert.match(html, /让 Codex \/ WorkBuddy/);
   assert.match(html, /更沉浸/);
   assert.match(html, /保持安静、专注、氛围编程/);
-  assert.match(html, /href="\/themes"/);
-  assert.match(html, /浏览 Codex 主题/);
-  assert.match(html, /浏览 WorkBuddy 主题/);
+  assert.match(html, /href="\/themes\?client=codex"/);
+  assert.match(html, /浏览主题/);
+  assert.doesNotMatch(html, /浏览 Codex 主题|浏览 WorkBuddy 主题/);
   assert.match(html, /同一套主题，一键应用到 Codex 或 WorkBuddy/);
   assert.match(html, /href="\/download\?client=codex"/);
   assert.match(html, /aria-label="主要导航"/);
-  assert.match(html, /aria-label="选择应用"/);
+  assert.match(html, /aria-label="应用到"/);
   assert.match(html, /landing-codex-preview/);
   assert.match(html, /切换精选主题/);
   assert.match(html, /最新主题/);
@@ -174,28 +174,29 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   );
   assert.match(html, new RegExp(`显示 ${publicCatalog.themes.length} 个主题`));
   assert.match(html, /下载安装/);
-  assert.match(html, /href="\/themes\/moon-white"/);
+  assert.match(html, /href="\/themes\/moon-white\?client=codex"/);
+  assert.doesNotMatch(html, /Codex 主题|WorkBuddy 主题/);
   assert.doesNotMatch(html, /连接后应用/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
 });
 
-test("WorkBuddy 主题墙使用独立客户端文案与下载入口", async () => {
-  const response = await fetch(`${origin}/workbuddy`);
-  assert.equal(response.status, 200);
-  const html = await response.text();
-  assert.match(html, /WorkBuddy 未连接/);
-  assert.match(html, /site-header--workbuddy/);
-  assert.match(html, /href="\/download\?client=workbuddy"/);
-  assert.match(html, /月海/);
-  assert.match(html, /Codex/);
-  assert.match(html, /WorkBuddy/);
-  assert.doesNotMatch(html, /WorkBuddy 为 Codex|WorkBuddy · Codex/);
+test("旧 WorkBuddy 页面收敛到统一主题墙", async () => {
+  const response = await fetch(`${origin}/workbuddy`, { redirect: "manual" });
+  assert.ok([307, 308].includes(response.status));
+  const location = new URL(response.headers.get("location"), origin);
+  assert.equal(location.pathname, "/themes");
+  assert.equal(location.searchParams.get("client"), "workbuddy");
 
-  const detailResponse = await fetch(`${origin}/workbuddy/moon-white`);
-  assert.equal(detailResponse.status, 200);
-  const detailHtml = await detailResponse.text();
-  assert.match(detailHtml, /<title>月白 WorkBuddy 主题<\/title>/i);
-  assert.match(detailHtml, /打开 WorkBuddy 月海版后/);
+  const detailResponse = await fetch(`${origin}/workbuddy/moon-white`, {
+    redirect: "manual",
+  });
+  assert.ok([307, 308].includes(detailResponse.status));
+  const detailLocation = new URL(
+    detailResponse.headers.get("location"),
+    origin,
+  );
+  assert.equal(detailLocation.pathname, "/themes/moon-white");
+  assert.equal(detailLocation.searchParams.get("client"), "workbuddy");
 });
 
 test("主题墙按助手动态分发能力判断新主题能否一键应用", async () => {
@@ -212,6 +213,7 @@ test("每个主题有可索引、可下载和可分享的独立页面", async ()
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /<h1>月白<\/h1>/);
+  assert.match(html, /<title>月白 主题 · 月海<\/title>/i);
   assert.match(html, /下载安装/);
   assert.match(html, /复制同款链接/);
   assert.match(html, /CreativeWork/);
@@ -294,8 +296,20 @@ test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即
 
   const wall = await fetch(`${origin}/themes`);
   const wallHtml = await wall.text();
-  assert.match(wallHtml, /霓虹雨町/);
-  assert.match(wallHtml, /\/api\/themes\/assets\/neon-rain-town/);
+  assert.doesNotMatch(wallHtml, /霓虹雨町/);
+
+  const publicThemes = await fetch(`${origin}/api/themes`);
+  assert.equal(publicThemes.status, 200);
+  assert.match(
+    publicThemes.headers.get("cache-control") ?? "",
+    /max-age=60/,
+  );
+  const publicThemeBody = await publicThemes.json();
+  const publicTheme = publicThemeBody.find(
+    (theme) => theme.id === "neon-rain-town",
+  );
+  assert.equal(publicTheme.name, "霓虹雨町");
+  assert.equal(publicTheme.previewImage, "/api/themes/assets/neon-rain-town");
 
   const detail = await fetch(`${origin}/themes/neon-rain-town`);
   assert.equal(detail.status, 200);
@@ -470,21 +484,25 @@ test("页面访问接口按匿名浏览器设置站点级访客标识", async ()
   assert.equal(invalidThemeView.status, 400);
 });
 
-test("首页与两个主题墙使用同一套常驻导航和应用切换", async () => {
+test("首页与统一主题墙使用常驻导航和即时应用切换", async () => {
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(styles, /\.site-header\s*\{[^}]*position:\s*sticky/s);
   assert.match(styles, /\.product-switch\s*\{/);
   const chrome = await readFile(new URL("../app/site-chrome.tsx", import.meta.url), "utf8");
-  assert.match(chrome, /href="\/themes"/);
-  assert.match(chrome, /href="\/workbuddy"/);
-  assert.match(chrome, /className="download-link"[^>]*>下载</);
+  assert.match(chrome, /setClientTarget\(target\)/);
+  assert.match(chrome, /aria-label="应用到"/);
+  assert.doesNotMatch(chrome, /href="\/workbuddy"/);
+  assert.match(chrome, /className="download-link"/);
+  assert.match(chrome, />\s*下载\s*<\/a>/);
   assert.doesNotMatch(chrome, /下载 Codex 版|下载 WorkBuddy 版/);
   assert.doesNotMatch(chrome, /revealOnHover|hideNavigation|pointermove/);
 });
 
-test("首页两个主题入口保持平级并提供最新主题切换器", async () => {
+test("首页使用单一主题入口并提供最新主题切换器", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.equal(page.match(/className="theme-action"/g)?.length, 2);
+  assert.match(page, /dynamic = "force-static"/);
+  assert.match(page, /<ThemeBrowserLink \/>/);
+  assert.doesNotMatch(page, /浏览 Codex 主题|浏览 WorkBuddy 主题/);
   assert.doesNotMatch(page, /primary-action|secondary-action/);
   assert.match(page, /FeaturedThemeSwitcher/);
   const switcher = await readFile(
@@ -493,6 +511,12 @@ test("首页两个主题入口保持平级并提供最新主题切换器", async
   );
   assert.match(switcher, /aria-pressed=\{selected\}/);
   assert.match(switcher, /setSelectedId\(theme\.id\)/);
+  assert.match(switcher, /fetch\("\/api\/themes"/);
+  const themesPage = await readFile(
+    new URL("../app/themes/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(themesPage, /dynamic = "force-static"/);
 });
 
 test("下载按钮悬浮时文字保持可见", async () => {
@@ -646,7 +670,8 @@ test("首页使用全页 WebGL 深海暮光层与交互鱼群并移除主题拼�
   assert.match(styles, /\.moonsea-backdrop__fish\s*\{/);
   assert.doesNotMatch(page, /home-collection|home-theme-grid|StandardCodexPreview|landing-stage/);
   assert.match(page, /FeaturedThemeSwitcher/);
-  assert.match(page, /getThemesWithUploads\(env\.DB\)/);
+  assert.match(page, /THEMES/);
+  assert.doesNotMatch(page, /getThemesWithUploads|cloudflare:workers/);
   assert.match(switcher, /ProCodexPreview/);
   assert.doesNotMatch(page, /previewImage:\s*"\.\/wallpapers\//);
 });

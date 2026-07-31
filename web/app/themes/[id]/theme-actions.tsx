@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { SITE_URL } from "../../../lib/site";
+import { useClientTarget } from "../../use-client-target";
 
-export function ThemeActions({ themeId, basePath = "/themes", client = "codex" }: { themeId: string; basePath?: string; client?: string }) {
+export function ThemeActions({ themeId }: { themeId: string }) {
+  const client = useClientTarget();
   const [shareLabel, setShareLabel] = useState("复制同款链接");
 
   const download = () => {
@@ -12,7 +14,7 @@ export function ThemeActions({ themeId, basePath = "/themes", client = "codex" }
   };
 
   const copyShareLink = async () => {
-    const shareUrl = new URL(`${basePath}/${themeId}`, SITE_URL);
+    const shareUrl = new URL(`/themes/${themeId}`, SITE_URL);
     shareUrl.searchParams.set("utm_source", "share");
     shareUrl.searchParams.set("utm_campaign", "theme_referral");
     shareUrl.searchParams.set("utm_content", themeId);

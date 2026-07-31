@@ -6,6 +6,7 @@ import {
   handleThemeManifest,
   handleThemeUpload,
 } from "../lib/uploaded-themes";
+import { getThemesWithUploads } from "../lib/theme-catalog";
 
 interface Env {
   ASSETS: Fetcher;
@@ -49,6 +50,15 @@ const worker = {
 
     if (url.pathname === "/theme-catalog-v1.json") {
       return handleThemeManifest(request, env.DB);
+    }
+
+    if (url.pathname === "/api/themes" && request.method === "GET") {
+      return Response.json(await getThemesWithUploads(env.DB), {
+        headers: {
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+          "Content-Type": "application/json; charset=utf-8",
+        },
+      });
     }
 
     if (url.pathname === "/api/admin/themes" && request.method === "POST") {

@@ -9,10 +9,10 @@ export const metadata: Metadata = {
     default: SITE_NAME,
     template: "%s · 月海",
   },
-  description: "免费主题，让 Codex 更沉浸。保持安静、专注、氛围编程。",
+  description: "免费主题，让 Codex / WorkBuddy 更沉浸。保持安静、专注、氛围编程。",
   openGraph: {
     title: SITE_NAME,
-    description: "免费主题，让 Codex 更沉浸",
+    description: "免费主题，让 Codex / WorkBuddy 更沉浸",
     type: "website",
     siteName: SITE_NAME,
     locale: "zh_CN",
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: SITE_NAME,
-    description: "免费主题，让 Codex 更沉浸",
+    description: "免费主题，让 Codex / WorkBuddy 更沉浸",
     images: ["/og.png"],
   },
 };

@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  CLIENT_TARGETS,
+  type ClientTarget,
+} from "../lib/client-target";
 import type { Theme } from "../lib/theme-catalog";
 import { ProCodexPreview, StandardCodexPreview } from "./codex-preview";
+import { useClientTarget } from "./use-client-target";
 
 type Connection = {
   connected: boolean;
@@ -19,23 +24,23 @@ const DISCONNECTED: Connection = Object.freeze({
   message: "未连接",
 });
 
+const INITIAL_CONNECTIONS: Record<ClientTarget, Connection> = {
+  codex: DISCONNECTED,
+  workbuddy: DISCONNECTED,
+};
+
 export function ThemeGallery({
   initialThemes,
-  basePath = "/themes",
-  apiRoot = "http://127.0.0.1:17321",
-  clientLabel = "Codex",
-  client = "codex",
 }: {
   initialThemes: Theme[];
-  basePath?: string;
-  apiRoot?: string;
-  clientLabel?: string;
-  client?: string;
 }) {
-  const [themes] = useState(() => [...initialThemes].reverse());
+  const client = useClientTarget();
+  const { apiRoot, label: clientLabel } = CLIENT_TARGETS[client];
+  const [themes, setThemes] = useState(() => [...initialThemes].reverse());
   const [filter, setFilter] = useState<"all" | "light" | "dark" | "pro">("all");
   const [query, setQuery] = useState("");
-  const [connection, setConnection] = useState(DISCONNECTED);
+  const [connections, setConnections] = useState(INITIAL_CONNECTIONS);
+  const connection = connections[client];
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [pendingThemeId, setPendingThemeId] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -43,6 +48,18 @@ export function ThemeGallery({
       : window.localStorage.getItem("moonsea_pending_theme"),
   );
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    const loadThemes = async () => {
+      const response = await fetch("/api/themes", { cache: "no-store" });
+      if (!response.ok) throw new Error("主题清单加载失败");
+      const body = await response.json() as Theme[];
+      setThemes([...body].reverse());
+    };
+    void loadThemes().catch((error) => {
+      setNotice(error instanceof Error ? error.message : "主题清单加载失败");
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -56,16 +73,19 @@ export function ThemeGallery({
           themeId?: string;
           message?: string;
         };
-        if (!response.ok || !body.connected) throw new Error(body.message ?? "Codex 未连接");
+        if (!response.ok || !body.connected) throw new Error(body.message ?? `${clientLabel} 未连接`);
         if (!active) return;
         const runtimeCapable = body.runtimeCapable === true
           && (body.themeDeliveryVersion ?? 0) >= 1;
-        setConnection({
-          connected: true,
-          runtimeCapable,
-          activeThemeId: body.themeId ?? null,
-          message: runtimeCapable ? "可一键获取并应用" : "需要升级一次月海",
-        });
+        setConnections((current) => ({
+          ...current,
+          [client]: {
+            connected: true,
+            runtimeCapable,
+            activeThemeId: body.themeId ?? null,
+            message: runtimeCapable ? "可一键获取并应用" : "需要升级一次月海",
+          },
+        }));
         const pendingId = window.localStorage.getItem("moonsea_pending_theme");
         const pendingTheme = themes.find((theme) => theme.id === pendingId);
         if (pendingTheme) {
@@ -77,7 +97,12 @@ export function ThemeGallery({
           );
         }
       } catch {
-        if (active) setConnection(DISCONNECTED);
+        if (active) {
+          setConnections((current) => ({
+            ...current,
+            [client]: DISCONNECTED,
+          }));
+        }
       }
     };
     void connect();
@@ -86,7 +111,7 @@ export function ThemeGallery({
       active = false;
       window.clearInterval(timer);
     };
-  }, [apiRoot, themes]);
+  }, [apiRoot, client, clientLabel, themes]);
 
   const visibleThemes = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase("zh-CN");
@@ -123,7 +148,10 @@ export function ThemeGallery({
       });
       const body = await response.json() as { ok?: boolean; error?: string };
       if (!response.ok || !body.ok) throw new Error(body.error ?? "月海助手没有完成请求");
-      setConnection((current) => ({ ...current, activeThemeId: theme.id }));
+      setConnections((current) => ({
+        ...current,
+        [client]: { ...current[client], activeThemeId: theme.id },
+      }));
       window.localStorage.removeItem("moonsea_pending_theme");
       setPendingThemeId(null);
       setNotice(`"${theme.name}"已应用，${clientLabel} 无需重启。`);
@@ -138,9 +166,9 @@ export function ThemeGallery({
     <section className="themes-section" id="themes" aria-labelledby="themes-title">
       <div className="gallery-toolbar">
         <div className="gallery-intro">
-          <p className="section-kicker">{clientLabel} 主题</p>
-          <h1 id="themes-title">为 {clientLabel} 选择今天的工作氛围。</h1>
-          <p>同一套月海主题，选择后由助手自动获取并应用。</p>
+          <p className="section-kicker">主题</p>
+          <h1 id="themes-title">选择今天的工作氛围。</h1>
+          <p>选择喜欢的主题，月海助手会自动获取并应用到当前目标。</p>
         </div>
         <div className={`connection-status ${connection.connected ? "is-connected" : ""}`}>
           <span aria-hidden="true" />
@@ -188,7 +216,11 @@ export function ThemeGallery({
               </div>
               <div className="theme-card__footer">
                 <div>
-                  <h3><Link href={`${basePath}/${theme.id}`}>{theme.name}</Link></h3>
+                  <h3>
+                    <Link href={`/themes/${theme.id}?client=${client}`}>
+                      {theme.name}
+                    </Link>
+                  </h3>
                   <p>{theme.description}</p>
                 </div>
                 <button

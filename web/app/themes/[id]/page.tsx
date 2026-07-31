@@ -19,8 +19,8 @@ export async function generateMetadata({ params }: ThemePageProps): Promise<Meta
   const theme = await getThemeWithUploads(env.DB, id);
   if (!theme) return {};
 
-  const title = `${theme.name} Codex 主题`;
-  const description = `${theme.description}。下载安装月海版后，可从网页直接应用。`;
+  const title = `${theme.name} 主题`;
+  const description = `${theme.description}。下载安装月海后，可从网页直接应用。`;
   const url = `/themes/${theme.id}`;
   return {
     title,
@@ -47,7 +47,7 @@ export default async function ThemePage({ params }: ThemePageProps) {
 
   return (
     <div className="themes-shell">
-      <SiteHeader tone="moonsea" />
+      <SiteHeader />
       <main className="theme-detail">
         <div
           className={`theme-detail__preview ${theme.edition === "pro" ? "is-pro" : ""}`}
@@ -62,8 +62,8 @@ export default async function ThemePage({ params }: ThemePageProps) {
             {theme.edition === "pro" ? "精选 · PRO" : `免费渐变 · ${theme.mode === "dark" ? "深色" : "浅色"}`}
           </p>
           <h1>{theme.name}</h1>
-          <p>{theme.description}。打开月海 Codex 后，即可从网页直接应用。</p>
-          <ThemeActions themeId={theme.id} client="codex" />
+          <p>{theme.description}。打开对应的月海客户端后，即可从网页直接应用。</p>
+          <ThemeActions themeId={theme.id} />
           <Link className="theme-detail__back" href="/themes">返回主题墙</Link>
         </div>
         <script

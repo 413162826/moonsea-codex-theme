@@ -1,12 +1,11 @@
-import { env } from "cloudflare:workers";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { getThemesWithUploads } from "../lib/theme-catalog";
+import { THEMES } from "../lib/theme-catalog";
 import { FeaturedThemeSwitcher } from "./featured-theme-switcher";
 import { MoonseaRipple } from "./moonsea-ripple";
 import { SiteHeader } from "./site-chrome";
+import { ThemeBrowserLink } from "./theme-browser-link";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -17,15 +16,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Home() {
-  const themes = [...await getThemesWithUploads(env.DB)].reverse();
+export default function Home() {
+  const themes = [...THEMES].reverse();
   const latestWallpapers = themes.filter((theme) => theme.previewImage);
   const latestGradients = themes.filter((theme) => !theme.previewImage);
   const featuredThemes = [...latestWallpapers, ...latestGradients].slice(0, 6);
 
   return (
     <>
-      <SiteHeader tone="moonsea" />
+      <SiteHeader />
 
       <main className="landing-main">
         <MoonseaRipple />
@@ -39,8 +38,7 @@ export default async function Home() {
             </h1>
             <p className="landing-subtitle">保持安静、专注、氛围编程。</p>
             <div className="landing-actions">
-              <Link className="theme-action" href="/themes">浏览 Codex 主题 <span aria-hidden="true">↗</span></Link>
-              <Link className="theme-action" href="/workbuddy">浏览 WorkBuddy 主题 <span aria-hidden="true">↗</span></Link>
+              <ThemeBrowserLink />
             </div>
             <p className="landing-proof">同一套主题，一键应用到 Codex 或 WorkBuddy。</p>
           </div>
