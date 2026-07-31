@@ -6,7 +6,7 @@ export type ThemeUploadAuthConfig = {
   uploadToken?: string;
 };
 
-function hasAllowedPlatformEmail(
+export function hasAllowedPlatformEmail(
   request: Request,
   allowedEmails: string | undefined,
 ) {

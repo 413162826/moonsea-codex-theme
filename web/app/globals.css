@@ -46,7 +46,6 @@ a { color: inherit; }
 .product-switch button { min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; color: #9fb6b7; background: transparent; cursor: pointer; font: inherit; font-size: 13px; font-weight: 680; transition: color .16s ease, background .16s ease; }
 .product-switch button:hover { color: #e9f2ed; }
 .product-switch button.is-active { color: #09212d; background: #dce8dd; }
-.employee-entry { color: #9fb6b7; }
 .site-nav .download-link { width: 72px; min-height: 42px; flex: none; justify-content: center; padding: 0 17px; border-radius: 12px; color: #09212d; background: #dce8dd; }
 .site-nav .download-link:hover { color: #061a24; background: #f1f1df; transform: translateY(-1px); }
 
@@ -289,6 +288,9 @@ main, footer { width: min(var(--site-width), calc(100% - 40px)); margin-inline: 
 .theme-preview-dialog__primary:disabled { cursor: not-allowed; opacity: .54; }
 
 footer { position: relative; z-index: 2; display: flex; min-height: 104px; align-items: center; justify-content: space-between; border-top: 1px solid color-mix(in oklab, var(--line) 70%, transparent); color: var(--muted); font-size: 12px; }
+.footer-owner-entry { color: inherit; text-decoration: none; }
+a.footer-owner-entry { text-underline-offset: 4px; text-decoration-color: transparent; }
+a.footer-owner-entry:hover, a.footer-owner-entry:focus-visible { color: #dce9e5; text-decoration-color: currentColor; }
 .footer-links { display: flex; gap: 24px; }
 .footer-links a { text-underline-offset: 4px; text-decoration-color: transparent; }
 .footer-links a:hover { color: #dce9e5; text-decoration-color: currentColor; }
@@ -401,7 +403,6 @@ footer { position: relative; z-index: 2; display: flex; min-height: 104px; align
   .site-header__inner { min-height: 64px; gap: 10px; }
   .brand-copy small { display: none; }
   .site-nav { gap: 7px; }
-  .site-nav .employee-entry { display: none; }
   .product-switch { grid-template-columns: 54px 82px; padding: 3px; border-radius: 10px; }
   .product-switch button { min-height: 34px; padding-inline: 7px; font-size: 11px; }
   .site-nav .download-link { width: 48px; min-height: 40px; padding-inline: 10px; font-size: 12px; }

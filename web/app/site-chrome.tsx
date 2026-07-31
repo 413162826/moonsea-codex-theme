@@ -42,7 +42,6 @@ export function SiteHeader() {
               </button>
             ))}
           </div>
-          <OwnerAdminLink />
           <a
             className="download-link"
             href={`/download?client=${client}`}
@@ -59,7 +58,11 @@ export function SiteHeader() {
 export function SiteFooter() {
   return (
     <footer>
-      <p>月海 · 主题实验室</p>
+      <p>
+        <OwnerAdminLink className="footer-owner-entry">
+          月海 · 主题实验室
+        </OwnerAdminLink>
+      </p>
       <div className="footer-links">
         <Link href="/themes">主题</Link>
         <Link href="/privacy">隐私说明</Link>

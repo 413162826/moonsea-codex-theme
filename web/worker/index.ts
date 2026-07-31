@@ -6,6 +6,7 @@ import {
   handleThemeManifest,
   handleThemeUpload,
 } from "../lib/uploaded-themes";
+import { hasAllowedPlatformEmail } from "../lib/theme-upload-auth";
 import { getThemesWithUploads } from "../lib/theme-catalog";
 
 interface Env {
@@ -59,6 +60,14 @@ const worker = {
           "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
           "Content-Type": "application/json; charset=utf-8",
         },
+      });
+    }
+
+    if (url.pathname === "/api/admin/access" && request.method === "GET") {
+      return Response.json({
+        adminAccess: hasAllowedPlatformEmail(request, env.MOONSEA_ADMIN_EMAILS),
+      }, {
+        headers: { "Cache-Control": "private, no-store" },
       });
     }
 
