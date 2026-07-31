@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { THEMES } from "../lib/theme-catalog";
 import { FeaturedThemeSwitcher } from "./featured-theme-switcher";
 import { MoonseaRipple } from "./moonsea-ripple";
-import { SiteHeader } from "./site-chrome";
+import { SiteFooter, SiteHeader } from "./site-chrome";
 import { ThemeBrowserLink } from "./theme-browser-link";
 
 export const dynamic = "force-static";
@@ -23,7 +23,7 @@ export default function Home() {
   const featuredThemes = [...latestWallpapers, ...latestGradients].slice(0, 6);
 
   return (
-    <>
+    <div className="landing-shell">
       <SiteHeader />
 
       <main className="landing-main">
@@ -51,6 +51,7 @@ export default function Home() {
           </div>
         </section>
       </main>
-    </>
+      <SiteFooter />
+    </div>
   );
 }

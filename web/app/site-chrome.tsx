@@ -65,6 +65,7 @@ export function SiteFooter() {
       </p>
       <div className="footer-links">
         <Link href="/themes">主题</Link>
+        <Link href="/updates">更新日志</Link>
         <Link href="/privacy">隐私说明</Link>
         <a href={WIKI_URL}>使用帮助</a>
       </div>

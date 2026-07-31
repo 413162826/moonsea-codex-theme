@@ -361,10 +361,28 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
     /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes"/,
   );
 
+  const updates = await fetch(`${origin}/updates`);
+  const updatesHtml = await updates.text();
+  assert.equal(updates.status, 200);
+  assert.match(
+    updatesHtml,
+    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/updates"/,
+  );
+  assert.match(updatesHtml, /月海，/);
+  assert.match(updatesHtml, /持续发生。/);
+  assert.match(updatesHtml, /一个主题墙，两个工作台/);
+  assert.match(updatesHtml, /WorkBuddy 正式加入月海/);
+  assert.match(updatesHtml, /新壁纸，不再要求升级整个助手/);
+  assert.match(updatesHtml, /class="updates-timeline"/);
+  assert.match(updatesHtml, /dateTime="2026-07-31"/);
+  assert.match(updatesHtml, /theme-assets\/moonlit-silent\.png/);
+  assert.match(updatesHtml, /releases\/tag\/v1\.5\.9/);
+
   const robots = await fetch(`${origin}/robots.txt`);
   assert.equal(robots.status, 200);
   const robotsText = await robots.text();
   assert.match(robotsText, /Disallow: \/admin/);
+  assert.match(robotsText, /Allow: \/updates/);
   assert.match(
     robotsText,
     /Sitemap: https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/sitemap\.xml/,
@@ -374,6 +392,7 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
   assert.equal(sitemap.status, 200);
   const sitemapText = await sitemap.text();
   assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes<\/loc>/);
+  assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/updates<\/loc>/);
   assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moon-white<\/loc>/);
   assert.match(
     sitemapText,
@@ -535,6 +554,7 @@ test("月海品牌标识使用月牙与潮汐组合图形", async () => {
 });
 
 test("管理员入口藏在页脚品牌文字中且普通访客不可点击", async () => {
+  const homepage = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const chrome = await readFile(new URL("../app/site-chrome.tsx", import.meta.url), "utf8");
   const ownerLink = await readFile(
     new URL("../app/owner-admin-link.tsx", import.meta.url),
@@ -542,6 +562,7 @@ test("管理员入口藏在页脚品牌文字中且普通访客不可点击", as
   );
 
   assert.doesNotMatch(chrome, /<OwnerAdminLink\s*\/>/);
+  assert.match(homepage, /<SiteFooter \/>/);
   assert.match(
     chrome,
     /<OwnerAdminLink className="footer-owner-entry">\s*月海 · 主题实验室\s*<\/OwnerAdminLink>/,

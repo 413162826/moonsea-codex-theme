@@ -14,6 +14,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.9,
     },
+    {
+      url: new URL("/updates", SITE_URL).toString(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
     ...THEMES.map((theme) => ({
       url: new URL(`/themes/${theme.id}`, SITE_URL).toString(),
       changeFrequency: "weekly" as const,

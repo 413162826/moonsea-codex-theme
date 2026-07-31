@@ -62,6 +62,11 @@ $draftSourcePath = Join-Path $projectRoot "assets\admin-drafts"
 $managerExtension = [System.IO.Path]::GetExtension($ManagerPath)
 $managerFileName = if ($managerExtension -eq ".mjs") { "MoonseaWorkBuddyManager.mjs" } else { "MoonseaWorkBuddyManager.exe" }
 $managerPidPath = Join-Path $InstallRoot "manager.pid"
+$adminMarkerPath = Join-Path $InstallRoot "admin-access.enabled"
+$legacyAdminMarkerPaths = @(
+    (Join-Path (Join-Path $env:LOCALAPPDATA "MoonseaWorkBuddy") "admin-access.enabled"),
+    (Join-Path (Join-Path $env:LOCALAPPDATA "MoonseaCodex") "admin-access.enabled")
+)
 $packageMetadataPath = Join-Path $projectRoot "package.json"
 $updaterSourcePath = Join-Path $scriptRoot "Update-Moonsea-WorkBuddy-Windows.ps1"
 
@@ -227,6 +232,15 @@ New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $buildsRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $profilePath -Force | Out-Null
 New-Item -ItemType Directory -Path $releasesRoot -Force | Out-Null
+if (-not (Test-Path -LiteralPath $adminMarkerPath -PathType Leaf)) {
+    $legacyAdminMarkerPath = $legacyAdminMarkerPaths | Where-Object {
+        -not $adminMarkerPath.Equals($_, [System.StringComparison]::OrdinalIgnoreCase) -and
+        (Test-Path -LiteralPath $_ -PathType Leaf)
+    } | Select-Object -First 1
+    if ($legacyAdminMarkerPath) {
+        Copy-Item -LiteralPath $legacyAdminMarkerPath -Destination $adminMarkerPath
+    }
+}
 
 $needsBuild = $true
 if (Test-Path -LiteralPath $activeBuild -PathType Container) {

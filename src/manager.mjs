@@ -57,7 +57,7 @@ if (appPidArgument !== null && (!Number.isInteger(appPid) || appPid < 1)) {
 }
 const projectRoot = findProjectRoot();
 const pidPath = path.join(installRoot, "manager.pid");
-const adminAccess = fs.existsSync(path.join(installRoot, "admin-access.enabled"));
+const hasAdminAccess = () => fs.existsSync(path.join(installRoot, "admin-access.enabled"));
 const updaterPath = process.platform === "win32"
   ? path.join(
       projectRoot,
@@ -215,7 +215,7 @@ const server = http.createServer(createRequestHandler({
   adminRoot: path.join(projectRoot, "admin"),
   draftRoot: path.join(projectRoot, "assets", "admin-drafts"),
   appVersion: APP_VERSION,
-  adminAccess,
+  adminAccess: hasAdminAccess,
   updateService,
   resolveTheme: (themeId) => themeDeliveryService.resolve(themeId),
 }));

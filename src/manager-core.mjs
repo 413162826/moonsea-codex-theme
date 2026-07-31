@@ -375,7 +375,7 @@ export function createRequestHandler({
         sendJson(response, 200, {
           ok: true,
           appVersion,
-          adminAccess,
+          adminAccess: typeof adminAccess === "function" ? adminAccess() : adminAccess,
           catalogVersion: 3,
           themeDeliveryVersion,
           ...(await status(profilePath)),
