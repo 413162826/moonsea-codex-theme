@@ -647,7 +647,7 @@ test("WorkBuddy Windows 链路使用独立客户端协议与安装器", () => {
   assert.match(installer, /--client", "workbuddy"/);
   assert.match(installer, /CurrentVersion\\Uninstall/);
   const discovery = installer.match(
-    /function Find-OfficialWorkBuddyApp \{[\s\S]*?\n\}\n\nfunction Get-AppVersion/,
+    /function Find-OfficialWorkBuddyApp \{[\s\S]*?\r?\n\}\r?\n\r?\nfunction Get-AppVersion/,
   )?.[0];
   assert.ok(discovery);
   assert.doesNotMatch(discovery, /Get-CimInstance Win32_Process/);
