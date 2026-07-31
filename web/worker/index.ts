@@ -13,6 +13,7 @@ interface Env {
   DB: D1Database;
   THEMES: R2Bucket;
   MOONSEA_ADMIN_EMAILS?: string;
+  MOONSEA_THEME_UPLOAD_TOKEN?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -62,7 +63,10 @@ const worker = {
     }
 
     if (url.pathname === "/api/admin/themes" && request.method === "POST") {
-      return handleThemeUpload(request, env, env.MOONSEA_ADMIN_EMAILS);
+      return handleThemeUpload(request, env, {
+        allowedEmails: env.MOONSEA_ADMIN_EMAILS,
+        uploadToken: env.MOONSEA_THEME_UPLOAD_TOKEN,
+      });
     }
 
     const themeAsset = url.pathname.match(/^\/api\/themes\/assets\/([a-z0-9-]+)$/);

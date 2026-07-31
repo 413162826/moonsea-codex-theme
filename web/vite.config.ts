@@ -34,6 +34,8 @@ const localBindingConfig = {
     : [],
   vars: {
     MOONSEA_ADMIN_EMAILS: process.env.MOONSEA_ADMIN_EMAILS ?? "",
+    MOONSEA_THEME_UPLOAD_TOKEN:
+      process.env.MOONSEA_THEME_UPLOAD_TOKEN ?? "",
   },
 };
 
