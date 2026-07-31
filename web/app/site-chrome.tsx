@@ -11,24 +11,20 @@ export type SiteTone = "light" | "moonsea" | "workbuddy";
 
 type ToneConfig = {
   download: string;
-  downloadLabel: string;
   footer: string;
 };
 
 const TONE: Record<SiteTone, ToneConfig> = {
   moonsea: {
     download: "/download?client=codex",
-    downloadLabel: "下载 Codex 版",
     footer: "月海 · Codex 与 WorkBuddy 主题",
   },
   workbuddy: {
     download: "/download?client=workbuddy",
-    downloadLabel: "下载 WorkBuddy 版",
     footer: "月海 · Codex 与 WorkBuddy 主题",
   },
   light: {
     download: "/download?client=codex",
-    downloadLabel: "下载 Codex 版",
     footer: "月海 · Codex 与 WorkBuddy 主题",
   },
 };
@@ -60,10 +56,7 @@ export function SiteHeader({
             <Link className={workbuddyActive ? "is-active" : ""} href="/workbuddy" aria-current={workbuddyActive ? "page" : undefined}>WorkBuddy</Link>
           </div>
           <OwnerAdminLink />
-          <a className="download-link" href={config.download}>
-            <span className="download-link__long">{config.downloadLabel}</span>
-            <span className="download-link__short">下载</span>
-          </a>
+          <a className="download-link" href={config.download}>下载</a>
         </nav>
       </div>
     </header>
