@@ -2,45 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CLIENT_TARGETS } from "../lib/client-target";
 import { OwnerAdminLink } from "./owner-admin-link";
+import { setClientTarget, useClientTarget } from "./use-client-target";
 
 export const WIKI_URL =
   "https://github.com/413162826/moonsea-codex-theme/wiki";
 
-export type SiteTone = "light" | "moonsea" | "workbuddy";
-
-type ToneConfig = {
-  download: string;
-  footer: string;
-};
-
-const TONE: Record<SiteTone, ToneConfig> = {
-  moonsea: {
-    download: "/download?client=codex",
-    footer: "月海 · Codex 与 WorkBuddy 主题",
-  },
-  workbuddy: {
-    download: "/download?client=workbuddy",
-    footer: "月海 · Codex 与 WorkBuddy 主题",
-  },
-  light: {
-    download: "/download?client=codex",
-    footer: "月海 · Codex 与 WorkBuddy 主题",
-  },
-};
-
-export function SiteHeader({
-  tone = "light",
-}: {
-  tone?: SiteTone;
-}) {
+export function SiteHeader() {
   const pathname = usePathname();
-  const config = TONE[tone];
-  const codexActive = pathname === "/themes" || pathname.startsWith("/themes/");
-  const workbuddyActive = pathname === "/workbuddy" || pathname.startsWith("/workbuddy/");
+  const client = useClientTarget();
+  const clientConfig = CLIENT_TARGETS[client];
 
   return (
-    <header className={`site-header site-header--${tone}`}>
+    <header className="site-header site-header--moonsea">
       <div className="site-header__inner">
         <Link className="brand" href="/" aria-label="月海首页">
           <span className="brand-mark" aria-hidden="true">◐</span>
@@ -50,27 +25,40 @@ export function SiteHeader({
           </span>
         </Link>
         <nav className="site-nav" aria-label="主要导航">
-          <Link className="site-nav__home" href="/" aria-current={pathname === "/" ? "page" : undefined}>首页</Link>
-          <div className="product-switch" aria-label="选择应用">
-            <Link className={codexActive ? "is-active" : ""} href="/themes" aria-current={codexActive ? "page" : undefined}>Codex</Link>
-            <Link className={workbuddyActive ? "is-active" : ""} href="/workbuddy" aria-current={workbuddyActive ? "page" : undefined}>WorkBuddy</Link>
+          <Link className="site-nav__home" href="/" prefetch aria-current={pathname === "/" ? "page" : undefined}>首页</Link>
+          <div className="product-switch" aria-label="应用到">
+            {(["codex", "workbuddy"] as const).map((target) => (
+              <button
+                className={client === target ? "is-active" : ""}
+                key={target}
+                type="button"
+                onClick={() => setClientTarget(target)}
+                aria-pressed={client === target}
+              >
+                {CLIENT_TARGETS[target].label}
+              </button>
+            ))}
           </div>
           <OwnerAdminLink />
-          <a className="download-link" href={config.download}>下载</a>
+          <a
+            className="download-link"
+            href={`/download?client=${client}`}
+            aria-label={`下载 ${clientConfig.label} 版`}
+          >
+            下载
+          </a>
         </nav>
       </div>
     </header>
   );
 }
 
-export function SiteFooter({ tone = "moonsea" }: { tone?: SiteTone }) {
-  const config = TONE[tone];
+export function SiteFooter() {
   return (
     <footer>
-      <p>{config.footer}</p>
+      <p>月海 · 主题实验室</p>
       <div className="footer-links">
-        <Link href="/themes">Codex 主题</Link>
-        <Link href="/workbuddy">WorkBuddy 主题</Link>
+        <Link href="/themes">主题</Link>
         <Link href="/privacy">隐私说明</Link>
         <a href={WIKI_URL}>使用帮助</a>
       </div>

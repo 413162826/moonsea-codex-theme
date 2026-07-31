@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Theme } from "../lib/theme-catalog";
 import { ProCodexPreview } from "./codex-preview";
@@ -19,8 +19,27 @@ function swatchStyle(theme: Theme): CSSProperties {
     : { background: theme.previewGradient };
 }
 
-export function FeaturedThemeSwitcher({ themes }: { themes: Theme[] }) {
-  const [selectedId, setSelectedId] = useState(themes[0]?.id);
+function selectFeatured(themes: Theme[]) {
+  const latest = [...themes].reverse();
+  const wallpapers = latest.filter((theme) => theme.previewImage);
+  const gradients = latest.filter((theme) => !theme.previewImage);
+  return [...wallpapers, ...gradients].slice(0, 6);
+}
+
+export function FeaturedThemeSwitcher({ themes: initialThemes }: { themes: Theme[] }) {
+  const [themes, setThemes] = useState(initialThemes);
+  const [selectedId, setSelectedId] = useState(initialThemes[0]?.id);
+
+  useEffect(() => {
+    const loadThemes = async () => {
+      const response = await fetch("/api/themes", { cache: "no-store" });
+      if (!response.ok) throw new Error("精选主题加载失败");
+      const body = await response.json() as Theme[];
+      setThemes(selectFeatured(body));
+    };
+    void loadThemes();
+  }, []);
+
   const selectedTheme =
     themes.find((theme) => theme.id === selectedId) ?? themes[0];
 
