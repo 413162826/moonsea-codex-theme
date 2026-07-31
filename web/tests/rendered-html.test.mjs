@@ -624,6 +624,10 @@ test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {
   assert.match(gallery, /className="pro-codex-body"/);
   assert.match(gallery, /url\("\$\{wallpaper\}"\)/);
   assert.doesNotMatch(gallery, /theme\.previewImage\s*\?\s*<img/);
+  assert.match(gallery, /主题 · \{theme\.name\}/);
+  assert.match(gallery, />工作台</);
+  assert.doesNotMatch(gallery, />Codex</);
+  assert.doesNotMatch(gallery, /Codex · \{theme\.name\}/);
   assert.match(styles, /\.pro-codex-window\s*\{/);
   assert.match(styles, /\.pro-codex-sidebar\s*\{/);
   assert.match(styles, /\.pro-codex-composer\s*\{/);
