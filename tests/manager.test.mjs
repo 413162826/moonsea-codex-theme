@@ -142,6 +142,19 @@ test("管理员入口仅在本机授权标记存在时向官网公开", async ()
   const owner = await requestLocalPage(ownerHandler, "/api/status", PUBLIC_SITE_ORIGIN);
   assert.equal(owner.statusCode, 200);
   assert.equal(JSON.parse(owner.body).adminAccess, true);
+
+  let dynamicAccess = false;
+  const dynamicHandler = createRequestHandler({
+    profilePath: "fixture",
+    siteRoot: path.join(projectRoot, "site"),
+    adminAccess: () => dynamicAccess,
+    status: async () => ({ connected: false, message: "fixture" }),
+  });
+  const beforeMarker = await requestLocalPage(dynamicHandler, "/api/status", PUBLIC_SITE_ORIGIN);
+  assert.equal(JSON.parse(beforeMarker.body).adminAccess, false);
+  dynamicAccess = true;
+  const afterMarker = await requestLocalPage(dynamicHandler, "/api/status", PUBLIC_SITE_ORIGIN);
+  assert.equal(JSON.parse(afterMarker.body).adminAccess, true);
 });
 
 test("主题创作台只由本机助手提供且实验壁纸不进入公开目录", async () => {
@@ -623,6 +636,21 @@ test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () =>
   );
   assert.match(installer, /@\(& node \$BuilderPath @Arguments 2>&1\)/);
   assert.match(installer, /\$output \| ForEach-Object \{ Write-Host \$_ \}/);
+});
+
+test("Windows 自定义安装目录会迁移已有的管理员入口标记", () => {
+  const scriptsRoot = path.join(projectRoot, "scripts", "windows");
+  const codexInstaller = fs.readFileSync(
+    path.join(scriptsRoot, "Install-Moonsea-Windows.ps1"),
+    "ascii",
+  );
+  const workBuddyInstaller = fs.readFileSync(
+    path.join(scriptsRoot, "Install-Moonsea-WorkBuddy-Windows.ps1"),
+    "ascii",
+  );
+
+  assert.match(codexInstaller, /\$legacyAdminMarkerPath[\s\S]*Copy-Item -LiteralPath \$legacyAdminMarkerPath -Destination \$adminMarkerPath/);
+  assert.match(workBuddyInstaller, /\$legacyAdminMarkerPaths[\s\S]*"MoonseaCodex"[\s\S]*Copy-Item -LiteralPath \$legacyAdminMarkerPath -Destination \$adminMarkerPath/);
 });
 
 test("WorkBuddy Windows 链路使用独立客户端协议与安装器", () => {
