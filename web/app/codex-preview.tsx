@@ -8,7 +8,7 @@ export type PreviewTheme = {
 export function StandardCodexPreview({ theme }: { theme: PreviewTheme }) {
   return (
     <div className={`mock-window ${theme.mode}`} aria-hidden="true">
-      <div className="mock-titlebar"><i />Codex · {theme.name}</div>
+      <div className="mock-titlebar"><i />主题 · {theme.name}</div>
       <div className="mock-shell">
         <aside><span /><span /><span /></aside>
         <div><b>Build a product people remember</b><span /><span /><em /></div>
@@ -29,8 +29,7 @@ export function ProCodexPreview({
     <div className={`pro-codex-window ${className}`.trim()} aria-hidden="true">
       <div className="pro-codex-titlebar">
         <div className="pro-codex-menu">
-          <i />
-          <span>Codex</span>
+          <span>工作台</span>
           <span>文件</span>
           <span>编辑</span>
         </div>
@@ -45,7 +44,7 @@ export function ProCodexPreview({
         }}
       >
         <aside className="pro-codex-sidebar">
-          <strong><i />Codex</strong>
+          <strong>工作台</strong>
           <div className="pro-codex-nav"><span /><span /><span /><span /></div>
           <div className="pro-codex-project">
             <small>项目</small>
