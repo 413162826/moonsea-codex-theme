@@ -567,7 +567,7 @@ test("正式发布必须经过候选包准入且复用同一批产物", () => {
   assert.match(releaseWorkflow, /tests\/windows-release-gate\.ps1/);
   assert.match(
     releaseWorkflow,
-    /workbuddy_windows_release_gate:[\s\S]*tests\/windows-setup-smoke\.ps1[\s\S]*-Client workbuddy/,
+    /workbuddy_windows_release_gate:[\s\S]*actions\/setup-node@[\w.]+[\s\S]*npm ci[\s\S]*tests\/windows-setup-smoke\.ps1[\s\S]*-Client workbuddy/,
   );
   assert.match(
     releaseWorkflow,
