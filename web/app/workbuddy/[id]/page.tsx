@@ -6,7 +6,7 @@ import { SITE_URL } from "../../../lib/site";
 import { getThemeWithUploads } from "../../../lib/theme-catalog";
 import { ProCodexPreview, StandardCodexPreview } from "../../codex-preview";
 import { SiteFooter, SiteHeader } from "../../site-chrome";
-import { ThemeActions } from "./theme-actions";
+import { ThemeActions } from "../../themes/[id]/theme-actions";
 
 type ThemePageProps = {
   params: Promise<{ id: string }>;
@@ -19,11 +19,11 @@ export async function generateMetadata({ params }: ThemePageProps): Promise<Meta
   const theme = await getThemeWithUploads(env.DB, id);
   if (!theme) return {};
 
-  const title = `${theme.name} Codex 主题`;
-  const description = `${theme.description}。下载安装月海版后，可从网页直接应用。`;
-  const url = `/themes/${theme.id}`;
+  const title = `${theme.name} WorkBuddy 主题`;
+  const description = `${theme.description}。下载安装 WorkBuddy 版后，可从网页直接应用。`;
+  const url = `/workbuddy/${theme.id}`;
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: { title, description, url },
@@ -42,12 +42,12 @@ export default async function ThemePage({ params }: ThemePageProps) {
     name: theme.name,
     description: theme.description,
     isAccessibleForFree: true,
-    url: new URL(`/themes/${theme.id}`, SITE_URL).toString(),
+    url: new URL(`/workbuddy/${theme.id}`, SITE_URL).toString(),
   };
 
   return (
     <div className="themes-shell">
-      <SiteHeader tone="moonsea" />
+      <SiteHeader tone="workbuddy" />
       <main className="theme-detail">
         <div
           className={`theme-detail__preview ${theme.edition === "pro" ? "is-pro" : ""}`}
@@ -62,16 +62,16 @@ export default async function ThemePage({ params }: ThemePageProps) {
             {theme.edition === "pro" ? "精选 · PRO" : `免费渐变 · ${theme.mode === "dark" ? "深色" : "浅色"}`}
           </p>
           <h1>{theme.name}</h1>
-          <p>{theme.description}。打开月海 Codex 后，即可从网页直接应用。</p>
-          <ThemeActions themeId={theme.id} client="codex" />
-          <Link className="theme-detail__back" href="/themes">返回主题墙</Link>
+          <p>{theme.description}。打开 WorkBuddy 月海版后，即可从网页直接应用。</p>
+          <ThemeActions themeId={theme.id} basePath="/workbuddy" client="workbuddy" />
+          <Link className="theme-detail__back" href="/workbuddy">返回主题墙</Link>
         </div>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </main>
-      <SiteFooter />
+      <SiteFooter tone="workbuddy" />
     </div>
   );
 }

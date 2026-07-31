@@ -38,6 +38,29 @@ test("产品版本与安装包版本一致", () => {
   assert.equal(APP_VERSION, packageMetadata.version);
 });
 
+test("WorkBuddy 使用独立更新清单和安装包文件名", () => {
+  const service = new UpdateService({
+    client: "workbuddy",
+    currentVersion: "1.0.0",
+    platform: "win32",
+    installRoot: "C:\\MoonseaWorkBuddy",
+    updaterPath: "C:\\MoonseaWorkBuddy\\update.ps1",
+    fetchImpl: async () => {
+      throw new Error("not called");
+    },
+    launchUpdater: async () => {},
+    requestShutdown: () => {},
+  });
+  assert.match(service.manifestUrl, /update-workbuddy\.json$/);
+  assert.match(
+    service.packagePathFor({
+      version: "9.0.0",
+      package: { kind: "installer" },
+    }),
+    /Moonsea-WorkBuddy-9\.0\.0-Windows-x64-Setup\.exe$/,
+  );
+});
+
 test("语义版本比较支持稳定版与预发布版", () => {
   assert.equal(compareVersions("1.4.0", "1.3.9"), 1);
   assert.equal(compareVersions("1.4.0-beta.2", "1.4.0"), -1);

@@ -137,7 +137,7 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(html, /保持安静、专注、氛围编程/);
   assert.match(html, /href="\/themes"/);
   assert.match(html, />下载</);
-  assert.match(html, /href="\/download"/);
+  assert.match(html, /href="\/download\?client=codex"/);
   assert.match(html, /site-header--reveal/);
   assert.doesNotMatch(html, /aria-label="主要导航"/);
   assert.match(html, /landing-codex-preview/);
@@ -165,6 +165,23 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.match(html, /href="\/themes\/moon-white"/);
   assert.doesNotMatch(html, /连接后应用/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
+});
+
+test("WorkBuddy 主题墙使用独立客户端文案与下载入口", async () => {
+  const response = await fetch(`${origin}/workbuddy`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /WorkBuddy 未连接/);
+  assert.match(html, /site-header--workbuddy/);
+  assert.match(html, /href="\/download\?client=workbuddy"/);
+  assert.match(html, /Codex 壁纸/);
+  assert.doesNotMatch(html, /WorkBuddy 为 Codex|WorkBuddy · Codex/);
+
+  const detailResponse = await fetch(`${origin}/workbuddy/moon-white`);
+  assert.equal(detailResponse.status, 200);
+  const detailHtml = await detailResponse.text();
+  assert.match(detailHtml, /<title>月白 WorkBuddy 主题<\/title>/i);
+  assert.match(detailHtml, /打开 WorkBuddy 月海版后/);
 });
 
 test("主题墙按助手动态分发能力判断新主题能否一键应用", async () => {
@@ -515,12 +532,46 @@ test("下载入口按系统跳转并为未知系统提供选择页", async () =>
     /releases\/latest\/download\/Moonsea-Codex-macOS\.zip$/,
   );
 
+  const workbuddyWindows = await fetch(`${origin}/download?client=workbuddy`, {
+    method: "HEAD",
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+    redirect: "manual",
+  });
+  assert.equal(workbuddyWindows.status, 302);
+  assert.match(
+    workbuddyWindows.headers.get("location") ?? "",
+    /releases\/latest\/download\/Moonsea-WorkBuddy-Windows-x64-Setup\.exe$/,
+  );
+
+  const workbuddyMacos = await fetch(`${origin}/download?client=workbuddy`, {
+    method: "HEAD",
+    headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)" },
+    redirect: "manual",
+  });
+  assert.equal(workbuddyMacos.status, 302);
+  assert.match(
+    workbuddyMacos.headers.get("location") ?? "",
+    /releases\/latest\/download\/Moonsea-WorkBuddy-macOS\.zip$/,
+  );
+
   const unknown = await fetch(`${origin}/download`, {
     headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" },
     redirect: "manual",
   });
   assert.equal(unknown.status, 302);
   assert.equal(new URL(unknown.headers.get("location")).pathname, "/download/choose");
+
+  const unknownWorkBuddy = await fetch(`${origin}/download?client=workbuddy`, {
+    method: "HEAD",
+    headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)" },
+    redirect: "manual",
+  });
+  assert.equal(unknownWorkBuddy.status, 302);
+  const unknownWorkBuddyLocation = new URL(
+    unknownWorkBuddy.headers.get("location"),
+  );
+  assert.equal(unknownWorkBuddyLocation.pathname, "/download/choose");
+  assert.equal(unknownWorkBuddyLocation.searchParams.get("client"), "workbuddy");
 
   const chooser = await fetch(`${origin}/download/choose`);
   assert.equal(chooser.status, 200);

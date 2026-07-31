@@ -5,9 +5,21 @@ set -euo pipefail
 SOURCE_ROOT="${0:A:h:h}"
 PACKAGE_ROOT="${MOONSEA_TEST_PACKAGE_ROOT:-$SOURCE_ROOT}"
 BUILDER_PATH="${MOONSEA_TEST_BUILDER_PATH:-$PACKAGE_ROOT/tools/moonsea-builder.mjs}"
+CLIENT="${MOONSEA_TEST_CLIENT:-codex}"
+[[ "$CLIENT" == "codex" || "$CLIENT" == "workbuddy" ]]
 TEST_ROOT="$SOURCE_ROOT/.build/macos-installer-smoke"
 SOURCE_APP="$TEST_ROOT/Official.app"
-INSTALL_ROOT="$TEST_ROOT/MoonseaCodex"
+if [[ "$CLIENT" == "workbuddy" ]]; then
+  INSTALL_ROOT="$TEST_ROOT/MoonseaWorkBuddy"
+  INSTALLER_NAME="install-moonsea-workbuddy.sh"
+  UNINSTALLER_NAME="uninstall-moonsea-workbuddy.sh"
+  EXPECTED_SCHEMA=3
+else
+  INSTALL_ROOT="$TEST_ROOT/MoonseaCodex"
+  INSTALLER_NAME="install-moonsea.sh"
+  UNINSTALLER_NAME="uninstall-moonsea.sh"
+  EXPECTED_SCHEMA=2
+fi
 APPLICATIONS_DIR="$TEST_ROOT/Applications"
 DESKTOP_DIR="$TEST_ROOT/Desktop"
 EXPECTED_VERSION="$(/usr/bin/sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$PACKAGE_ROOT/package.json" | /usr/bin/head -n 1)"
@@ -24,7 +36,7 @@ run_builder() {
   fi
 }
 
-node "$SOURCE_ROOT/tests/create-fixture.mjs" macos "$SOURCE_APP" >/dev/null
+node "$SOURCE_ROOT/tests/create-fixture.mjs" macos "$SOURCE_APP" "$CLIENT" >/dev/null
 export MOONSEA_SOURCE_APP="$SOURCE_APP"
 export MOONSEA_INSTALL_ROOT="$INSTALL_ROOT"
 export MOONSEA_APPLICATIONS_DIR="$APPLICATIONS_DIR"
@@ -34,11 +46,15 @@ export MOONSEA_SKIP_CODESIGN=1
 export MOONSEA_SKIP_LAUNCHER_APP=1
 export MOONSEA_SKIP_LAUNCH=1
 export MOONSEA_MANAGER_PORT=18320
+export MOONSEA_CLIENT="$CLIENT"
 
-zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea.sh"
+zsh "$PACKAGE_ROOT/scripts/macos/$INSTALLER_NAME"
 ACTIVE_BUILD="$(plutil -extract activeBuild raw -o - "$INSTALL_ROOT/install.plist")"
 [[ "$(plutil -extract edition raw -o - "$INSTALL_ROOT/install.plist")" == "standard" ]]
-[[ "$(plutil -extract schemaVersion raw -o - "$INSTALL_ROOT/install.plist")" == "2" ]]
+[[ "$(plutil -extract schemaVersion raw -o - "$INSTALL_ROOT/install.plist")" == "$EXPECTED_SCHEMA" ]]
+if [[ "$CLIENT" == "workbuddy" ]]; then
+  [[ "$(plutil -extract client raw -o - "$INSTALL_ROOT/install.plist")" == "workbuddy" ]]
+fi
 [[ "$(plutil -extract appVersion raw -o - "$INSTALL_ROOT/install.plist")" == "$EXPECTED_VERSION" ]]
 MANAGER_PATH="$(plutil -extract managerPath raw -o - "$INSTALL_ROOT/install.plist")"
 RELEASE_PATH="$(plutil -extract releasePath raw -o - "$INSTALL_ROOT/install.plist")"
@@ -62,16 +78,20 @@ for _ in {1..30}; do
   sleep 0.1
 done
 [[ $MANAGER_READY -eq 1 ]]
-zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea.sh"
-run_builder --verify "$ACTIVE_BUILD" >/dev/null
+zsh "$PACKAGE_ROOT/scripts/macos/$INSTALLER_NAME"
+if [[ "$CLIENT" == "workbuddy" ]]; then
+  run_builder --client workbuddy --verify "$ACTIVE_BUILD" >/dev/null
+else
+  run_builder --verify "$ACTIVE_BUILD" >/dev/null
+fi
 
-MOONSEA_NONINTERACTIVE=1 zsh "$PACKAGE_ROOT/scripts/macos/uninstall-moonsea.sh"
+MOONSEA_NONINTERACTIVE=1 zsh "$PACKAGE_ROOT/scripts/macos/$UNINSTALLER_NAME"
 [[ ! -d "$INSTALL_ROOT/builds" ]]
 [[ ! -d "$INSTALL_ROOT/releases" ]]
 [[ -d "$INSTALL_ROOT/BrowserProfile" ]]
 
-zsh "$PACKAGE_ROOT/scripts/macos/install-moonsea.sh"
-MOONSEA_NONINTERACTIVE=1 MOONSEA_REMOVE_USER_DATA=1 zsh "$PACKAGE_ROOT/scripts/macos/uninstall-moonsea.sh"
+zsh "$PACKAGE_ROOT/scripts/macos/$INSTALLER_NAME"
+MOONSEA_NONINTERACTIVE=1 MOONSEA_REMOVE_USER_DATA=1 zsh "$PACKAGE_ROOT/scripts/macos/$UNINSTALLER_NAME"
 [[ ! -e "$INSTALL_ROOT" ]]
 
 echo "macOS 安装更新与卸载冒烟测试通过"

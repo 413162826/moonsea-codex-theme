@@ -3,16 +3,16 @@
 import { useState } from "react";
 import { SITE_URL } from "../../../lib/site";
 
-export function ThemeActions({ themeId }: { themeId: string }) {
+export function ThemeActions({ themeId, basePath = "/themes", client = "codex" }: { themeId: string; basePath?: string; client?: string }) {
   const [shareLabel, setShareLabel] = useState("复制同款链接");
 
   const download = () => {
     window.localStorage.setItem("moonsea_pending_theme", themeId);
-    window.location.assign(`/download?theme=${encodeURIComponent(themeId)}`);
+    window.location.assign(`/download?client=${encodeURIComponent(client)}&theme=${encodeURIComponent(themeId)}`);
   };
 
   const copyShareLink = async () => {
-    const shareUrl = new URL(`/themes/${themeId}`, SITE_URL);
+    const shareUrl = new URL(`${basePath}/${themeId}`, SITE_URL);
     shareUrl.searchParams.set("utm_source", "share");
     shareUrl.searchParams.set("utm_campaign", "theme_referral");
     shareUrl.searchParams.set("utm_content", themeId);

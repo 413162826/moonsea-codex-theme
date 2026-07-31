@@ -3,7 +3,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
-import { createPackage, extractAll } from "@electron/asar";
+import {
+  createPackage,
+  createPackageFromStreams,
+  extractAll,
+  extractFile,
+  getRawHeader,
+  listPackage,
+  statFile,
+} from "@electron/asar";
 import { WALLPAPERS } from "./wallpaper-catalog.mjs";
 
 function findProjectRoot() {
@@ -28,12 +36,15 @@ function findProjectRoot() {
 const projectRoot = findProjectRoot();
 const themeDir = path.join(projectRoot, "theme", "static");
 const wallpaperDir = path.join(projectRoot, "assets", "wallpapers");
-const bridgeTemplate = path.join(
-  projectRoot,
-  "theme",
-  "runtime",
-  "appearance-bridge.template.js",
-);
+const bridgeTemplates = {
+  codex: path.join(projectRoot, "theme", "runtime", "appearance-bridge.template.js"),
+  workbuddy: path.join(
+    projectRoot,
+    "theme",
+    "runtime",
+    "workbuddy-appearance-bridge.template.js",
+  ),
+};
 const themeFiles = {
   assistantCss: path.join(themeDir, "assistant.css"),
   css: path.join(themeDir, "theme.css"),
@@ -45,6 +56,7 @@ const wallpaperFiles = WALLPAPERS.map((wallpaper) => ({
   source: path.join(wallpaperDir, wallpaper.file),
 }));
 const editions = new Set(["standard", "pro"]);
+const clients = new Set(["codex", "workbuddy"]);
 const asarCandidates = [
   path.join("resources", "app.asar"),
   path.join("Contents", "Resources", "app.asar"),
@@ -62,13 +74,17 @@ for (const [name, filePath] of Object.entries(themeFiles)) {
 for (const wallpaper of wallpaperFiles) {
   assertFile(wallpaper.source, `主题壁纸 ${wallpaper.name}`);
 }
-assertFile(bridgeTemplate, "外观控制桥模板");
+for (const [client, template] of Object.entries(bridgeTemplates)) {
+  assertFile(template, `${client} 外观控制桥模板`);
+}
 
-function getThemeVersion(edition = "standard") {
+function getThemeVersion(edition = "standard", client = "codex") {
   if (!editions.has(edition)) throw new Error(`不支持的版本：${edition}`);
+  if (!clients.has(client)) throw new Error(`不支持的客户端：${client}`);
   const hash = crypto.createHash("sha256");
   hash.update(edition);
-  hash.update(fs.readFileSync(bridgeTemplate));
+  hash.update(client);
+  hash.update(fs.readFileSync(bridgeTemplates[client]));
   for (const filePath of Object.values(themeFiles)) {
     hash.update(fs.readFileSync(filePath));
   }
@@ -98,14 +114,17 @@ function findAsar(appRoot) {
   throw new Error(`没有在应用中找到 app.asar：${appRoot}`);
 }
 
-function assertSafeTarget(sourceApp, targetApp) {
+function assertSafeTarget(sourceApp, targetApp, client) {
   const resolvedSource = path.resolve(sourceApp);
   const resolvedTarget = path.resolve(targetApp);
   const targetName = path.basename(resolvedTarget);
   const targetRoot = path.parse(resolvedTarget).root;
   const home = path.resolve(os.homedir());
 
-  if (!/^Moonsea-Codex-[A-Za-z0-9._-]+(?:\.app)?$/.test(targetName)) {
+  const expectedPrefix = client === "workbuddy" ? "Moonsea-WorkBuddy-" : "Moonsea-Codex-";
+  if (
+    !new RegExp(`^${expectedPrefix}[A-Za-z0-9._-]+(?:\\.app)?$`).test(targetName)
+  ) {
     throw new Error(`目标目录名不安全：${targetName}`);
   }
   if (
@@ -196,6 +215,42 @@ function injectLocalAppActionExport(source, identifier) {
   return `${source.slice(0, sourceMapIndex)}${exportStatement}${source.slice(sourceMapIndex)}`;
 }
 
+const WORKBUDDY_THEME_EXPORT = "moonseaSetTheme";
+
+function injectWorkBuddyThemeExport(source) {
+  if (new RegExp(`\\bsetTheme\\s+as\\s+${WORKBUDDY_THEME_EXPORT}\\b`).test(source)) {
+    return source;
+  }
+  const exportStatement = `export{setTheme as ${WORKBUDDY_THEME_EXPORT}};\n`;
+  const sourceMapIndex = source.lastIndexOf("//# sourceMappingURL=");
+  if (sourceMapIndex < 0) return `${source}\n${exportStatement}`;
+  return `${source.slice(0, sourceMapIndex)}${exportStatement}${source.slice(sourceMapIndex)}`;
+}
+
+function resolveWorkBuddyThemeModule(extractedDir) {
+  const assetsPath = path.join(extractedDir, "renderer", "assets");
+  const candidates = fs
+    .readdirSync(assetsPath)
+    .filter((name) => /^[A-Za-z0-9_-]+\.js$/.test(name))
+    .map((name) => ({ name, source: readUtf8(path.join(assetsPath, name)) }))
+    .filter(({ source }) =>
+      /THEME_STORAGE_KEY\s*=\s*["']agent-ui-theme["']/.test(source)
+      && /function\s+setTheme\s*\(\s*theme\s*\)/.test(source)
+      && /ThemeManager\s*=\s*class/.test(source));
+  if (candidates.length !== 1) {
+    throw new Error(
+      `当前 WorkBuddy 版本不受支持：无法唯一定位主题管理器（找到 ${candidates.length} 个）`,
+    );
+  }
+  const { name, source } = candidates[0];
+  fs.writeFileSync(
+    path.join(assetsPath, name),
+    injectWorkBuddyThemeExport(source),
+    "utf8",
+  );
+  return { modulePath: `../assets/${name}` };
+}
+
 function resolveAppActionModule(extractedDir) {
   const assetsPath = path.join(extractedDir, "webview", "assets");
   const candidates = fs
@@ -227,9 +282,15 @@ function resolveAppActionModule(extractedDir) {
   };
 }
 
-function buildAppearanceBridge(extractedDir, themeVersion) {
+function buildAppearanceBridge(extractedDir, themeVersion, client) {
+  if (client === "workbuddy") {
+    const { modulePath } = resolveWorkBuddyThemeModule(extractedDir);
+    return readUtf8(bridgeTemplates.workbuddy)
+      .replace("__MOONSEA_THEME_MODULE_PATH__", modulePath)
+      .replace("__MOONSEA_THEME_VERSION__", themeVersion);
+  }
   const { modulePath, exportName } = resolveAppActionModule(extractedDir);
-  return readUtf8(bridgeTemplate)
+  return readUtf8(bridgeTemplates.codex)
     .replace("__MOONSEA_RPC_MODULE_PATH__", modulePath)
     .replace("__MOONSEA_APP_ACTIONS_EXPORT__", exportName)
     .replace("__MOONSEA_THEME_VERSION__", themeVersion);
@@ -239,13 +300,218 @@ function readUtf8(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
 
-function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
-  const webviewDir = path.join(extractedDir, "webview");
-  const indexPath = path.join(webviewDir, "index.html");
-  const compositionPath = path.join(
-    webviewDir,
-    "avatar-overlay-composition-surface.html",
+function normalizeArchivePath(filePath) {
+  return filePath.replace(/^[\\/]+/, "").split(/[\\/]+/).join("/");
+}
+
+function isMissingForeignRipgrepArtifact(relativePath) {
+  const match = relativePath.match(
+    /^cli\/vendor\/ripgrep\/(x64|arm64)-(windows|linux|darwin)\/(rg(?:\.exe)?|ripgrep\.node)$/,
   );
+  if (!match) return false;
+  const hostPlatform =
+    process.platform === "win32" ? "windows" : process.platform;
+  const hostArchitecture =
+    process.arch === "arm64" ? "arm64" : process.arch === "x64" ? "x64" : null;
+  if (!hostArchitecture || !["windows", "linux", "darwin"].includes(hostPlatform)) {
+    return false;
+  }
+  return `${match[1]}-${match[2]}` !== `${hostArchitecture}-${hostPlatform}`;
+}
+
+function extractWorkBuddyArchive(asarPath, destination) {
+  fs.mkdirSync(destination, { recursive: true });
+  const unpackedPaths = new Set();
+  let requireCompleteUnpacked = false;
+  try {
+    const metadata = JSON.parse(
+      extractFile(
+        asarPath,
+        path.join("renderer", "moonsea", "metadata.json"),
+      ).toString("utf8"),
+    );
+    requireCompleteUnpacked = metadata.client === "workbuddy";
+  } catch {
+    requireCompleteUnpacked = false;
+  }
+  const entries = listPackage(asarPath, { isPack: false });
+  const { headerSize } = getRawHeader(asarPath);
+  const dataStart = 8 + headerSize;
+  const archiveSize = fs.statSync(asarPath).size;
+  const data = Buffer.alloc(archiveSize - dataStart);
+  const descriptor = fs.openSync(asarPath, "r");
+  try {
+    fs.readSync(descriptor, data, 0, data.length, dataStart);
+  } finally {
+    fs.closeSync(descriptor);
+  }
+
+  for (const archiveEntry of entries) {
+    const relativePath = normalizeArchivePath(archiveEntry);
+    const nativeRelativePath = relativePath.split("/").join(path.sep);
+    const outputPath = path.join(destination, nativeRelativePath);
+    const entry = statFile(asarPath, nativeRelativePath, process.platform === "win32");
+    if ("files" in entry) {
+      fs.mkdirSync(outputPath, { recursive: true });
+      if (entry.unpacked) unpackedPaths.add(relativePath);
+      continue;
+    }
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    if ("link" in entry) {
+      const content = fs.readFileSync(
+        path.join(destination, normalizeArchivePath(entry.link)),
+      );
+      fs.writeFileSync(outputPath, content);
+      continue;
+    }
+    if (entry.unpacked) {
+      const unpackedSource = path.join(`${asarPath}.unpacked`, nativeRelativePath);
+      if (!fs.existsSync(unpackedSource)) {
+        if (
+          requireCompleteUnpacked ||
+          !isMissingForeignRipgrepArtifact(relativePath)
+        ) {
+          throw new Error(`月海 WorkBuddy 包不完整：缺少 ${relativePath}`);
+        }
+        continue;
+      }
+      fs.copyFileSync(unpackedSource, outputPath);
+      unpackedPaths.add(relativePath);
+    } else if (entry.size === 0) {
+      fs.writeFileSync(outputPath, Buffer.alloc(0));
+    } else {
+      const offset = Number.parseInt(entry.offset, 10);
+      fs.writeFileSync(outputPath, data.subarray(offset, offset + entry.size));
+    }
+    if (entry.executable && process.platform !== "win32") {
+      fs.chmodSync(outputPath, 0o755);
+    }
+  }
+  return unpackedPaths;
+}
+
+function createArchiveStreams(root, unpackedPaths) {
+  const streams = [];
+  const visit = (directory, relativeDirectory = "") => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolutePath = path.join(directory, entry.name);
+      const relativePath = relativeDirectory
+        ? `${relativeDirectory}/${entry.name}`
+        : entry.name;
+      if (entry.isDirectory()) {
+        streams.push({
+          path: relativePath,
+          type: "directory",
+          unpacked: unpackedPaths.has(relativePath),
+        });
+        visit(absolutePath, relativePath);
+      } else if (entry.isFile()) {
+        streams.push({
+          path: relativePath,
+          type: "file",
+          unpacked: unpackedPaths.has(relativePath),
+          stat: fs.statSync(absolutePath),
+          streamGenerator: () => fs.createReadStream(absolutePath),
+        });
+      } else {
+        throw new Error(`WorkBuddy 包含不支持的文件类型：${relativePath}`);
+      }
+    }
+  };
+  visit(root);
+  return streams;
+}
+
+function extractArchive(asarPath, destination, client) {
+  if (client === "workbuddy") {
+    return extractWorkBuddyArchive(asarPath, destination);
+  }
+  extractAll(asarPath, destination);
+  return new Set();
+}
+
+async function createArchive(source, destination, client, unpackedPaths) {
+  if (client === "workbuddy") {
+    fs.rmSync(`${destination}.unpacked`, { recursive: true, force: true });
+    await createPackageFromStreams(
+      destination,
+      createArchiveStreams(source, unpackedPaths),
+    );
+    return;
+  }
+  await createPackage(source, destination);
+}
+
+function installArchiveOutput(sourceAsar, targetAsar, client) {
+  if (client !== "workbuddy") {
+    fs.copyFileSync(sourceAsar, targetAsar);
+    return;
+  }
+  const sourceUnpacked = `${sourceAsar}.unpacked`;
+  const targetUnpacked = `${targetAsar}.unpacked`;
+  const nonce = `${process.pid}-${Date.now()}`;
+  const stagedAsar = `${targetAsar}.moonsea-new-${nonce}`;
+  const stagedUnpacked = `${targetUnpacked}.moonsea-new-${nonce}`;
+  const backupAsar = `${targetAsar}.moonsea-backup-${nonce}`;
+  const backupUnpacked = `${targetUnpacked}.moonsea-backup-${nonce}`;
+
+  fs.copyFileSync(sourceAsar, stagedAsar);
+  if (fs.existsSync(sourceUnpacked)) {
+    fs.cpSync(sourceUnpacked, stagedUnpacked, {
+      recursive: true,
+      force: true,
+      preserveTimestamps: true,
+    });
+  }
+
+  let oldAsarMoved = false;
+  let oldUnpackedMoved = false;
+  let newAsarInstalled = false;
+  let newUnpackedInstalled = false;
+  try {
+    if (fs.existsSync(targetUnpacked)) {
+      fs.renameSync(targetUnpacked, backupUnpacked);
+      oldUnpackedMoved = true;
+    }
+    fs.renameSync(targetAsar, backupAsar);
+    oldAsarMoved = true;
+    if (fs.existsSync(stagedUnpacked)) {
+      fs.renameSync(stagedUnpacked, targetUnpacked);
+      newUnpackedInstalled = true;
+    }
+    fs.renameSync(stagedAsar, targetAsar);
+    newAsarInstalled = true;
+  } catch (error) {
+    if (newAsarInstalled && fs.existsSync(targetAsar)) {
+      fs.rmSync(targetAsar, { force: true });
+    }
+    if (oldAsarMoved && fs.existsSync(backupAsar)) {
+      fs.renameSync(backupAsar, targetAsar);
+    }
+    if (newUnpackedInstalled && fs.existsSync(targetUnpacked)) {
+      fs.rmSync(targetUnpacked, { recursive: true, force: true });
+    }
+    if (oldUnpackedMoved && fs.existsSync(backupUnpacked)) {
+      fs.renameSync(backupUnpacked, targetUnpacked);
+    }
+    throw error;
+  } finally {
+    fs.rmSync(stagedAsar, { force: true });
+    fs.rmSync(stagedUnpacked, { recursive: true, force: true });
+  }
+  fs.rmSync(backupAsar, { force: true });
+  fs.rmSync(backupUnpacked, { recursive: true, force: true });
+}
+
+function verifyExtractedApp(extractedDir, themeVersion, expectedEdition, client) {
+  const webviewDir = path.join(
+    extractedDir,
+    client === "workbuddy" ? "renderer" : "webview",
+  );
+  const indexPath = path.join(webviewDir, "index.html");
+  const compositionPath = client === "codex"
+    ? path.join(webviewDir, "avatar-overlay-composition-surface.html")
+    : null;
   const packedTheme = path.join(webviewDir, "moonsea", "theme.css");
   const packedAssistant = path.join(webviewDir, "moonsea", "assistant.css");
   const packedPet = path.join(webviewDir, "moonsea", "pet-overlay.css");
@@ -256,16 +522,16 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
 
   for (const [filePath, label] of [
     [indexPath, "主页面"],
-    [compositionPath, "宠物合成页面"],
     [packedBridge, "外观控制桥"],
     [packedAssistant, "月海助手 CSS"],
     [metadataPath, "构建元数据"],
   ]) {
     assertFile(filePath, label);
   }
+  if (compositionPath) assertFile(compositionPath, "宠物合成页面");
 
   const index = readUtf8(indexPath);
-  const composition = readUtf8(compositionPath);
+  const composition = compositionPath ? readUtf8(compositionPath) : "";
   const metadata = JSON.parse(readUtf8(metadataPath));
   const edition = expectedEdition ?? metadata.edition;
   if (!editions.has(edition) || metadata.edition !== edition) {
@@ -275,11 +541,21 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
   const checks = [
     index.includes(`id="codex-moonsea-appearance-bridge"`) &&
       index.includes(`appearance-bridge.js${expectedVersion}`),
-    readUtf8(packedBridge).includes("app.appearance.set_mode"),
     readUtf8(packedBridge).includes("applyRuntimeTheme"),
-    !readUtf8(packedBridge).includes("app.appearance.set_theme"),
     metadata.themeVersion === themeVersion,
+    metadata.client === client,
   ];
+  if (client === "workbuddy") {
+    checks.push(
+      readUtf8(packedBridge).includes("moonseaSetTheme(theme.mode)"),
+      !readUtf8(packedBridge).includes("app.appearance.set_mode"),
+    );
+  } else {
+    checks.push(
+      readUtf8(packedBridge).includes("app.appearance.set_mode"),
+      !readUtf8(packedBridge).includes("app.appearance.set_theme"),
+    );
+  }
   for (const [filePath, label] of [
     [packedTheme, "主题 CSS"],
     [packedPet, "宠物 CSS"],
@@ -314,7 +590,11 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
       index.includes(`id="codex-moonsea-static-theme"`) && index.includes(`theme.css${expectedVersion}`),
       index.includes(`id="codex-moonsea-pet-overlay"`) && index.includes(`pet-overlay.css${expectedVersion}`),
       index.includes(`id="codex-moonsea-static-theme-script"`) && index.includes(`theme.js${expectedVersion}`),
-      composition.includes(`id="codex-moonsea-pet-overlay"`) && composition.includes(`pet-overlay.css${expectedVersion}`),
+      client === "workbuddy"
+        || (
+          composition.includes(`id="codex-moonsea-pet-overlay"`)
+          && composition.includes(`pet-overlay.css${expectedVersion}`)
+        ),
       !composition.includes(`id="codex-moonsea-static-theme"`),
       readUtf8(packedTheme).startsWith("html.codex-moonsea {"),
       readUtf8(packedPet).includes(`[data-avatar-overlay-size="notification-tray"]`),
@@ -325,39 +605,44 @@ function verifyExtractedApp(extractedDir, themeVersion, expectedEdition) {
   }
 }
 
-async function verifyArchive(asarPath, themeVersion, edition) {
+async function verifyArchive(asarPath, themeVersion, edition, client = "codex") {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moonsea-verify-"));
   try {
     const extracted = path.join(tempRoot, "app");
     extractAll(asarPath, extracted);
-    const metadataPath = path.join(extracted, "webview", "moonsea", "metadata.json");
+    const metadataPath = path.join(
+      extracted,
+      client === "workbuddy" ? "renderer" : "webview",
+      "moonsea",
+      "metadata.json",
+    );
     const metadata = JSON.parse(readUtf8(metadataPath));
     const resolvedEdition = edition ?? metadata.edition;
-    const resolvedVersion = themeVersion ?? getThemeVersion(resolvedEdition);
-    verifyExtractedApp(extracted, resolvedVersion, resolvedEdition);
+    const resolvedVersion = themeVersion ?? getThemeVersion(resolvedEdition, client);
+    verifyExtractedApp(extracted, resolvedVersion, resolvedEdition, client);
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
-async function verifyApp(appRoot, themeVersion, edition) {
+async function verifyApp(appRoot, themeVersion, edition, client = "codex") {
   const asar = findAsar(appRoot);
-  await verifyArchive(asar.path, themeVersion, edition);
+  await verifyArchive(asar.path, themeVersion, edition, client);
 }
 
-async function patchApp(appInput, edition) {
+async function patchApp(appInput, edition, client) {
   const appRoot = resolveAppRoot(appInput, "待修改应用");
   const appAsar = findAsar(appRoot);
-  const themeVersion = getThemeVersion(edition);
+  const themeVersion = getThemeVersion(edition, client);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moonsea-patch-"));
   try {
     const extractedDir = path.join(tempRoot, "app");
     const packedAsar = path.join(tempRoot, "app.asar");
-    extractAll(appAsar.path, extractedDir);
-    applyTheme(extractedDir, themeVersion, edition);
-    await createPackage(extractedDir, packedAsar);
-    await verifyArchive(packedAsar, themeVersion, edition);
-    fs.copyFileSync(packedAsar, appAsar.path);
+    const unpackedPaths = extractArchive(appAsar.path, extractedDir, client);
+    applyTheme(extractedDir, themeVersion, edition, client);
+    await createArchive(extractedDir, packedAsar, client, unpackedPaths);
+    await verifyArchive(packedAsar, themeVersion, edition, client);
+    installArchiveOutput(packedAsar, appAsar.path, client);
     const packedHash = crypto
       .createHash("sha256")
       .update(fs.readFileSync(packedAsar))
@@ -376,18 +661,33 @@ async function patchApp(appInput, edition) {
   }
 }
 
-function applyTheme(extractedDir, themeVersion, edition) {
-  const moonseaDir = path.join(extractedDir, "webview", "moonsea");
+function assertClientPackage(extractedDir, client) {
+  if (client !== "workbuddy") return;
+  const packagePath = path.join(extractedDir, "package.json");
+  assertFile(packagePath, "WorkBuddy package.json");
+  const packageMetadata = JSON.parse(readUtf8(packagePath));
+  if (packageMetadata.name !== "@genie/workbuddy-desktop") {
+    throw new Error(`所选应用不是官方 WorkBuddy：${packageMetadata.name ?? "包名缺失"}`);
+  }
+}
+
+function applyTheme(extractedDir, themeVersion, edition, client) {
+  assertClientPackage(extractedDir, client);
+  const webviewDir = path.join(
+    extractedDir,
+    client === "workbuddy" ? "renderer" : "webview",
+  );
+  const moonseaDir = path.join(webviewDir, "moonsea");
   fs.rmSync(moonseaDir, { recursive: true, force: true });
   fs.mkdirSync(moonseaDir, { recursive: true });
   fs.writeFileSync(
     path.join(moonseaDir, "appearance-bridge.js"),
-    buildAppearanceBridge(extractedDir, themeVersion),
+    buildAppearanceBridge(extractedDir, themeVersion, client),
     "utf8",
   );
   fs.writeFileSync(
     path.join(moonseaDir, "metadata.json"),
-    JSON.stringify({ schemaVersion: 1, edition, themeVersion }),
+    JSON.stringify({ schemaVersion: 1, client, edition, themeVersion }),
     "utf8",
   );
   fs.copyFileSync(themeFiles.css, path.join(moonseaDir, "theme.css"));
@@ -400,17 +700,17 @@ function applyTheme(extractedDir, themeVersion, edition) {
     fs.copyFileSync(wallpaper.source, path.join(packedWallpaperDir, wallpaper.file));
   }
 
-  const indexPath = path.join(extractedDir, "webview", "index.html");
-  const compositionPath = path.join(
-    extractedDir,
-    "webview",
-    "avatar-overlay-composition-surface.html",
-  );
-  assertFile(indexPath, "Codex 主页面");
-  assertFile(compositionPath, "Codex 宠物合成页面");
+  const indexPath = path.join(webviewDir, "index.html");
+  const compositionPath = client === "codex"
+    ? path.join(webviewDir, "avatar-overlay-composition-surface.html")
+    : null;
+  assertFile(indexPath, client === "workbuddy" ? "WorkBuddy 主页面" : "Codex 主页面");
+  if (compositionPath) assertFile(compositionPath, "Codex 宠物合成页面");
 
   const cleanIndex = removeProInjection(readUtf8(indexPath));
-  const cleanComposition = removeProInjection(readUtf8(compositionPath));
+  const cleanComposition = compositionPath
+    ? removeProInjection(readUtf8(compositionPath))
+    : "";
   const themedIndex = injectAppearanceBridge(
     edition === "pro"
       ? injectThemeScript(
@@ -420,19 +720,19 @@ function applyTheme(extractedDir, themeVersion, edition) {
       : injectStyles(cleanIndex, themeVersion, { includeMainTheme: false, includePetOverlay: false }),
     themeVersion,
   );
-  const themedComposition = edition === "pro"
+  const themedComposition = edition === "pro" && compositionPath
     ? injectStyles(cleanComposition, themeVersion, { includeMainTheme: false })
     : cleanComposition;
   fs.writeFileSync(indexPath, themedIndex, "utf8");
-  fs.writeFileSync(compositionPath, themedComposition, "utf8");
+  if (compositionPath) fs.writeFileSync(compositionPath, themedComposition, "utf8");
 }
 
-async function buildApp(sourceInput, targetInput, edition) {
+async function buildApp(sourceInput, targetInput, edition, client) {
   const sourceApp = resolveAppRoot(sourceInput, "官方应用");
   const targetApp = path.resolve(targetInput ?? "");
-  assertSafeTarget(sourceApp, targetApp);
+  assertSafeTarget(sourceApp, targetApp, client);
   const sourceAsar = findAsar(sourceApp);
-  const themeVersion = getThemeVersion(edition);
+  const themeVersion = getThemeVersion(edition, client);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moonsea-build-"));
 
   try {
@@ -451,13 +751,13 @@ async function buildApp(sourceInput, targetInput, edition) {
     });
 
     console.log("正在写入月海主题…");
-    extractAll(sourceAsar.path, extractedDir);
-    applyTheme(extractedDir, themeVersion, edition);
+    const unpackedPaths = extractArchive(sourceAsar.path, extractedDir, client);
+    applyTheme(extractedDir, themeVersion, edition, client);
 
-    await createPackage(extractedDir, packedAsar);
+    await createArchive(extractedDir, packedAsar, client, unpackedPaths);
     const targetAsar = path.join(targetApp, sourceAsar.relativePath);
-    fs.copyFileSync(packedAsar, targetAsar);
-    await verifyApp(targetApp, themeVersion, edition);
+    installArchiveOutput(packedAsar, targetAsar, client);
+    await verifyApp(targetApp, themeVersion, edition, client);
     console.log(`月海主题已生成：${targetApp}`);
     console.log(`主题版本：${themeVersion}`);
   } catch (error) {
@@ -471,6 +771,13 @@ async function buildApp(sourceInput, targetInput, edition) {
 async function main() {
   const args = process.argv.slice(2);
   let edition = "standard";
+  let client = "codex";
+  const clientIndex = args.indexOf("--client");
+  if (clientIndex >= 0) {
+    client = args[clientIndex + 1];
+    args.splice(clientIndex, 2);
+  }
+  if (!clients.has(client)) throw new Error(`不支持的客户端：${client}`);
   const editionIndex = args.indexOf("--edition");
   if (editionIndex >= 0) {
     edition = args[editionIndex + 1];
@@ -479,20 +786,20 @@ async function main() {
   if (!editions.has(edition)) throw new Error(`不支持的版本：${edition}`);
   const [command, first, second] = args;
   if (command === "--theme-version") {
-    console.log(getThemeVersion(edition));
+    console.log(getThemeVersion(edition, client));
     return;
   }
   if (command === "--verify") {
     const appRoot = resolveAppRoot(first, "月海应用");
-    await verifyApp(appRoot, undefined, edition);
+    await verifyApp(appRoot, undefined, edition, client);
     console.log(`校验通过：${appRoot}`);
     return;
   }
   if (command === "--patch") {
-    await patchApp(first, edition);
+    await patchApp(first, edition, client);
     return;
   }
-  await buildApp(command, first ?? second, edition);
+  await buildApp(command, first ?? second, edition, client);
 }
 
 main().catch((error) => {

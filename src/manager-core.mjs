@@ -11,6 +11,15 @@ if (!Number.isInteger(MANAGER_PORT) || MANAGER_PORT < 1 || MANAGER_PORT > 65535)
 }
 export const PUBLIC_SITE_ORIGIN = "https://moonsea-codex-theme.suguowen5.chatgpt.site";
 
+// 客户端身份：codex（默认）或 workbuddy。WorkBuddy 通过环境变量注入，
+// 其官方应用包名、调试端口与主题桥名由对应安装包/启动脚本提供。
+export const CLIENT = (process.env.MOONSEA_CLIENT ?? "codex").toLowerCase();
+if (!["codex", "workbuddy"].includes(CLIENT)) {
+  throw new Error(`不支持的月海客户端：${CLIENT}`);
+}
+export const CLIENT_LABEL = process.env.MOONSEA_CLIENT_LABEL ?? (CLIENT === "workbuddy" ? "WorkBuddy" : "Codex");
+export const THEME_BRIDGE = "window.moonseaThemeBridge";
+
 const LOCAL_ORIGINS = new Set([
   `http://127.0.0.1:${MANAGER_PORT}`,
   `http://localhost:${MANAGER_PORT}`,
@@ -41,7 +50,7 @@ export function parseDevToolsActivePort(content) {
   const [portLine, socketPath] = String(content).trim().split(/\r?\n/);
   const port = Number.parseInt(portLine, 10);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error("Codex 调试端口无效，请重新打开月海版");
+    throw new Error(`${CLIENT_LABEL} 调试端口无效，请重新打开月海版`);
   }
   return { port, socketPath: socketPath || null };
 }
@@ -49,7 +58,7 @@ export function parseDevToolsActivePort(content) {
 export function readDevToolsEndpoint(profilePath) {
   const activePortPath = path.join(profilePath, "DevToolsActivePort");
   if (!fs.existsSync(activePortPath)) {
-    throw new Error("还没有连接到 Codex，请先打开“Codex 月海版”");
+    throw new Error(`还没有连接到 ${CLIENT_LABEL}，请先打开“${CLIENT_LABEL} 月海版”`);
   }
   return parseDevToolsActivePort(fs.readFileSync(activePortPath, "utf8"));
 }
@@ -70,7 +79,7 @@ class CdpClient {
       };
       const onError = () => {
         cleanup();
-        reject(new Error("无法连接已打开的 Codex"));
+        reject(new Error("无法连接已打开的客户端"));
       };
       const cleanup = () => {
         this.socket.removeEventListener("open", onOpen);
@@ -90,7 +99,7 @@ class CdpClient {
     });
     this.socket.addEventListener("close", () => {
       for (const pending of this.pending.values()) {
-        pending.reject(new Error("Codex 连接已关闭"));
+        pending.reject(new Error("客户端连接已关闭"));
       }
       this.pending.clear();
     });
@@ -109,22 +118,42 @@ class CdpClient {
   }
 }
 
-async function findCodexTarget(port) {
+export function getClientTargetConfig(client = CLIENT) {
+  if (client === "workbuddy") {
+    return {
+      url: null,
+      pattern: /\/renderer\/index\.html(?:$|[?#])/i,
+    };
+  }
+  if (client === "codex") {
+    return {
+      url: "app://-/index.html",
+      pattern: /\/webview\/index\.html(?:$|[?#])/i,
+    };
+  }
+  throw new Error(`不支持的月海客户端：${client}`);
+}
+
+async function findClientTarget(port) {
   const response = await fetch(`http://127.0.0.1:${port}/json/list`);
-  if (!response.ok) throw new Error("无法读取 Codex 窗口");
+  if (!response.ok) throw new Error(`无法读取 ${CLIENT_LABEL} 窗口`);
   const targets = await response.json();
   const pages = targets.filter((item) => item.type === "page");
-  const target = pages.find((item) => item.url === "app://-/index.html")
-    ?? pages.find((item) => /webview\/index\.html(?:$|[?#])/i.test(item.url ?? ""));
+  const targetConfig = getClientTargetConfig();
+  const target = (
+    targetConfig.url
+      ? pages.find((item) => item.url === targetConfig.url)
+      : null
+  ) ?? pages.find((item) => targetConfig.pattern.test(item.url ?? ""));
   if (!target?.webSocketDebuggerUrl) {
-    throw new Error("没有找到可切换主题的 Codex 窗口");
+    throw new Error(`没有找到可切换主题的 ${CLIENT_LABEL} 窗口`);
   }
   return target;
 }
 
-async function withCodexClient(profilePath, action) {
+async function withClientTarget(profilePath, action) {
   const { port } = readDevToolsEndpoint(profilePath);
-  const target = await findCodexTarget(port);
+  const target = await findClientTarget(port);
   const client = new CdpClient(target.webSocketDebuggerUrl);
   await client.connect();
   try {
@@ -138,7 +167,7 @@ function readEvaluationResult(result) {
   if (result.exceptionDetails) {
     const message = result.exceptionDetails.exception?.description
       ?? result.exceptionDetails.text
-      ?? "Codex 没有完成主题切换";
+      ?? `${CLIENT_LABEL} 没有完成主题切换`;
     throw new Error(message);
   }
   return result.result?.value;
@@ -146,15 +175,15 @@ function readEvaluationResult(result) {
 
 export async function getCodexStatus(profilePath) {
   try {
-    const value = await withCodexClient(profilePath, async (client) => {
+    const value = await withClientTarget(profilePath, async (client) => {
       const result = await client.call("Runtime.evaluate", {
         expression: `(async () => {
-          const bridgeInstalled = typeof window.moonseaThemeBridge?.applyRuntimeTheme === "function";
-          const bridgeStatus = bridgeInstalled ? await window.moonseaThemeBridge.getStatus() : null;
+          const bridgeInstalled = typeof ${THEME_BRIDGE}?.applyRuntimeTheme === "function";
+          const bridgeStatus = bridgeInstalled ? await ${THEME_BRIDGE}.getStatus() : null;
           return {
             bridgeInstalled,
             bridgeReady: bridgeStatus?.ready === true,
-            runtimeCapable: typeof window.moonseaThemeBridge?.applyRuntimeTheme === "function",
+            runtimeCapable: typeof ${THEME_BRIDGE}?.applyRuntimeTheme === "function",
             runtimeActive: bridgeStatus?.runtimeActive === true,
             edition: bridgeStatus?.edition ?? null,
             themeId: bridgeStatus?.themeId ?? null,
@@ -176,13 +205,13 @@ export async function getCodexStatus(profilePath) {
           themeId: value.themeId,
           assistantPresent: value.assistantPresent,
           message: value.restoreError
-            ? `Codex 已连接，外观恢复失败：${value.restoreError}`
-            : "Codex 已连接",
+            ? `${CLIENT_LABEL} 已连接，外观恢复失败：${value.restoreError}`
+            : `${CLIENT_LABEL} 已连接`,
         }
       : {
           connected: false,
           message: value?.bridgeInstalled
-            ? "Codex 正在完成启动…"
+            ? `${CLIENT_LABEL} 正在完成启动…`
             : "月海版需要更新后才能即时切换",
         };
   } catch (error) {
@@ -199,9 +228,9 @@ function resolveBundledTheme(themeId) {
 
 export async function applyThemeToCodex(profilePath, theme) {
   const startedAt = performance.now();
-  const bridgeResult = await withCodexClient(profilePath, async (client) => {
+  const bridgeResult = await withClientTarget(profilePath, async (client) => {
     const result = await client.call("Runtime.evaluate", {
-      expression: `window.moonseaThemeBridge.applyRuntimeTheme(${JSON.stringify(theme)})`,
+      expression: `${THEME_BRIDGE}.applyRuntimeTheme(${JSON.stringify(theme)})`,
       awaitPromise: true,
       returnByValue: true,
     });
@@ -214,7 +243,7 @@ export async function applyThemeToCodex(profilePath, theme) {
 }
 
 export async function exchangeAssistantUpdate(profilePath, update) {
-  return withCodexClient(profilePath, async (client) => {
+  return withClientTarget(profilePath, async (client) => {
     const result = await client.call("Runtime.evaluate", {
       expression: `(() => {
         const bridge = window.moonseaAssistantUpdateBridge;

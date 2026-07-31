@@ -252,7 +252,7 @@
       applyImageWallpaperFrame(runtime);
       document.documentElement.style.setProperty(
         "--moonsea-wallpaper-image",
-        `url("app://-/moonsea/wallpapers/${runtime.wallpaper}")`,
+        `url("${new URL(`./moonsea/wallpapers/${runtime.wallpaper}`, document.baseURI).href}")`,
       );
     } else {
       if (!/^\d+% \d+%$/.test(runtime.wallpaperPosition ?? "")) {
@@ -768,7 +768,7 @@
   };
 
   const enable = async (runtime = null, options = {}) => {
-    if (!document.body) throw new Error("Codex 窗口还没有准备好");
+    if (!document.body) throw new Error("客户端窗口还没有准备好");
     const generation = ++runtimeGeneration;
     await ensureStylesheet();
     active = true;

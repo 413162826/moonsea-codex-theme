@@ -8,10 +8,12 @@ import process from "node:process";
 import test from "node:test";
 import {
   createRequestHandler,
+  getClientTargetConfig,
   isAllowedOrigin,
   isLocalAdminOrigin,
   parseDevToolsActivePort,
   PUBLIC_SITE_ORIGIN,
+  THEME_BRIDGE,
 } from "../src/manager-core.mjs";
 import { getStandardTheme, STANDARD_THEMES } from "../src/theme-catalog.mjs";
 import { getProTheme, PRO_THEMES } from "../src/pro-theme-catalog.mjs";
@@ -98,6 +100,17 @@ test("解析 Codex 随机调试端口", () => {
     socketPath: "/devtools/browser/test",
   });
   assert.throws(() => parseDevToolsActivePort("0\n"), /调试端口无效/);
+});
+
+test("WorkBuddy 助手只连接 renderer 主页面和固定主题桥", () => {
+  const target = getClientTargetConfig("workbuddy");
+  assert.equal(target.url, null);
+  assert.match(
+    "file:///D:/Moonsea/WorkBuddy/resources/app.asar/renderer/index.html",
+    target.pattern,
+  );
+  assert.doesNotMatch("app://-/webview/index.html", target.pattern);
+  assert.equal(THEME_BRIDGE, "window.moonseaThemeBridge");
 });
 
 test("本地助手只接受官网和本机页面", () => {
@@ -236,8 +249,11 @@ test("统一壁纸运行时可以启用并完整退出", () => {
   assert.match(runtime, /root\.style\.colorScheme = runtime\.palette\.scheme/);
   assert.match(runtime, /applyRuntimePalette\(null\)/);
   assert.match(runtime, /--moonsea-wallpaper-gradient/);
-  assert.match(runtime, /url\("app:\/\/-\/moonsea\/wallpapers\/\$\{runtime\.wallpaper\}"\)/);
-  assert.doesNotMatch(runtime, /\.\/moonsea\/wallpapers\//);
+  assert.match(
+    runtime,
+    /new URL\(`\.\/moonsea\/wallpapers\/\$\{runtime\.wallpaper\}`, document\.baseURI\)\.href/,
+  );
+  assert.doesNotMatch(runtime, /app:\/\/-\/moonsea\/wallpapers/);
   assert.match(runtime, /savedWallpaperRecord/);
   assert.match(runtime, /settings\.wallpaperSource === "custom"/);
   assert.match(runtime, /applyPackagedWallpaper\(runtime\)/);
@@ -547,10 +563,15 @@ test("正式发布必须经过候选包准入且复用同一批产物", () => {
   assert.match(releaseWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(releaseWorkflow, /push:\s*\n\s*tags:/);
   assert.match(releaseWorkflow, /windows_release_gate:/);
+  assert.match(releaseWorkflow, /workbuddy_windows_release_gate:/);
   assert.match(releaseWorkflow, /tests\/windows-release-gate\.ps1/);
   assert.match(
     releaseWorkflow,
-    /needs:\s*\[web_gate, windows_candidate, macos_candidate, windows_release_gate\]/,
+    /workbuddy_windows_release_gate:[\s\S]*tests\/windows-setup-smoke\.ps1[\s\S]*-Client workbuddy/,
+  );
+  assert.match(
+    releaseWorkflow,
+    /needs:\s*\[web_gate, windows_candidate, macos_candidate, windows_release_gate, workbuddy_windows_release_gate\]/,
   );
   assert.match(releaseWorkflow, /environment:\s*production-release/);
   assert.match(
@@ -558,6 +579,10 @@ test("正式发布必须经过候选包准入且复用同一批产物", () => {
     /actions\/download-artifact@[\w.]+[\s\S]*merge-multiple:\s*true/,
   );
   assert.match(releaseWorkflow, /scripts\/ci\/probe-release\.sh/);
+  assert.match(releaseWorkflow, /Build-WorkBuddy-Setup\.ps1/);
+  assert.match(releaseWorkflow, /Moonsea-WorkBuddy-Windows-x64-Setup\.exe/);
+  assert.match(releaseWorkflow, /Moonsea-WorkBuddy-macOS\.zip/);
+  assert.match(releaseWorkflow, /update-workbuddy\.json/);
   assert.match(ciWorkflow, /working-directory:\s*web/);
   assert.match(ciWorkflow, /npm run lint[\s\S]*npm test/);
   assert.match(
@@ -598,6 +623,71 @@ test("Windows 发布脚本兼容非 UTF-8 系统区域的 PowerShell 5.1", () =>
   );
   assert.match(installer, /@\(& node \$BuilderPath @Arguments 2>&1\)/);
   assert.match(installer, /\$output \| ForEach-Object \{ Write-Host \$_ \}/);
+});
+
+test("WorkBuddy Windows 链路使用独立客户端协议与安装器", () => {
+  const scriptsRoot = path.join(projectRoot, "scripts", "windows");
+  const installer = fs.readFileSync(
+    path.join(scriptsRoot, "Install-Moonsea-WorkBuddy-Windows.ps1"),
+    "ascii",
+  );
+  const launcher = fs.readFileSync(
+    path.join(scriptsRoot, "Start-Moonsea-WorkBuddy-Windows.ps1"),
+    "ascii",
+  );
+  const setupBuilder = fs.readFileSync(
+    path.join(scriptsRoot, "Build-WorkBuddy-Setup.ps1"),
+    "ascii",
+  );
+  const setup = fs.readFileSync(
+    path.join(projectRoot, "installer", "windows", "WorkBuddy.iss"),
+    "utf8",
+  );
+
+  assert.match(installer, /--client", "workbuddy"/);
+  assert.match(installer, /CurrentVersion\\Uninstall/);
+  const discovery = installer.match(
+    /function Find-OfficialWorkBuddyApp \{[\s\S]*?\r?\n\}\r?\n\r?\nfunction Get-AppVersion/,
+  )?.[0];
+  assert.ok(discovery);
+  assert.doesNotMatch(discovery, /Get-CimInstance Win32_Process/);
+  assert.match(launcher, /\$env:WORKBUDDY_REMOTE_DEBUGGING_PORT/);
+  assert.match(launcher, /\$env:WORKBUDDY_USER_DATA_DIR/);
+  assert.match(launcher, /\$env:WORKBUDDY_CONFIG_DIR/);
+  assert.doesNotMatch(launcher, /--remote-debugging-port/);
+  assert.doesNotMatch(launcher, /--user-data-dir/);
+  assert.match(setupBuilder, /launcher-workbuddy\\WorkBuddyLauncher\.csproj/);
+  assert.match(setupBuilder, /--client workbuddy --theme-version/);
+  assert.match(setup, /Invoke-Moonsea-WorkBuddy-Install\.ps1/);
+  assert.doesNotMatch(setup, /Invoke-Moonsea-Install\.ps1/);
+});
+
+test("WorkBuddy macOS 链路使用独立客户端协议与更新器", () => {
+  const scriptsRoot = path.join(projectRoot, "scripts", "macos");
+  const installer = fs.readFileSync(
+    path.join(scriptsRoot, "install-moonsea-workbuddy.sh"),
+    "utf8",
+  );
+  const launcher = fs.readFileSync(
+    path.join(scriptsRoot, "Start-Moonsea-WorkBuddy-macOS.command"),
+    "utf8",
+  );
+  const updater = fs.readFileSync(
+    path.join(scriptsRoot, "update-moonsea-workbuddy.sh"),
+    "utf8",
+  );
+  assert.match(installer, /--client workbuddy --edition standard --theme-version/);
+  assert.match(installer, /client -string "workbuddy"/);
+  assert.match(
+    launcher,
+    /MOONSEA_MANAGER_PORT="\$\{MOONSEA_MANAGER_PORT:-17322\}"/,
+  );
+  assert.match(launcher, /WORKBUDDY_REMOTE_DEBUGGING_PORT/);
+  assert.match(launcher, /WORKBUDDY_USER_DATA_DIR/);
+  assert.match(launcher, /WORKBUDDY_CONFIG_DIR/);
+  assert.doesNotMatch(launcher, /--remote-debugging-port|--user-data-dir/);
+  assert.match(updater, /install-moonsea-workbuddy\.sh/);
+  assert.doesNotMatch(updater, /scripts\/macos\/install-moonsea\.sh/);
 });
 
 test("Windows 安装失败不会留下可点击快捷方式", () => {

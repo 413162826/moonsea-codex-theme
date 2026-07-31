@@ -1,14 +1,16 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string]$SetupPath
+    [string]$SetupPath,
+    [ValidateSet("codex", "workbuddy")]
+    [string]$Client = "codex"
 )
 
 $ErrorActionPreference = "Stop"
 $sourceRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $testRoot = Join-Path $sourceRoot ".build\windows-setup-smoke"
 $sourceApp = Join-Path $testRoot "Official-Windows"
-$installRoot = Join-Path $testRoot "MoonseaCodex"
+$installRoot = Join-Path $testRoot $(if ($Client -eq "workbuddy") { "MoonseaWorkBuddy" } else { "MoonseaCodex" })
 $setupLog = Join-Path $testRoot "setup.log"
 $updateLog = Join-Path $testRoot "update.log"
 $managerPort = 18321
@@ -16,6 +18,7 @@ $managerPort = 18321
 $previousManagerPort = $env:MOONSEA_MANAGER_PORT
 $previousSourceApp = $env:MOONSEA_SOURCE_APP
 $previousSkipLaunch = $env:MOONSEA_SKIP_LAUNCH
+$previousClient = $env:MOONSEA_CLIENT
 
 $SetupPath = [System.IO.Path]::GetFullPath($SetupPath)
 if (-not (Test-Path -LiteralPath $SetupPath -PathType Leaf)) {
@@ -27,10 +30,11 @@ if (Test-Path -LiteralPath $testRoot) {
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 
 try {
-    node (Join-Path $sourceRoot "tests\create-fixture.mjs") windows $sourceApp | Out-Null
+    node (Join-Path $sourceRoot "tests\create-fixture.mjs") windows $sourceApp $Client | Out-Null
     $env:MOONSEA_MANAGER_PORT = [string]$managerPort
     $env:MOONSEA_SOURCE_APP = $sourceApp
     $env:MOONSEA_SKIP_LAUNCH = "1"
+    $env:MOONSEA_CLIENT = $Client
 
     $setupProcess = Start-Process `
         -FilePath $SetupPath `
@@ -57,19 +61,23 @@ try {
     }
 
     $manifestPath = Join-Path $installRoot "install.json"
-    $launcherPath = Join-Path $installRoot "MoonseaLauncher.exe"
+    $launcherName = if ($Client -eq "workbuddy") { "MoonseaWorkBuddyLauncher.exe" } else { "MoonseaLauncher.exe" }
+    $launcherPath = Join-Path $installRoot $launcherName
     $uninstallerPath = Join-Path $installRoot "unins000.exe"
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
         throw "Setup.exe did not create install.json"
     }
     if (-not (Test-Path -LiteralPath $launcherPath -PathType Leaf)) {
-        throw "Setup.exe did not install MoonseaLauncher.exe"
+        throw "Setup.exe did not install $launcherName"
     }
     if (-not (Test-Path -LiteralPath $uninstallerPath -PathType Leaf)) {
         throw "Setup.exe did not register its uninstaller"
     }
 
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($Client -eq "workbuddy" -and $manifest.client -ne "workbuddy") {
+        throw "Setup.exe did not create a WorkBuddy installation"
+    }
     if (-not (Test-Path -LiteralPath $manifest.activeBuild -PathType Container)) {
         throw "Setup.exe did not create a valid Moonsea Codex build"
     }
@@ -141,6 +149,7 @@ finally {
     $env:MOONSEA_MANAGER_PORT = $previousManagerPort
     $env:MOONSEA_SOURCE_APP = $previousSourceApp
     $env:MOONSEA_SKIP_LAUNCH = $previousSkipLaunch
+    $env:MOONSEA_CLIENT = $previousClient
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
     }
