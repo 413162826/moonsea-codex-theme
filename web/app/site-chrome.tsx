@@ -14,6 +14,8 @@ export function SiteHeader() {
   const pathname = usePathname();
   const client = useClientTarget();
   const clientConfig = CLIENT_TARGETS[client];
+  const showThemeControls =
+    pathname === "/themes" || pathname.startsWith("/themes/");
 
   return (
     <header className="site-header site-header--moonsea">
@@ -27,29 +29,30 @@ export function SiteHeader() {
             <small>主题实验室</small>
           </span>
         </Link>
-        <nav className="site-nav" aria-label="主要导航">
-          <Link className="site-nav__home" href="/" prefetch aria-current={pathname === "/" ? "page" : undefined}>首页</Link>
-          <div className="product-switch" aria-label="应用到">
-            {(["codex", "workbuddy"] as const).map((target) => (
-              <button
-                className={client === target ? "is-active" : ""}
-                key={target}
-                type="button"
-                onClick={() => setClientTarget(target)}
-                aria-pressed={client === target}
-              >
-                {CLIENT_TARGETS[target].label}
-              </button>
-            ))}
-          </div>
-          <a
-            className="download-link"
-            href={`/download?client=${client}`}
-            aria-label={`下载 ${clientConfig.label} 版`}
-          >
-            下载
-          </a>
-        </nav>
+        {showThemeControls ? (
+          <nav className="site-nav" aria-label="主题操作">
+            <div className="product-switch" aria-label="应用到">
+              {(["codex", "workbuddy"] as const).map((target) => (
+                <button
+                  className={client === target ? "is-active" : ""}
+                  key={target}
+                  type="button"
+                  onClick={() => setClientTarget(target)}
+                  aria-pressed={client === target}
+                >
+                  {CLIENT_TARGETS[target].label}
+                </button>
+              ))}
+            </div>
+            <a
+              className="download-link"
+              href={`/download?client=${client}`}
+              aria-label={`下载 ${clientConfig.label} 版`}
+            >
+              下载
+            </a>
+          </nav>
+        ) : null}
       </div>
     </header>
   );

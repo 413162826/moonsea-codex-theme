@@ -9,7 +9,7 @@ export type SiteUpdate = {
   id: string;
   date: string;
   displayDate: string;
-  kind: "站点更新" | "版本";
+  kind: "站点更新" | "版本" | "壁纸上新";
   version: string;
   title: string;
   summary: string;

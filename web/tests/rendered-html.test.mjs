@@ -144,9 +144,8 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.match(html, /浏览主题/);
   assert.doesNotMatch(html, /浏览 Codex 主题|浏览 WorkBuddy 主题/);
   assert.match(html, /同一套主题，一键应用到 Codex 或 WorkBuddy/);
-  assert.match(html, /href="\/download\?client=codex"/);
-  assert.match(html, /aria-label="主要导航"/);
-  assert.match(html, /aria-label="应用到"/);
+  assert.doesNotMatch(html, /href="\/download\?client=codex"/);
+  assert.doesNotMatch(html, /aria-label="主题操作"|aria-label="应用到"/);
   assert.match(html, /landing-codex-preview/);
   assert.match(html, /切换精选主题/);
   assert.match(html, /最新主题/);
@@ -368,8 +367,9 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
     updatesHtml,
     /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/updates"/,
   );
-  assert.match(updatesHtml, /月海，/);
-  assert.match(updatesHtml, /持续发生。/);
+  assert.match(updatesHtml, /<h1>更新日志<\/h1>/);
+  assert.match(updatesHtml, /记录功能更新、体验改进与每一张新壁纸。/);
+  assert.doesNotMatch(updatesHtml, /月海，|持续发生。|MOONSEA RELEASE CURRENT/);
   assert.match(updatesHtml, /一个主题墙，两个工作台/);
   assert.match(updatesHtml, /WorkBuddy 正式加入月海/);
   assert.match(updatesHtml, /新壁纸，不再要求升级整个助手/);
@@ -524,18 +524,29 @@ test("页面访问接口按匿名浏览器设置站点级访客标识", async ()
   assert.equal(invalidThemeView.status, 400);
 });
 
-test("首页与统一主题墙使用常驻导航和即时应用切换", async () => {
+test("应用切换与下载只在主题页出现", async () => {
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(styles, /\.site-header\s*\{[^}]*position:\s*sticky/s);
   assert.match(styles, /\.product-switch\s*\{/);
   const chrome = await readFile(new URL("../app/site-chrome.tsx", import.meta.url), "utf8");
+  assert.match(chrome, /pathname === "\/themes" \|\| pathname\.startsWith\("\/themes\/"\)/);
+  assert.match(chrome, /showThemeControls \? \(/);
   assert.match(chrome, /setClientTarget\(target\)/);
   assert.match(chrome, /aria-label="应用到"/);
   assert.doesNotMatch(chrome, /href="\/workbuddy"/);
+  assert.doesNotMatch(chrome, /site-nav__home|>首页<\/Link>/);
   assert.match(chrome, /className="download-link"/);
   assert.match(chrome, />\s*下载\s*<\/a>/);
   assert.doesNotMatch(chrome, /下载 Codex 版|下载 WorkBuddy 版/);
   assert.doesNotMatch(chrome, /revealOnHover|hideNavigation|pointermove/);
+
+  const homepageHtml = await (await fetch(origin)).text();
+  const themesHtml = await (await fetch(`${origin}/themes`)).text();
+  const updatesHtml = await (await fetch(`${origin}/updates`)).text();
+  assert.doesNotMatch(homepageHtml, /aria-label="应用到"|aria-label="主题操作"/);
+  assert.doesNotMatch(updatesHtml, /aria-label="应用到"|aria-label="主题操作"/);
+  assert.match(themesHtml, /aria-label="应用到"/);
+  assert.match(themesHtml, /aria-label="主题操作"/);
 });
 
 test("月海品牌标识使用月牙与潮汐组合图形", async () => {
