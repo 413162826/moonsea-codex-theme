@@ -22,16 +22,8 @@ export default function UpdatesPage() {
       <SiteHeader />
       <main className="updates-page">
         <header className="updates-hero">
-          <p className="eyebrow">MOONSEA RELEASE CURRENT</p>
-          <h1>
-            月海，
-            <span>持续发生。</span>
-          </h1>
-          <p>
-            从一张新壁纸，到一次更自然的应用体验。
-            <br />
-            这里记录月海正在变好的每一步。
-          </p>
+          <h1>更新日志</h1>
+          <p>记录功能更新、体验改进与每一张新壁纸。</p>
         </header>
 
         <ol className="updates-timeline" aria-label="月海更新记录">
