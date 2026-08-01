@@ -788,8 +788,9 @@ test("Pro 封面将真实壁纸渲染在虚拟 Codex 窗口内", async () => {
   assert.match(gallery, /function ProCodexPreview/);
   assert.match(gallery, /className=\{`pro-codex-window/);
   assert.match(gallery, /className="pro-codex-body"/);
-  assert.match(gallery, /url\("\$\{wallpaper\}"\)/);
-  assert.doesNotMatch(gallery, /theme\.previewImage\s*\?\s*<img/);
+  assert.match(gallery, /className="pro-codex-wallpaper"/);
+  assert.match(gallery, /loading=\{className\.includes\("landing"\) \? "eager" : "lazy"\}/);
+  assert.doesNotMatch(gallery, /url\("\$\{wallpaper\}"\)/);
   assert.match(gallery, /productLabel = "主题"/);
   assert.match(gallery, /\{productLabel\} · \{theme\.name\}/);
   assert.match(gallery, /productLabel = "工作台"/);
