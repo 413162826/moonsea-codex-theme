@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
-export const TELEMETRY_ENDPOINT = "https://moonsea-codex-theme.suguowen5.chatgpt.site/api/telemetry";
+export const TELEMETRY_ENDPOINT = "https://moonsea.kevinsu.xyz/api/telemetry";
 export const TELEMETRY_INTERVAL_MS = 5 * 60 * 1000;
 export const TELEMETRY_RETRY_MS = 5 * 60 * 1000;
 

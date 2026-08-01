@@ -4,7 +4,7 @@
 
 ## 开始使用
 
-1. 打开[月海主题官网](https://moonsea-codex-theme.suguowen5.chatgpt.site)。
+1. 打开[月海主题官网](https://moonsea.kevinsu.xyz)。
 2. 点击“下载”，网站会自动识别 Windows 或 macOS。
 3. 完成安装并打开“Codex 月海版”。
 4. 回到官网主题墙，选择壁纸并点击应用。

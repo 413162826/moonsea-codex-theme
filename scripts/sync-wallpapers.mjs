@@ -64,7 +64,7 @@ const remoteProThemes = PRO_THEMES.map((theme) => {
       contentType: "image/png",
       sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
       size: bytes.length,
-      url: `https://moonsea-codex-theme.suguowen5.chatgpt.site/theme-assets/${file}`,
+      url: `https://moonsea.kevinsu.xyz/theme-assets/${file}`,
     },
   };
 });

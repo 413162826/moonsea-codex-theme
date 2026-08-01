@@ -9,7 +9,10 @@ export const MANAGER_PORT = Number.parseInt(process.env.MOONSEA_MANAGER_PORT ?? 
 if (!Number.isInteger(MANAGER_PORT) || MANAGER_PORT < 1 || MANAGER_PORT > 65535) {
   throw new Error("月海助手端口无效");
 }
-export const PUBLIC_SITE_ORIGIN = "https://moonsea-codex-theme.suguowen5.chatgpt.site";
+export const PUBLIC_SITE_ORIGIN = "https://moonsea.kevinsu.xyz";
+export const LEGACY_SITE_ORIGINS = new Set([
+  "https://moonsea-codex-theme.suguowen5.chatgpt.site",
+]);
 
 // 客户端身份：codex（默认）或 workbuddy。WorkBuddy 通过环境变量注入，
 // 其官方应用包名、调试端口与主题桥名由对应安装包/启动脚本提供。
@@ -39,7 +42,7 @@ const MIME_TYPES = new Map([
 export function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (LOCAL_ORIGINS.has(origin)) return true;
-  return origin === PUBLIC_SITE_ORIGIN;
+  return origin === PUBLIC_SITE_ORIGIN || LEGACY_SITE_ORIGINS.has(origin);
 }
 
 export function isLocalAdminOrigin(origin) {

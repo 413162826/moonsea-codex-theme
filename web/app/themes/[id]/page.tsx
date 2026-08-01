@@ -39,10 +39,23 @@ export default async function ThemePage({ params }: ThemePageProps) {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
+    "@id": new URL(`/themes/${theme.id}#theme`, SITE_URL).toString(),
     name: theme.name,
     description: theme.description,
     isAccessibleForFree: true,
     url: new URL(`/themes/${theme.id}`, SITE_URL).toString(),
+    creator: { "@id": `${SITE_URL}#organization` },
+    keywords: [
+      theme.name,
+      "Codex 壁纸",
+      "Codex 自定义主题",
+      "WorkBuddy 壁纸",
+      "月海主题",
+    ],
+    ...(theme.previewImage
+      ? { image: new URL(theme.previewImage, SITE_URL).toString() }
+      : {}),
+    ...(theme.createdAt ? { dateModified: theme.createdAt } : {}),
   };
 
   return (

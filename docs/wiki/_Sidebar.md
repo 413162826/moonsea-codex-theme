@@ -6,4 +6,4 @@
 - [更新与卸载](更新与卸载)
 - [常见问题](常见问题)
 
-[打开月海主题官网](https://moonsea-codex-theme.suguowen5.chatgpt.site)
+[打开月海主题官网](https://moonsea.kevinsu.xyz)

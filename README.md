@@ -2,7 +2,7 @@
 
 免费沉浸式 Codex 桌面主题。支持 Windows 与 macOS：下载安装月海版后，可从网页主题墙一键换肤，无需重启，也不会修改官方 Codex。
 
-[官网](https://moonsea-codex-theme.suguowen5.chatgpt.site/) · [主题墙](https://moonsea-codex-theme.suguowen5.chatgpt.site/themes) · [下载最新版](https://moonsea-codex-theme.suguowen5.chatgpt.site/download)
+[官网](https://moonsea.kevinsu.xyz/) · [主题墙](https://moonsea.kevinsu.xyz/themes) · [下载最新版](https://moonsea.kevinsu.xyz/download)
 
 ![月海 Codex 主题预览](./web/public/og.png)
 
@@ -12,7 +12,7 @@
 
 ## 使用
 
-1. 打开[月海主题官网](https://moonsea-codex-theme.suguowen5.chatgpt.site)，点击“下载”，网站会自动提供 Windows 或 macOS 安装包。
+1. 打开[月海主题官网](https://moonsea.kevinsu.xyz)，点击“下载”，网站会自动提供 Windows 或 macOS 安装包。
 2. Windows 运行 `Moonsea-Codex-Windows-x64-Setup.exe`；macOS 解压后右键打开 `Install.command`。
 3. 打开桌面的“Codex 月海版”，回到官网选择主题。
 

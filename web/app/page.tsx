@@ -8,10 +8,12 @@ import { ThemeBrowserLink } from "./theme-browser-link";
 export const dynamic = "force-static";
 
 export const metadata: Metadata = {
+  title: "Codex 壁纸与 WorkBuddy 主题",
+  description: "免费 Codex 壁纸、WorkBuddy 主题与月海助手，一键应用，保持安静、专注、氛围编程。",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "免费主题，让 Codex / WorkBuddy 更沉浸",
-    description: "保持安静、专注、氛围编程。",
+    title: "Codex 壁纸与 WorkBuddy 主题｜月海",
+    description: "免费主题，让 Codex / WorkBuddy 更沉浸。",
     url: "/",
   },
 };

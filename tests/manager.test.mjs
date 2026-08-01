@@ -115,6 +115,7 @@ test("WorkBuddy 助手只连接 renderer 主页面和固定主题桥", () => {
 
 test("本地助手只接受官网和本机页面", () => {
   assert.equal(isAllowedOrigin(PUBLIC_SITE_ORIGIN), true);
+  assert.equal(isAllowedOrigin("https://moonsea-codex-theme.suguowen5.chatgpt.site"), true);
   assert.equal(isAllowedOrigin("http://127.0.0.1:17321"), true);
   assert.equal(isAllowedOrigin("app://-"), true);
   assert.equal(isAllowedOrigin("https://example.com"), false);
@@ -468,7 +469,7 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
     assert.equal(theme.asset.contentType, "image/png");
     assert.equal(
       theme.asset.url,
-      `https://moonsea-codex-theme.suguowen5.chatgpt.site/theme-assets/${wallpaper.file}`,
+      `https://moonsea.kevinsu.xyz/theme-assets/${wallpaper.file}`,
     );
     assert.equal(Object.hasOwn(theme.runtime, "wallpaper"), false);
   }
@@ -477,7 +478,7 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
 test("官网按系统直下安装包且入口使用通用命名", () => {
   const website = fs.readFileSync(path.join(projectRoot, "site", "app.js"), "utf8");
   const page = fs.readFileSync(path.join(projectRoot, "site", "index.html"), "utf8");
-  assert.match(website, /suguowen5\.chatgpt\.site\/download/);
+  assert.match(website, /moonsea\.kevinsu\.xyz\/download/);
   assert.match(website, /downloadLabel\.textContent = "下载"/);
   assert.doesNotMatch(website, /Moonsea-Codex-Windows|Moonsea-Codex-macOS/);
   assert.match(page, />下载<\/span>/);

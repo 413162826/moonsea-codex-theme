@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const DEFAULT_THEME_MANIFEST_URL =
-  "https://moonsea-codex-theme.suguowen5.chatgpt.site/theme-catalog-v1.json";
+  "https://moonsea.kevinsu.xyz/theme-catalog-v1.json";
 
 const MAX_THEME_ASSET_SIZE = 12 * 1024 * 1024;
 const THEME_ID = /^[a-z0-9-]+$/;
