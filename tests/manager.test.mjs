@@ -478,7 +478,7 @@ test("壁纸目录同时生成官网预览与安装资源", () => {
 test("官网按系统直下安装包且入口使用通用命名", () => {
   const website = fs.readFileSync(path.join(projectRoot, "site", "app.js"), "utf8");
   const page = fs.readFileSync(path.join(projectRoot, "site", "index.html"), "utf8");
-  assert.match(website, /suguowen5\.chatgpt\.site\/download/);
+  assert.match(website, /moonsea\.kevinsu\.xyz\/download/);
   assert.match(website, /downloadLabel\.textContent = "下载"/);
   assert.doesNotMatch(website, /Moonsea-Codex-Windows|Moonsea-Codex-macOS/);
   assert.match(page, />下载<\/span>/);
