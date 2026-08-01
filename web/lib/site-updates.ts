@@ -24,6 +24,90 @@ export type UpdateCategory = "新功能" | "体验优化" | "修复";
 
 export const SITE_UPDATES: SiteUpdate[] = [
   {
+    id: "wallpapers-2026-08-01",
+    date: "2026-08-01",
+    displayDate: "8 月 1 日",
+    kind: "壁纸上新",
+    category: "新功能",
+    version: "NEW",
+    title: "今日四张新壁纸",
+    summary:
+      "月海壁纸工厂今日上线四个原创主题：晨星换灯人、红月折扇剧场、彗星理发章鱼与睡莲星港。",
+    details: [
+      "四张壁纸均已进入远程主题清单，用户点击应用即可自动获取并生效。",
+      "题材覆盖虚构舞台氛围、搞怪角色与梦境科幻，保持工作区文字可读。",
+      "预览图直接来自公开主题资源，页面展示与实际可应用内容保持一致。",
+    ],
+    images: [
+      {
+        src: "/api/themes/assets/dawn-star-lamplighter",
+        alt: "晨星换灯人壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+      {
+        src: "/api/themes/assets/red-moon-fan-theater",
+        alt: "红月折扇剧场壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+      {
+        src: "/api/themes/assets/comet-barber-octopus",
+        alt: "彗星理发章鱼壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+      {
+        src: "/api/themes/assets/lotus-starport",
+        alt: "睡莲星港壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+    ],
+  },
+  {
+    id: "wallpapers-2026-07-31",
+    date: "2026-07-31",
+    displayDate: "7 月 31 日",
+    kind: "壁纸上新",
+    category: "新功能",
+    version: "NEW",
+    title: "四张原创壁纸加入主题墙",
+    summary:
+      "月轨快递员、零点潮汐舞台、宇宙修理熊与鲸梦邮局完成上传并公开，主题墙开始持续更新。",
+    details: [
+      "每张主题都使用原创角色与场景，不直接使用现成动漫或真人 IP。",
+      "壁纸、配色、可读性遮罩与一键应用信息一并进入远程清单。",
+      "未安装助手的访客也可以先打开模拟窗口预览完整工作氛围。",
+    ],
+    images: [
+      {
+        src: "/api/themes/assets/moon-rail-courier",
+        alt: "月轨快递员壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+      {
+        src: "/api/themes/assets/midnight-tide-stage",
+        alt: "零点潮汐舞台壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+      {
+        src: "/api/themes/assets/cosmic-repair-bear",
+        alt: "宇宙修理熊壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+      {
+        src: "/api/themes/assets/whale-dream-post-office",
+        alt: "鲸梦邮局壁纸预览",
+        width: 1600,
+        height: 900,
+      },
+    ],
+  },
+  {
     id: "unified-theme-wall",
     date: "2026-07-31",
     displayDate: "7 月 31 日",
