@@ -29,6 +29,39 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+const THEME_LIST_CACHE_TTL_MS = 60_000;
+let themeListCache: { body: string; expiresAt: number } | null = null;
+let themeListLoad: Promise<string> | null = null;
+
+async function getCachedThemeList(db: D1Database) {
+  const now = Date.now();
+  if (themeListCache && themeListCache.expiresAt > now) {
+    return themeListCache.body;
+  }
+  if (!themeListLoad) {
+    themeListLoad = getThemesWithUploads(db)
+      .then((themes) => JSON.stringify(themes))
+      .finally(() => {
+        themeListLoad = null;
+      });
+  }
+  const body = await themeListLoad;
+  themeListCache = {
+    body,
+    expiresAt: Date.now() + THEME_LIST_CACHE_TTL_MS,
+  };
+  return body;
+}
+
+function themeListResponse(body: string) {
+  return new Response(body, {
+    headers: {
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+      "Content-Type": "application/json; charset=utf-8",
+    },
+  });
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -55,12 +88,7 @@ const worker = {
     }
 
     if (url.pathname === "/api/themes" && request.method === "GET") {
-      return Response.json(await getThemesWithUploads(env.DB), {
-        headers: {
-          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-          "Content-Type": "application/json; charset=utf-8",
-        },
-      });
+      return themeListResponse(await getCachedThemeList(env.DB));
     }
 
     if (url.pathname === "/api/admin/access" && request.method === "GET") {
