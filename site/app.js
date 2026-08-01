@@ -72,7 +72,7 @@ function updateCardActions() {
 }
 
 function configureDownload() {
-  elements.downloadLink.href = "https://moonsea-codex-theme.suguowen5.chatgpt.site/download";
+  elements.downloadLink.href = "https://moonsea.kevinsu.xyz/download";
   elements.downloadLabel.textContent = "下载";
 }
 

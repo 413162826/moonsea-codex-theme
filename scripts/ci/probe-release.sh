@@ -3,7 +3,7 @@ set -euo pipefail
 
 release_version="${1:?用法：probe-release.sh <version>}"
 repository="${GITHUB_REPOSITORY:-413162826/moonsea-codex-theme}"
-site_url="${MOONSEA_SITE_URL:-https://moonsea-codex-theme.suguowen5.chatgpt.site}"
+site_url="${MOONSEA_SITE_URL:-https://moonsea.kevinsu.xyz}"
 manifest_url="https://github.com/$repository/releases/latest/download/update.json"
 workbuddy_manifest_url="https://github.com/$repository/releases/latest/download/update-workbuddy.json"
 temp_root="$(mktemp -d)"

@@ -135,7 +135,7 @@ test("官网服务端渲染月海产品内容", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>月海主题<\/title>/i);
+  assert.match(html, /<title>Codex 壁纸与 WorkBuddy 主题 · 月海<\/title>/i);
   assert.match(html, /免费主题，/);
   assert.match(html, /让 Codex \/ WorkBuddy/);
   assert.match(html, /更沉浸/);
@@ -175,7 +175,8 @@ test("主题墙使用独立页面并保留 Codex 连接入口", async () => {
   assert.match(html, new RegExp(`显示 ${publicCatalog.themes.length} 个主题`));
   assert.match(html, /下载安装/);
   assert.match(html, /href="\/themes\/moon-white\?client=codex"/);
-  assert.doesNotMatch(html, /Codex 主题|WorkBuddy 主题/);
+  assert.match(html, /Codex 壁纸/);
+  assert.match(html, /WorkBuddy 壁纸/);
   assert.doesNotMatch(html, /连接后应用/);
   assert.doesNotMatch(html, /使用统计|统计使用量|管理员数据/);
 });
@@ -219,7 +220,7 @@ test("每个主题有可索引、可下载和可分享的独立页面", async ()
   assert.match(html, /CreativeWork/);
   assert.match(
     html,
-    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moon-white"/,
+    /rel="canonical" href="https:\/\/moonsea\.kevinsu\.xyz\/themes\/moon-white"/,
   );
 
   const moonlitResponse = await fetch(`${origin}/themes/moonlit-silent`);
@@ -350,14 +351,14 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
   const homepageHtml = await homepage.text();
   assert.match(
     homepageHtml,
-    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/"/,
+    /rel="canonical" href="https:\/\/moonsea\.kevinsu\.xyz\/"/,
   );
 
   const themes = await fetch(`${origin}/themes`);
   const themesHtml = await themes.text();
   assert.match(
     themesHtml,
-    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes"/,
+    /rel="canonical" href="https:\/\/moonsea\.kevinsu\.xyz\/themes"/,
   );
 
   const updates = await fetch(`${origin}/updates`);
@@ -365,7 +366,7 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
   assert.equal(updates.status, 200);
   assert.match(
     updatesHtml,
-    /rel="canonical" href="https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/updates"/,
+    /rel="canonical" href="https:\/\/moonsea\.kevinsu\.xyz\/updates"/,
   );
   assert.match(updatesHtml, /<h1>更新日志<\/h1>/);
   assert.match(updatesHtml, /记录功能更新、体验改进与每一张新壁纸。/);
@@ -385,18 +386,18 @@ test("公开页面提供固定 canonical、robots 与 sitemap", async () => {
   assert.match(robotsText, /Allow: \/updates/);
   assert.match(
     robotsText,
-    /Sitemap: https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/sitemap\.xml/,
+    /Sitemap: https:\/\/moonsea\.kevinsu\.xyz\/sitemap\.xml/,
   );
 
   const sitemap = await fetch(`${origin}/sitemap.xml`);
   assert.equal(sitemap.status, 200);
   const sitemapText = await sitemap.text();
-  assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes<\/loc>/);
-  assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/updates<\/loc>/);
-  assert.match(sitemapText, /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moon-white<\/loc>/);
+  assert.match(sitemapText, /<loc>https:\/\/moonsea\.kevinsu\.xyz\/themes<\/loc>/);
+  assert.match(sitemapText, /<loc>https:\/\/moonsea\.kevinsu\.xyz\/updates<\/loc>/);
+  assert.match(sitemapText, /<loc>https:\/\/moonsea\.kevinsu\.xyz\/themes\/moon-white<\/loc>/);
   assert.match(
     sitemapText,
-    /<loc>https:\/\/moonsea-codex-theme\.suguowen5\.chatgpt\.site\/themes\/moonlit-silent<\/loc>/,
+    /<loc>https:\/\/moonsea\.kevinsu\.xyz\/themes\/moonlit-silent<\/loc>/,
   );
 });
 
