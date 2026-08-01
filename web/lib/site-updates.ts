@@ -10,6 +10,7 @@ export type SiteUpdate = {
   date: string;
   displayDate: string;
   kind: "站点更新" | "版本" | "壁纸上新";
+  category: UpdateCategory;
   version: string;
   title: string;
   summary: string;
@@ -19,12 +20,15 @@ export type SiteUpdate = {
   current?: boolean;
 };
 
+export type UpdateCategory = "新功能" | "体验优化" | "修复";
+
 export const SITE_UPDATES: SiteUpdate[] = [
   {
     id: "unified-theme-wall",
     date: "2026-07-31",
     displayDate: "7 月 31 日",
     kind: "站点更新",
+    category: "新功能",
     version: "现在",
     title: "一个主题墙，两个工作台",
     summary:
@@ -49,6 +53,7 @@ export const SITE_UPDATES: SiteUpdate[] = [
     date: "2026-07-31",
     displayDate: "7 月 31 日",
     kind: "版本",
+    category: "新功能",
     version: "v1.5.9",
     title: "WorkBuddy 正式加入月海",
     summary:
@@ -74,6 +79,7 @@ export const SITE_UPDATES: SiteUpdate[] = [
     date: "2026-07-30",
     displayDate: "7 月 30 日",
     kind: "版本",
+    category: "体验优化",
     version: "v1.5.8",
     title: "新壁纸，不再要求升级整个助手",
     summary:
@@ -99,6 +105,7 @@ export const SITE_UPDATES: SiteUpdate[] = [
     date: "2026-07-30",
     displayDate: "7 月 30 日",
     kind: "版本",
+    category: "修复",
     version: "v1.5.7",
     title: "让下载与发布更可信",
     summary:
@@ -116,6 +123,7 @@ export const SITE_UPDATES: SiteUpdate[] = [
     date: "2026-07-27",
     displayDate: "7 月 27 日",
     kind: "版本",
+    category: "修复",
     version: "v1.5.6",
     title: "更新链路开始可验证、可恢复",
     summary:
