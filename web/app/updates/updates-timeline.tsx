@@ -149,11 +149,35 @@ function UpdateGallery({ update, onClose }: { update: SiteUpdate; onClose: () =>
 export function UpdatesTimeline({ updates }: { updates: SiteUpdate[] }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["value"]>("all");
   const [galleryUpdateId, setGalleryUpdateId] = useState<string | null>(null);
+  const [dynamicUpdates, setDynamicUpdates] = useState<SiteUpdate[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/updates", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<unknown> : [])
+      .then((value) => {
+        if (!cancelled && Array.isArray(value)) setDynamicUpdates(value as SiteUpdate[]);
+      })
+      .catch(() => {
+        // 动态日志不可用时保留已静态发布的历史记录。
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const mergedUpdates = useMemo(() => {
+    const byId = new Map(updates.map((update) => [update.id, update]));
+    dynamicUpdates.forEach((update) => byId.set(update.id, update));
+    return [...byId.values()].sort((left, right) => {
+      const dateOrder = right.date.localeCompare(left.date);
+      if (dateOrder !== 0) return dateOrder;
+      return (right.createdAt ?? "").localeCompare(left.createdAt ?? "");
+    });
+  }, [dynamicUpdates, updates]);
   const visibleUpdates = useMemo(
-    () => filter === "all" ? updates : updates.filter((update) => update.category === filter),
-    [filter, updates],
+    () => filter === "all" ? mergedUpdates : mergedUpdates.filter((update) => update.category === filter),
+    [filter, mergedUpdates],
   );
-  const galleryUpdate = updates.find((update) => update.id === galleryUpdateId);
+  const galleryUpdate = mergedUpdates.find((update) => update.id === galleryUpdateId);
   const closeGallery = () => setGalleryUpdateId(null);
 
   return (

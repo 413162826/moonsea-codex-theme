@@ -63,6 +63,7 @@ async function ensureLocalVisitorSchema() {
     "0003_cloudy_hemingway.sql",
     "0004_sudden_giant_girl.sql",
     "0005_luxuriant_skin.sql",
+    "0006_worthless_madame_hydra.sql",
   ];
   const migrations = await Promise.all(
     migrationFiles.map((file) =>
@@ -342,6 +343,111 @@ test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即
       authorization: "Bearer machine-upload-token",
     },
     body: form,
+  });
+  assert.equal(duplicate.status, 409);
+});
+
+test("更新日志 API 复用上传鉴权并从公开主题生成四张预览图", async () => {
+  const countBefore = Number((await (await fetch(`${origin}/api/updates`)).json()).length);
+  const unauthorized = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: "unauthorized-update", date: "2026-08-02" }),
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const forgedEmail = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "oai-authenticated-user-email": "attacker@example.com",
+    },
+    body: JSON.stringify({ id: "forged-email-update", date: "2026-08-02" }),
+  });
+  assert.equal(forgedEmail.status, 401);
+
+  const wrongContentType = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer machine-upload-token",
+      "content-type": "text/plain",
+    },
+    body: "{}",
+  });
+  assert.equal(wrongContentType.status, 415);
+
+  const countAfterProbes = Number((await (await fetch(`${origin}/api/updates`)).json()).length);
+  assert.equal(countAfterProbes, countBefore);
+
+  const wallpaper = await readFile(
+    new URL("../../assets/wallpapers/moonlit-silent.png", import.meta.url),
+  );
+  for (const [index, id] of ["update-preview-one", "update-preview-two", "update-preview-three"].entries()) {
+    const form = new FormData();
+    form.set("metadata", JSON.stringify({
+      id,
+      name: `日志预览${index + 1}`,
+      description: "用于更新日志真实预览的原创主题图片",
+      mode: "dark",
+      accent: "#D9894E",
+      surface: "#081623",
+      ink: "#EDF4F6",
+      wallpaperPosition: "50% 50%",
+    }));
+    form.set("wallpaper", new File([wallpaper], `${id}.png`, { type: "image/png" }));
+    const response = await fetch(`${origin}/api/admin/themes`, {
+      method: "POST",
+      headers: { authorization: "Bearer machine-upload-token" },
+      body: form,
+    });
+    assert.equal(response.status, 201, await response.text());
+  }
+
+  const payload = {
+    id: "wallpapers-2026-08-02-test",
+    date: "2026-08-02",
+    displayDate: "8 月 2 日",
+    kind: "壁纸上新",
+    category: "新功能",
+    version: "NEW",
+    title: "四张新壁纸测试批次",
+    summary: "完整批次验收后一次发布更新日志。",
+    details: ["四张图片来自公开主题资源。"],
+    themeIds: ["neon-rain-town", "update-preview-one", "update-preview-two", "update-preview-three"],
+  };
+  const published = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer machine-upload-token",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const publishedText = await published.text();
+  assert.equal(published.status, 201, publishedText);
+  const record = JSON.parse(publishedText);
+  assert.equal(record.id, payload.id);
+  assert.equal(record.images.length, 4);
+  for (const image of record.images) {
+    assert.match(image.src, /^\/api\/themes\/assets\/[a-z0-9-]+$/);
+    const asset = await fetch(`${origin}${image.src}`);
+    assert.equal(asset.status, 200);
+    assert.equal(asset.headers.get("content-type"), "image/png");
+  }
+
+  const listed = await fetch(`${origin}/api/updates`);
+  assert.equal(listed.status, 200);
+  const listedRecords = await listed.json();
+  assert.equal(listedRecords[0].id, payload.id);
+  assert.equal(listedRecords[0].images.length, 4);
+
+  const duplicate = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer machine-upload-token",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
   });
   assert.equal(duplicate.status, 409);
 });

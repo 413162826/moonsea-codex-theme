@@ -43,6 +43,13 @@
       "when": 1785394784529,
       "tag": "0005_luxuriant_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785631049352,
+      "tag": "0006_worthless_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

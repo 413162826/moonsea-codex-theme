@@ -6,6 +6,10 @@ import {
   handleThemeManifest,
   handleThemeUpload,
 } from "../lib/uploaded-themes";
+import {
+  handleDynamicSiteUpdateUpload,
+  handleDynamicSiteUpdatesList,
+} from "../lib/site-update-storage";
 import { hasAllowedPlatformEmail } from "../lib/theme-upload-auth";
 import { getThemesWithUploads } from "../lib/theme-catalog";
 
@@ -91,6 +95,10 @@ const worker = {
       return themeListResponse(await getCachedThemeList(env.DB));
     }
 
+    if (url.pathname === "/api/updates" && request.method === "GET") {
+      return handleDynamicSiteUpdatesList(env.DB);
+    }
+
     if (url.pathname === "/api/admin/access" && request.method === "GET") {
       return Response.json({
         adminAccess: hasAllowedPlatformEmail(request, env.MOONSEA_ADMIN_EMAILS),
@@ -101,6 +109,13 @@ const worker = {
 
     if (url.pathname === "/api/admin/themes" && request.method === "POST") {
       return handleThemeUpload(request, env, {
+        allowedEmails: env.MOONSEA_ADMIN_EMAILS,
+        uploadToken: env.MOONSEA_THEME_UPLOAD_TOKEN,
+      });
+    }
+
+    if (url.pathname === "/api/admin/updates" && request.method === "POST") {
+      return handleDynamicSiteUpdateUpload(request, env, {
         allowedEmails: env.MOONSEA_ADMIN_EMAILS,
         uploadToken: env.MOONSEA_THEME_UPLOAD_TOKEN,
       });

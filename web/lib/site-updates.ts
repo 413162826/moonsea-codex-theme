@@ -18,6 +18,7 @@ export type SiteUpdate = {
   images?: SiteUpdateImage[];
   releaseUrl?: string;
   current?: boolean;
+  createdAt?: string;
 };
 
 export type UpdateCategory = "新功能" | "体验优化" | "修复";
