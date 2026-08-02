@@ -376,6 +376,57 @@ test("更新日志 API 复用上传鉴权并从公开主题生成四张预览图
   });
   assert.equal(wrongContentType.status, 415);
 
+  const wrongToken = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer wrong-token",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ id: "wrong-token-update", date: "2026-08-02" }),
+  });
+  assert.equal(wrongToken.status, 401);
+
+  const invalidDate = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer machine-upload-token",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      id: "invalid-date-update",
+      date: "2026-02-30",
+      displayDate: "2 月 30 日",
+      kind: "站点更新",
+      category: "新功能",
+      version: "v-test",
+      title: "无效日期不会落库",
+      summary: "这条记录只用于验证参数校验。",
+      details: ["不会写入 D1。"],
+    }),
+  });
+  assert.equal(invalidDate.status, 400);
+
+  const unpublishedTheme = await fetch(`${origin}/api/admin/updates`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer machine-upload-token",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      id: "unpublished-theme-update",
+      date: "2026-08-02",
+      displayDate: "8 月 2 日",
+      kind: "壁纸上新",
+      category: "新功能",
+      version: "NEW",
+      title: "不存在的主题不会落库",
+      summary: "这条记录只用于验证主题公开状态。",
+      details: ["不会写入 D1。"],
+      themeIds: ["not-public-theme"],
+    }),
+  });
+  assert.equal(unpublishedTheme.status, 404);
+
   const countAfterProbes = Number((await (await fetch(`${origin}/api/updates`)).json()).length);
   assert.equal(countAfterProbes, countBefore);
 
