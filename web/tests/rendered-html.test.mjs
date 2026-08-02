@@ -300,6 +300,18 @@ test("管理员通过 API 上传动漫壁纸后主题墙与客户端清单立即
   const manifest = await fetch(`${origin}/theme-catalog-v1.json`);
   assert.equal(manifest.status, 200);
   const manifestBody = await manifest.json();
+  const baseThemeAssets = manifestBody.themes.filter((theme) => theme.asset);
+  assert.ok(baseThemeAssets.length > 0);
+  for (const theme of baseThemeAssets) {
+    assert.equal(new URL(theme.asset.url).origin, origin);
+  }
+  const legacyTheme = manifestBody.themes.find(
+    (theme) => theme.id === "tide-dragon-realm",
+  );
+  assert.equal(
+    new URL(legacyTheme.asset.url).pathname,
+    "/theme-assets/tide-dragon-realm.png",
+  );
   const remoteTheme = manifestBody.themes.find(
     (theme) => theme.id === "neon-rain-town",
   );

@@ -181,22 +181,54 @@ export async function listUploadedPublicThemes(db: D1Database) {
   }));
 }
 
+type ThemeManifestEntry = {
+  asset?: {
+    url?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
+function normalizeManifestAssetUrl<T extends ThemeManifestEntry>(
+  request: Request,
+  theme: T,
+): T {
+  if (!theme.asset?.url) return theme;
+  const manifestUrl = new URL(request.url);
+  const assetUrl = new URL(theme.asset.url, manifestUrl);
+  const sameOriginUrl = new URL(
+    `${assetUrl.pathname}${assetUrl.search}${assetUrl.hash}`,
+    manifestUrl,
+  );
+  return {
+    ...theme,
+    asset: {
+      ...theme.asset,
+      url: sameOriginUrl.toString(),
+    },
+  } as T;
+}
+
 export async function createThemeManifest(request: Request, db: D1Database) {
   const uploaded = await listUploadedThemeRows(db);
   return {
     schemaVersion: 1,
     themes: [
-      ...baseManifest.themes,
-      ...uploaded.map(({ theme, contentType, sha256: digest, size }) => ({
-        ...theme,
-        edition: "pro",
-        asset: {
-          contentType,
-          sha256: digest,
-          size,
-          url: new URL(`/api/themes/assets/${theme.id}`, request.url).toString(),
-        },
-      })),
+      ...baseManifest.themes.map((theme) =>
+        normalizeManifestAssetUrl(request, theme),
+      ),
+      ...uploaded.map(({ theme, contentType, sha256: digest, size }) =>
+        normalizeManifestAssetUrl(request, {
+          ...theme,
+          edition: "pro",
+          asset: {
+            contentType,
+            sha256: digest,
+            size,
+            url: new URL(`/api/themes/assets/${theme.id}`, request.url).toString(),
+          },
+        }),
+      ),
     ],
   };
 }
