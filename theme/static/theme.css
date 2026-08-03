@@ -194,7 +194,7 @@ html.codex-moonsea #root :where(
   color: var(--moonsea-muted) !important;
 }
 
-html.codex-moonsea main.main-surface {
+html.codex-moonsea main {
   background: var(--moonsea-panel) !important;
   border-color: transparent !important;
   box-shadow: none !important;
@@ -205,7 +205,7 @@ html.codex-moonsea main.main-surface {
  * 内置与自定义 Pro 壁纸共用同一套表面交界处理。主区本身仍只上一次色，
  * 这里只在侧栏交界内侧增加一条低强度过渡，避免重新制造第二层整面遮罩。
  */
-html.codex-moonsea main.main-surface::before {
+html.codex-moonsea main::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
@@ -216,7 +216,7 @@ html.codex-moonsea main.main-surface::before {
 }
 
 /* 对齐官方工具栏的真实高度，将头部末端的硬切线向正文内衰减。 */
-html.codex-moonsea main.main-surface::after {
+html.codex-moonsea main::after {
   content: "";
   position: absolute;
   inset: var(--height-toolbar) 0 auto;
@@ -237,7 +237,7 @@ html.codex-moonsea header.app-header-tint {
  * 正文阅读层只覆盖 Codex 的 Markdown 内容，不压暗壁纸，也不改变侧栏、
  * 标题栏和输入区。使用语义类名片段与 data 属性，避免依赖每次构建变化的哈希。
  */
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where([class*="_markdownContent_"], .markdown, .prose) {
   --text-primary: var(--moonsea-ink) !important;
   --border-medium: var(--moonsea-border-heavy) !important;
@@ -249,7 +249,7 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   text-shadow: var(--moonsea-reading-text-shadow);
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where([class*="_markdownContent_"], .markdown, .prose)::before {
   content: "";
   position: absolute;
@@ -265,14 +265,14 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   backdrop-filter: blur(8px) saturate(0.88);
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where([class*="_markdownContent_"], .markdown, .prose)
   :where(h1, h2, h3, h4, h5, h6, strong) {
   color: var(--moonsea-ink) !important;
   text-shadow: var(--moonsea-reading-text-shadow);
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where([class*="_markdownContent_"], .markdown, .prose)
   a {
   color: var(--moonsea-accent) !important;
@@ -280,7 +280,7 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   text-underline-offset: 3px;
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where([data-markdown-copy="code-block"], [class*="_codeBlockPlaceholder_"]) {
   overflow: hidden;
   border: 1px solid var(--moonsea-border);
@@ -291,19 +291,19 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   text-shadow: none;
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   [data-markdown-copy="code-block"] > :first-child {
   color: var(--moonsea-muted) !important;
   background: var(--moonsea-reading-detail) !important;
   border-bottom: 1px solid var(--moonsea-border-light);
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   [data-markdown-copy="code-block"] > :first-child :where(*) {
   color: inherit !important;
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where([data-markdown-copy="inline-code"], [class*="_inlineMarkdown_"]) {
   border: 1px solid var(--moonsea-border-light);
   color: var(--moonsea-ink) !important;
@@ -311,20 +311,20 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   text-shadow: none;
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where(blockquote, [class*="_blockquote_"]) {
   border-radius: 0 10px 10px 0;
   color: var(--moonsea-muted) !important;
   background: var(--moonsea-reading-detail) !important;
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where([data-markdown-table], table) {
   color: var(--moonsea-ink) !important;
   background: var(--moonsea-reading-surface-strong) !important;
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   [data-markdown-table] {
   overflow: hidden;
   border: 1px solid var(--moonsea-border);
@@ -332,7 +332,7 @@ html.codex-moonsea.moonsea-reading-enabled main.main-surface
   box-shadow: var(--moonsea-shadow);
 }
 
-html.codex-moonsea.moonsea-reading-enabled main.main-surface
+html.codex-moonsea.moonsea-reading-enabled main
   :where(hr, [class*="_horizontalRule_"]) {
   border-color: var(--moonsea-border-heavy) !important;
 }

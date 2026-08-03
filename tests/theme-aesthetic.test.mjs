@@ -88,10 +88,10 @@ test("普通与 Pro 壁纸共用交界算法并由各自调色板控制强度", 
   assert.match(themeCss, /--moonsea-sidebar-top-blend-height:\s*12px/);
   assert.match(themeCss, /--moonsea-main-top-blend-height:\s*32px/);
   assert.match(themeCss, /--moonsea-surface-blend-width:\s*32px/);
-  assert.match(themeCss, /main\.main-surface::before[\s\S]*linear-gradient\(90deg/);
-  assert.match(themeCss, /main\.main-surface::after[\s\S]*inset:\s*var\(--height-toolbar\)[\s\S]*linear-gradient\(180deg/);
+  assert.match(themeCss, /main::before[\s\S]*linear-gradient\(90deg/);
+  assert.match(themeCss, /main::after[\s\S]*inset:\s*var\(--height-toolbar\)[\s\S]*linear-gradient\(180deg/);
   assert.match(themeCss, /nav\[aria-label\]::before[\s\S]*linear-gradient\(180deg/);
-  assert.match(themeCss, /main\.main-surface\s*\{[\s\S]*box-shadow:\s*none\s*!important/);
+  assert.match(themeCss, /main\s*\{[\s\S]*box-shadow:\s*none\s*!important/);
   assert.match(themeCss, /header\.app-header-tint\s*\{[\s\S]*background:\s*transparent\s*!important/);
   assert.match(themeCss, /--elevation-prominent:[\s\S]*--moonsea-elevation-edge-tint/);
   assert.match(themeCss, /body::before[\s\S]*--moonsea-wallpaper-vignette/);
@@ -122,4 +122,14 @@ test("普通与 Pro 壁纸共用交界算法并由各自调色板控制强度", 
   assert.match(runtime, /elevationEdgeTint:\s*"--moonsea-elevation-edge-tint"/);
   assert.doesNotMatch(runtime, /effectsEnabled|createAmbientMotion|MOTION_BLOCK_SELECTOR/);
   assert.doesNotMatch(runtime, /--moonsea-(?:sidebar-top|main-top|surface-blend-width)/);
+});
+
+test("正文增强不依赖旧版主内容容器类名", () => {
+  const themeCss = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.css"), "utf8");
+
+  assert.doesNotMatch(themeCss, /main\.main-surface/);
+  assert.match(
+    themeCss,
+    /moonsea-reading-enabled\s+main\s*:where\(\[class\*="_markdownContent_"\]/,
+  );
 });

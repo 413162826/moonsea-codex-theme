@@ -361,6 +361,18 @@ test("月海助手与 Codex 进程生命周期绑定", () => {
   assert.match(macosLauncher, /--app-pid "\$APP_PID"/);
 });
 
+test("Windows 启动器在官方 Codex 更新后仍能发现最新 AppX", () => {
+  const windowsLauncher = fs.readFileSync(
+    path.join(projectRoot, "scripts", "windows", "Start-Moonsea-Windows.ps1"),
+    "ascii",
+  );
+
+  assert.match(windowsLauncher, /function Test-OfficialCodexPath/);
+  assert.match(windowsLauncher, /Get-AppxPackage\s+-ErrorAction Stop\s*\|\s*Where-Object/);
+  assert.match(windowsLauncher, /WindowsApps/);
+  assert.match(windowsLauncher, /OpenAI\|ChatGPT\|Codex/);
+});
+
 test("Codex 进程退出后助手自行停止", async () => {
   const installRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moonsea-manager-lifecycle-"));
   const profilePath = path.join(installRoot, "BrowserProfile");
