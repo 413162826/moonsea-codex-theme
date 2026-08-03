@@ -34,6 +34,10 @@ interface ExecutionContext {
 }
 
 const THEME_LIST_CACHE_TTL_MS = 60_000;
+const CANONICAL_SITE_HOST = "moonsea.kevinsu.xyz";
+const SITE_ALIAS_HOSTS = new Set([
+  "moonsea-codex-theme.suguowen5.chatgpt.site",
+]);
 let themeListCache: { body: string; expiresAt: number } | null = null;
 let themeListLoad: Promise<string> | null = null;
 
@@ -75,6 +79,14 @@ function themeListResponse(body: string) {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (SITE_ALIAS_HOSTS.has(url.hostname)) {
+      const canonicalUrl = new URL(request.url);
+      canonicalUrl.protocol = "https:";
+      canonicalUrl.hostname = CANONICAL_SITE_HOST;
+      canonicalUrl.port = "";
+      return Response.redirect(canonicalUrl.toString(), 301);
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
