@@ -133,3 +133,12 @@ test("正文增强不依赖旧版主内容容器类名", () => {
     /moonsea-reading-enabled\s+main\s*:where\(\[class\*="_markdownContent_"\]/,
   );
 });
+
+test("正文表格回到阅读网格并保留超宽内容滚动", () => {
+  const themeCss = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.css"), "utf8");
+
+  assert.match(themeCss, /_tableWideBlock_[^}]*\{[\s\S]*margin-inline:\s*0\s*!important/);
+  assert.match(themeCss, /horizontal-scroll-fade-mask[^}]*\{[\s\S]*max-width:\s*100%\s*!important/);
+  assert.match(themeCss, /horizontal-scroll-fade-mask\) table[\s\S]*min-width:\s*0\s*!important/);
+  assert.match(themeCss, /horizontal-scroll-fade-mask\)[\s\S]*white-space:\s*normal\s*!important/);
+});

@@ -332,6 +332,47 @@ html.codex-moonsea.moonsea-reading-enabled main
   box-shadow: var(--moonsea-shadow);
 }
 
+/*
+ * 新版 Codex 会给宽表加负外边距，让原生表格横跨整个对话区。
+ * 月海正文层已经提供自己的阅读宽度，表格应回到正文网格内；真正过宽的
+ * 内容仍由官方滚动容器承接，不把整张列表撑出可读区域。
+ */
+html.codex-moonsea.moonsea-reading-enabled main
+  :where([class*="_tableWideBlock_"]) {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main
+  :where(.horizontal-scroll-fade-mask) {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main
+  :where(.horizontal-scroll-fade-mask)
+  > :where([class*="_tableWrapper_"]) {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main
+  :where(.horizontal-scroll-fade-mask) table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main
+  :where(.horizontal-scroll-fade-mask)
+  :where(th, td) {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
 html.codex-moonsea.moonsea-reading-enabled main
   :where(hr, [class*="_horizontalRule_"]) {
   border-color: var(--moonsea-border-heavy) !important;
