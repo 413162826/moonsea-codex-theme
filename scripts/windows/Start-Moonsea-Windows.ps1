@@ -20,10 +20,19 @@ function Get-OfficialVersion([string]$AppPath, [string]$DetectedVersion) {
     return [regex]::Replace($version, "[^A-Za-z0-9._-]", "-")
 }
 
+function Test-OfficialCodexPath([string]$AppPath) {
+    if ([string]::IsNullOrWhiteSpace($AppPath)) { return $false }
+    $fullPath = [System.IO.Path]::GetFullPath($AppPath)
+    return (
+        (Test-Path -LiteralPath (Join-Path $fullPath "ChatGPT.exe") -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $fullPath "resources\app.asar") -PathType Leaf)
+    )
+}
+
 function Find-LatestOfficialCodex {
     if ($env:MOONSEA_SOURCE_APP) {
         $sourceApp = [System.IO.Path]::GetFullPath($env:MOONSEA_SOURCE_APP)
-        if (-not (Test-Path -LiteralPath (Join-Path $sourceApp "resources\app.asar") -PathType Leaf)) {
+        if (-not (Test-OfficialCodexPath $sourceApp)) {
             throw "MOONSEA_SOURCE_APP is not a valid official Codex app."
         }
         return [pscustomobject]@{
@@ -32,20 +41,54 @@ function Find-LatestOfficialCodex {
         }
     }
 
-    $package = Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue |
-        Sort-Object Version -Descending |
-        Where-Object {
-            Test-Path -LiteralPath (Join-Path $_.InstallLocation "app\resources\app.asar") -PathType Leaf
-        } |
-        Select-Object -First 1
-    if ($null -eq $package) {
+    $candidates = @()
+    try {
+        $packages = @(Get-AppxPackage -Name OpenAI.Codex -ErrorAction Stop)
+    }
+    catch {
+        $packages = @()
+    }
+    if ($packages.Count -eq 0) {
+        try {
+            $packages = @(Get-AppxPackage -ErrorAction Stop | Where-Object {
+                [string]$_.Name -match "OpenAI|ChatGPT|Codex"
+            })
+        }
+        catch {
+            $packages = @()
+        }
+    }
+    foreach ($package in $packages) {
+        $candidatePath = Join-Path ([string]$package.InstallLocation) "app"
+        if (Test-OfficialCodexPath $candidatePath) {
+            $candidates += [pscustomobject]@{
+                Path = [System.IO.Path]::GetFullPath($candidatePath)
+                Version = Get-OfficialVersion $candidatePath ([string]$package.Version)
+            }
+        }
+    }
+
+    $windowsAppsRoot = Join-Path ${env:ProgramFiles} "WindowsApps"
+    if (Test-Path -LiteralPath $windowsAppsRoot -PathType Container) {
+        $directories = @(Get-ChildItem -LiteralPath $windowsAppsRoot -Directory -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -match "^(?:OpenAI\.Codex|ChatGPT|Codex)_"
+        })
+        foreach ($directory in $directories) {
+            $candidatePath = Join-Path $directory.FullName "app"
+            if (Test-OfficialCodexPath $candidatePath) {
+                $candidates += [pscustomobject]@{
+                    Path = [System.IO.Path]::GetFullPath($candidatePath)
+                    Version = Get-OfficialVersion $candidatePath $null
+                }
+            }
+        }
+    }
+
+    $uniqueCandidates = @($candidates | Sort-Object Path, Version -Unique)
+    if ($uniqueCandidates.Count -eq 0) {
         throw "Official Codex was not found. Install and open the official app once, then retry."
     }
-    $appPath = [System.IO.Path]::GetFullPath((Join-Path $package.InstallLocation "app"))
-    return [pscustomobject]@{
-        Path = $appPath
-        Version = Get-OfficialVersion $appPath ([string]$package.Version)
-    }
+    return $uniqueCandidates | Sort-Object Version -Descending | Select-Object -First 1
 }
 
 function Get-ActiveMainProcesses([string]$ActiveBuild) {

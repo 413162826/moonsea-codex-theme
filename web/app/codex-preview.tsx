@@ -49,10 +49,19 @@ export function ProCodexPreview({
         className="pro-codex-body"
         style={{
           backgroundImage: wallpaper
-            ? `linear-gradient(110deg, rgba(5, 19, 28, .28), rgba(5, 19, 28, .06)), url("${wallpaper}")`
+            ? "linear-gradient(110deg, rgba(5, 19, 28, .28), rgba(5, 19, 28, .06))"
             : theme.previewGradient,
         }}
       >
+        {wallpaper ? (
+          <img
+            alt=""
+            className="pro-codex-wallpaper"
+            decoding="async"
+            loading={className.includes("landing") ? "eager" : "lazy"}
+            src={wallpaper}
+          />
+        ) : null}
         <aside className="pro-codex-sidebar">
           <strong>{productLabel}</strong>
           <div className="pro-codex-nav"><span /><span /><span /><span /></div>

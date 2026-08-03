@@ -1,4 +1,4 @@
-import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const installations = sqliteTable("installations", {
   installId: text("install_id").primaryKey(),
@@ -61,3 +61,21 @@ export const uploadedThemes = sqliteTable("uploaded_themes", {
   size: integer("size").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const siteUpdates = sqliteTable("site_updates", {
+  id: text("id").primaryKey(),
+  date: text("date").notNull(),
+  displayDate: text("display_date").notNull(),
+  kind: text("kind").notNull(),
+  category: text("category").notNull(),
+  version: text("version").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  detailsJson: text("details_json").notNull(),
+  imagesJson: text("images_json").notNull().default("[]"),
+  releaseUrl: text("release_url"),
+  current: integer("current").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  index("site_updates_date_created_idx").on(table.date, table.createdAt),
+]);

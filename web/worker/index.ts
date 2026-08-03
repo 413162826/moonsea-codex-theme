@@ -6,6 +6,10 @@ import {
   handleThemeManifest,
   handleThemeUpload,
 } from "../lib/uploaded-themes";
+import {
+  handleDynamicSiteUpdateUpload,
+  handleDynamicSiteUpdatesList,
+} from "../lib/site-update-storage";
 import { hasAllowedPlatformEmail } from "../lib/theme-upload-auth";
 import { getThemesWithUploads } from "../lib/theme-catalog";
 
@@ -29,6 +33,43 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+const THEME_LIST_CACHE_TTL_MS = 60_000;
+const CANONICAL_SITE_HOST = "moonsea.kevinsu.xyz";
+const SITE_ALIAS_HOSTS = new Set([
+  "moonsea-codex-theme.suguowen5.chatgpt.site",
+]);
+let themeListCache: { body: string; expiresAt: number } | null = null;
+let themeListLoad: Promise<string> | null = null;
+
+async function getCachedThemeList(db: D1Database) {
+  const now = Date.now();
+  if (themeListCache && themeListCache.expiresAt > now) {
+    return themeListCache.body;
+  }
+  if (!themeListLoad) {
+    themeListLoad = getThemesWithUploads(db)
+      .then((themes) => JSON.stringify(themes))
+      .finally(() => {
+        themeListLoad = null;
+      });
+  }
+  const body = await themeListLoad;
+  themeListCache = {
+    body,
+    expiresAt: Date.now() + THEME_LIST_CACHE_TTL_MS,
+  };
+  return body;
+}
+
+function themeListResponse(body: string) {
+  return new Response(body, {
+    headers: {
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+      "Content-Type": "application/json; charset=utf-8",
+    },
+  });
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -38,6 +79,14 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (SITE_ALIAS_HOSTS.has(url.hostname)) {
+      const canonicalUrl = new URL(request.url);
+      canonicalUrl.protocol = "https:";
+      canonicalUrl.hostname = CANONICAL_SITE_HOST;
+      canonicalUrl.port = "";
+      return Response.redirect(canonicalUrl.toString(), 301);
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
@@ -55,12 +104,11 @@ const worker = {
     }
 
     if (url.pathname === "/api/themes" && request.method === "GET") {
-      return Response.json(await getThemesWithUploads(env.DB), {
-        headers: {
-          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-          "Content-Type": "application/json; charset=utf-8",
-        },
-      });
+      return themeListResponse(await getCachedThemeList(env.DB));
+    }
+
+    if (url.pathname === "/api/updates" && request.method === "GET") {
+      return handleDynamicSiteUpdatesList(env.DB);
     }
 
     if (url.pathname === "/api/admin/access" && request.method === "GET") {
@@ -73,6 +121,13 @@ const worker = {
 
     if (url.pathname === "/api/admin/themes" && request.method === "POST") {
       return handleThemeUpload(request, env, {
+        allowedEmails: env.MOONSEA_ADMIN_EMAILS,
+        uploadToken: env.MOONSEA_THEME_UPLOAD_TOKEN,
+      });
+    }
+
+    if (url.pathname === "/api/admin/updates" && request.method === "POST") {
+      return handleDynamicSiteUpdateUpload(request, env, {
         allowedEmails: env.MOONSEA_ADMIN_EMAILS,
         uploadToken: env.MOONSEA_THEME_UPLOAD_TOKEN,
       });

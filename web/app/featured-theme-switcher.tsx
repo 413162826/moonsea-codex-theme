@@ -6,18 +6,8 @@ import type { Theme } from "../lib/theme-catalog";
 import { isThemeNewToday } from "../lib/theme-recency";
 import { ProCodexPreview } from "./codex-preview";
 
-function wallpaperUrl(theme: Theme) {
-  return theme.previewImage?.replace("./", "/");
-}
-
 function swatchStyle(theme: Theme): CSSProperties {
-  const wallpaper = wallpaperUrl(theme);
-  return wallpaper
-    ? {
-        backgroundImage:
-          `linear-gradient(135deg, rgba(4, 20, 30, .08), rgba(4, 20, 30, .28)), url("${wallpaper}")`,
-      }
-    : { background: theme.previewGradient };
+  return { background: theme.previewGradient };
 }
 
 function selectFeatured(themes: Theme[]) {
@@ -33,7 +23,7 @@ export function FeaturedThemeSwitcher({ themes: initialThemes }: { themes: Theme
 
   useEffect(() => {
     const loadThemes = async () => {
-      const response = await fetch("/api/themes", { cache: "no-store" });
+      const response = await fetch("/api/themes");
       if (!response.ok) throw new Error("精选主题加载失败");
       const body = await response.json() as Theme[];
       setThemes(selectFeatured(body));

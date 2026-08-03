@@ -55,7 +55,7 @@ export function ThemeGallery({
 
   useEffect(() => {
     const loadThemes = async () => {
-      const response = await fetch("/api/themes", { cache: "no-store" });
+      const response = await fetch("/api/themes");
       if (!response.ok) throw new Error("主题清单加载失败");
       const body = await response.json() as Theme[];
       setThemes([...body].reverse());
