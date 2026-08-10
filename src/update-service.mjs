@@ -7,6 +7,10 @@ export const DEFAULT_UPDATE_MANIFEST_URLS = Object.freeze({
   workbuddy:
     "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/update-workbuddy.json",
 });
+export const FALLBACK_UPDATE_MANIFEST_URLS = Object.freeze({
+  codex: "https://moonsea.kevinsu.xyz/api/updates/manifest?client=codex",
+  workbuddy: "https://moonsea.kevinsu.xyz/api/updates/manifest?client=workbuddy",
+});
 export const DEFAULT_UPDATE_MANIFEST_URL = DEFAULT_UPDATE_MANIFEST_URLS.codex;
 
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
@@ -88,7 +92,14 @@ function isRetryableNetworkError(error) {
   return error?.retryable === true
     || error?.name === "AbortError"
     || error?.name === "TimeoutError"
-    || error instanceof TypeError;
+    || error instanceof TypeError
+    || /CERTIFICATE|TLS|SSL/i.test(String(error?.code ?? error?.cause?.code ?? ""))
+    || /certificate verification|SSL connection|secure TLS/i.test(String(error?.message ?? ""));
+}
+
+function isCertificateNetworkError(error) {
+  return /CERTIFICATE|TLS|SSL/i.test(String(error?.code ?? error?.cause?.code ?? ""))
+    || /certificate verification|SSL connection|secure TLS/i.test(String(error?.message ?? ""));
 }
 
 function validateContentRange(value, expectedStart, expectedSize) {
@@ -164,6 +175,7 @@ export class UpdateService {
     installRoot,
     updaterPath,
     manifestUrl,
+    manifestUrls,
     fetchImpl = globalThis.fetch,
     launchUpdater,
     requestShutdown,
@@ -179,12 +191,14 @@ export class UpdateService {
     this.platform = platform;
     this.installRoot = path.resolve(installRoot);
     this.updaterPath = path.resolve(updaterPath);
-    this.manifestUrl = assertHttpsUrl(
-      manifestUrl
-        ?? process.env.MOONSEA_UPDATE_MANIFEST_URL
-        ?? DEFAULT_UPDATE_MANIFEST_URLS[client],
-      "更新清单地址",
-    );
+    const configuredManifestUrl = manifestUrl
+      ?? process.env.MOONSEA_UPDATE_MANIFEST_URL
+      ?? DEFAULT_UPDATE_MANIFEST_URLS[client];
+    const configuredManifestUrls = Array.isArray(manifestUrls) && manifestUrls.length > 0
+      ? manifestUrls
+      : [configuredManifestUrl, FALLBACK_UPDATE_MANIFEST_URLS[client]];
+    this.manifestUrls = [...new Set(configuredManifestUrls.map((url) => assertHttpsUrl(url, "更新清单地址")))];
+    this.manifestUrl = this.manifestUrls[0];
     this.fetchImpl = fetchImpl;
     this.launchUpdater = launchUpdater;
     this.requestShutdown = requestShutdown;
@@ -351,36 +365,39 @@ export class UpdateService {
 
   async fetchUpdateManifest() {
     let lastError = null;
-    for (let attempt = 1; attempt <= MANIFEST_MAX_ATTEMPTS; attempt += 1) {
-      try {
-        const response = await this.fetchImpl(this.manifestUrl, {
-          cache: "no-store",
-          redirect: "follow",
-          signal: AbortSignal.timeout(10_000),
-        });
-        if (!response.ok) {
-          throw updateError(`检查更新失败（${response.status}）`, {
-            code: `HTTP_${response.status}`,
-            retryable: RETRYABLE_HTTP_STATUS.has(response.status),
-            retryAfterMs: parseRetryAfter(response.headers.get("retry-after"), this.now),
+    for (const manifestUrl of this.manifestUrls) {
+      for (let attempt = 1; attempt <= MANIFEST_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          const response = await this.fetchImpl(manifestUrl, {
+            cache: "no-store",
+            redirect: "follow",
+            signal: AbortSignal.timeout(10_000),
           });
+          if (!response.ok) {
+            throw updateError(`检查更新失败（${response.status}）`, {
+              code: `HTTP_${response.status}`,
+              retryable: RETRYABLE_HTTP_STATUS.has(response.status),
+              retryAfterMs: parseRetryAfter(response.headers.get("retry-after"), this.now),
+            });
+          }
+          return response;
+        } catch (error) {
+          lastError = error;
+          const retryable = isRetryableNetworkError(error);
+          this.appendDownloadLog("update_check_attempt_failed", {
+            manifestUrl,
+            attempt,
+            retryable,
+            errorName: error?.name ?? "Error",
+            errorCode: error?.code ?? error?.cause?.code ?? null,
+            errorMessage: error?.message ?? String(error),
+          });
+          if (!retryable || isCertificateNetworkError(error) || attempt >= MANIFEST_MAX_ATTEMPTS) break;
+          const delay = error.retryAfterMs === null
+            ? 500 * (2 ** (attempt - 1))
+            : Math.min(error.retryAfterMs, 5_000);
+          await this.sleep(delay);
         }
-        return response;
-      } catch (error) {
-        lastError = error;
-        const retryable = isRetryableNetworkError(error);
-        this.appendDownloadLog("update_check_attempt_failed", {
-          attempt,
-          retryable,
-          errorName: error?.name ?? "Error",
-          errorCode: error?.code ?? error?.cause?.code ?? null,
-          errorMessage: error?.message ?? String(error),
-        });
-        if (!retryable || attempt >= MANIFEST_MAX_ATTEMPTS) throw error;
-        const delay = error.retryAfterMs === null
-          ? 500 * (2 ** (attempt - 1))
-          : Math.min(error.retryAfterMs, 5_000);
-        await this.sleep(delay);
       }
     }
     throw lastError;

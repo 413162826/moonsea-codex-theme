@@ -12,6 +12,18 @@ import {
 } from "../lib/site-update-storage";
 import { hasAllowedPlatformEmail } from "../lib/theme-upload-auth";
 import { getThemesWithUploads } from "../lib/theme-catalog";
+import {
+  isValidUpdateVersion,
+  parseUpdateClient,
+  parseUpdatePackageKind,
+  parseUpdatePlatform,
+  rewriteUpdateManifest,
+  updateAssetName,
+  upstreamUpdateManifestUrl,
+  upstreamUpdatePackageUrl,
+  UPDATE_PACKAGE_CACHE_CONTROL,
+  UPDATE_RELAY_CACHE_CONTROL,
+} from "../lib/update-relay";
 
 interface Env {
   ASSETS: Fetcher;
@@ -70,6 +82,72 @@ function themeListResponse(body: string) {
   });
 }
 
+function updateRelayError(message: string, status = 400) {
+  return Response.json({ error: message }, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  });
+}
+
+async function handleUpdateManifest(request: Request) {
+  const url = new URL(request.url);
+  const client = parseUpdateClient(url.searchParams.get("client"));
+  if (!client) return updateRelayError("client 必须是 codex 或 workbuddy");
+  const upstream = await fetch(upstreamUpdateManifestUrl(client), {
+    headers: { Accept: "application/json" },
+    cf: { cacheTtl: 60, cacheEverything: true },
+  } as RequestInit);
+  if (!upstream.ok) {
+    return updateRelayError(`上游更新清单暂不可用（${upstream.status}）`, 502);
+  }
+  let manifest: Record<string, unknown>;
+  try {
+    manifest = await upstream.json() as Record<string, unknown>;
+  } catch {
+    return updateRelayError("上游更新清单不是有效 JSON", 502);
+  }
+  try {
+    const rewritten = rewriteUpdateManifest(manifest, client, url.origin);
+    return Response.json(rewritten, {
+      headers: {
+        "Cache-Control": UPDATE_RELAY_CACHE_CONTROL,
+        Vary: "Accept",
+      },
+    });
+  } catch (error) {
+    return updateRelayError(error instanceof Error ? error.message : "更新清单无效", 502);
+  }
+}
+
+async function handleUpdatePackage(request: Request) {
+  const url = new URL(request.url);
+  const client = parseUpdateClient(url.searchParams.get("client"));
+  const platform = parseUpdatePlatform(url.searchParams.get("platform"));
+  const kind = parseUpdatePackageKind(url.searchParams.get("kind"));
+  const version = url.searchParams.get("version");
+  if (!client || !platform || !kind || !isValidUpdateVersion(version)) {
+    return updateRelayError("更新包参数无效");
+  }
+  if (!updateAssetName(client, platform, kind)) return updateRelayError("当前平台不支持该更新包");
+  const upstreamUrl = upstreamUpdatePackageUrl(client, version, platform, kind);
+  if (!upstreamUrl) return updateRelayError("更新包地址无效");
+  const upstream = await fetch(upstreamUrl, {
+    redirect: "follow",
+    cf: { cacheTtl: 86_400, cacheEverything: true },
+  } as RequestInit);
+  if (!upstream.ok || !upstream.body) {
+    return updateRelayError(`上游更新包暂不可用（${upstream.status}）`, 502);
+  }
+  const headers = new Headers();
+  for (const name of ["content-type", "content-length", "content-range", "etag", "last-modified", "accept-ranges"]) {
+    const value = upstream.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  headers.set("Cache-Control", UPDATE_PACKAGE_CACHE_CONTROL);
+  headers.set("X-Content-Type-Options", "nosniff");
+  return new Response(upstream.body, { status: 200, headers });
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -109,6 +187,14 @@ const worker = {
 
     if (url.pathname === "/api/updates" && request.method === "GET") {
       return handleDynamicSiteUpdatesList(env.DB);
+    }
+
+    if (url.pathname === "/api/updates/manifest" && request.method === "GET") {
+      return handleUpdateManifest(request);
+    }
+
+    if (url.pathname === "/api/updates/package" && request.method === "GET") {
+      return handleUpdatePackage(request);
     }
 
     if (url.pathname === "/api/admin/access" && request.method === "GET") {

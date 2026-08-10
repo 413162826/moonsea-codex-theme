@@ -52,6 +52,7 @@ test("WorkBuddy 使用独立更新清单和安装包文件名", () => {
     requestShutdown: () => {},
   });
   assert.match(service.manifestUrl, /update-workbuddy\.json$/);
+  assert.equal(service.manifestUrls.length, 2);
   assert.match(
     service.packagePathFor({
       version: "9.0.0",
@@ -111,6 +112,45 @@ test("检查更新遇到短暂网络故障时自动重试", async () => {
       fs.readFileSync(path.join(installRoot, "updates", "download.log"), "utf8"),
       /update_check_attempt_failed/,
     );
+  } finally {
+    fs.rmSync(installRoot, { recursive: true, force: true });
+  }
+});
+
+test("官方清单遇到证书错误时回退到月海中转", async () => {
+  const installRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moonsea-update-manifest-fallback-"));
+  const archive = Buffer.from("verified-moonsea-package");
+  const manifest = manifestFor(archive);
+  const requests = [];
+  const service = new UpdateService({
+    currentVersion: APP_VERSION,
+    platform: "win32",
+    installRoot,
+    updaterPath: path.join(installRoot, "updater.ps1"),
+    manifestUrls: [
+      "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/update.json",
+      "https://moonsea.kevinsu.xyz/api/updates/manifest?client=codex",
+    ],
+    fetchImpl: async (url) => {
+      requests.push(String(url));
+      if (requests.length === 1) {
+        const error = new Error("unknown certificate verification error");
+        error.code = "UNKNOWN_CERTIFICATE_VERIFICATION_ERROR";
+        throw error;
+      }
+      return new Response(JSON.stringify(manifest));
+    },
+    launchUpdater: async () => {},
+    requestShutdown: () => {},
+    sleep: async () => {},
+  });
+  try {
+    const status = await service.getStatus();
+    assert.equal(status.status, "available");
+    assert.deepEqual(requests, [
+      "https://github.com/413162826/moonsea-codex-theme/releases/latest/download/update.json",
+      "https://moonsea.kevinsu.xyz/api/updates/manifest?client=codex",
+    ]);
   } finally {
     fs.rmSync(installRoot, { recursive: true, force: true });
   }
