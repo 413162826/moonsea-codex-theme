@@ -6,6 +6,10 @@
 
 ![月海 Codex 主题预览](./web/public/og.png)
 
+## 最新壁纸批次
+
+2026 年 8 月 11 日，月海主题墙上线四张原创主题：赤沙云网编织师、磁沙月面舞台、失重阀门鸭修班、天顶潮汐列车。四张主题均支持网页预览与月海助手一键应用，完整图文记录见[更新日志](https://moonsea.kevinsu.xyz/updates)。
+
 > Free immersive themes for the Codex desktop app, with one-click switching from the web on Windows and macOS.
 
 在网页点一下，已经打开的 Codex 会马上换主题。
