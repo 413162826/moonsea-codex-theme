@@ -238,7 +238,7 @@ html.codex-moonsea header.app-header-tint {
  * 标题栏和输入区。使用语义类名片段与 data 属性，避免依赖每次构建变化的哈希。
  */
 html.codex-moonsea.moonsea-reading-enabled main
-  :where([class*="_markdownContent_"], .markdown, .prose) {
+  :where([class*="_markdownContent_"], [class*="_MarkdownRoot_"], .markdown, .prose) {
   --text-primary: var(--moonsea-ink) !important;
   --border-medium: var(--moonsea-border-heavy) !important;
   --border-light: var(--moonsea-border-light) !important;
@@ -250,7 +250,7 @@ html.codex-moonsea.moonsea-reading-enabled main
 }
 
 html.codex-moonsea.moonsea-reading-enabled main
-  :where([class*="_markdownContent_"], .markdown, .prose)::before {
+  :where([class*="_markdownContent_"], [class*="_MarkdownRoot_"], .markdown, .prose)::before {
   content: "";
   position: absolute;
   inset: -12px -16px;
@@ -266,14 +266,14 @@ html.codex-moonsea.moonsea-reading-enabled main
 }
 
 html.codex-moonsea.moonsea-reading-enabled main
-  :where([class*="_markdownContent_"], .markdown, .prose)
+  :where([class*="_markdownContent_"], [class*="_MarkdownRoot_"], .markdown, .prose)
   :where(h1, h2, h3, h4, h5, h6, strong) {
   color: var(--moonsea-ink) !important;
   text-shadow: var(--moonsea-reading-text-shadow);
 }
 
 html.codex-moonsea.moonsea-reading-enabled main
-  :where([class*="_markdownContent_"], .markdown, .prose)
+  :where([class*="_markdownContent_"], [class*="_MarkdownRoot_"], .markdown, .prose)
   a {
   color: var(--moonsea-accent) !important;
   text-decoration-color: var(--moonsea-accent) !important;

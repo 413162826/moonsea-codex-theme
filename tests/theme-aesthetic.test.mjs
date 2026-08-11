@@ -132,6 +132,7 @@ test("正文增强不依赖旧版主内容容器类名", () => {
     themeCss,
     /moonsea-reading-enabled\s+main\s*:where\(\[class\*="_markdownContent_"\]/,
   );
+  assert.match(themeCss, /\[class\*="_MarkdownRoot_"\]/);
 });
 
 test("正文表格回到阅读网格并保留超宽内容滚动", () => {
