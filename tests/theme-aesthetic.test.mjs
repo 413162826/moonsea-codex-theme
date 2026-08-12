@@ -130,15 +130,19 @@ test("正文增强不依赖旧版主内容容器类名", () => {
   assert.doesNotMatch(themeCss, /main\.main-surface/);
   assert.match(
     themeCss,
-    /moonsea-reading-enabled\s+main\s*:where\(\[class\*="_markdownContent_"\]/,
+    /moonsea-reading-enabled\s+main\s*:where\(\[class\*="_markdownContent_"\][\s\S]*_MarkdownRoot_/,
   );
-  assert.match(themeCss, /\[class\*="_MarkdownRoot_"\]/);
 });
 
 test("正文表格回到阅读网格并保留超宽内容滚动", () => {
   const themeCss = fs.readFileSync(path.join(projectRoot, "theme", "static", "theme.css"), "utf8");
 
   assert.match(themeCss, /_tableWideBlock_[^}]*\{[\s\S]*margin-inline:\s*0\s*!important/);
+  assert.match(themeCss, /_MarkdownRoot_[^}]*\{[\s\S]*min-width:\s*0/);
+  assert.match(themeCss, /\[data-wide-block\][\s\S]*margin-inline:\s*0\s*!important/);
+  assert.match(themeCss, /_TableScroller_[^}]*\{[\s\S]*overflow-x:\s*auto/);
+  assert.match(themeCss, /_TableWrapper_[^}]*\{[\s\S]*width:\s*max-content/);
+  assert.match(themeCss, /_MarkdownRoot_[\s\S]*table\s*\{[\s\S]*min-width:\s*100%\s*!important/);
   assert.match(themeCss, /horizontal-scroll-fade-mask[^}]*\{[\s\S]*max-width:\s*100%\s*!important/);
   assert.match(themeCss, /horizontal-scroll-fade-mask\) table[\s\S]*min-width:\s*0\s*!important/);
   assert.match(themeCss, /horizontal-scroll-fade-mask\)[\s\S]*white-space:\s*normal\s*!important/);
