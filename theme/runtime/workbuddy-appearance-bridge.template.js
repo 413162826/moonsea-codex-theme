@@ -1,11 +1,25 @@
 const THEME_MODULE_PATH = "__MOONSEA_THEME_MODULE_PATH__";
 const THEME_VERSION = "__MOONSEA_THEME_VERSION__";
 const APPEARANCE_STATE_KEY = "workbuddy-moonsea-appearance-state-v1";
+const NATIVE_MODE_KEY = "workbuddy-moonsea-native-mode-v1";
 
 let themeModulePromise;
 let restoredAppearanceState = null;
 let restoreError = null;
 let restorationPromise = Promise.resolve();
+let nativeMode = null;
+
+function detectNativeMode() {
+  const root = document.documentElement;
+  const saved = localStorage.getItem(NATIVE_MODE_KEY);
+  if (["light", "dark"].includes(saved)) return saved;
+  if (root.classList.contains("cb-light")) return "light";
+  if (root.classList.contains("cb-dark")) return "dark";
+  return null;
+}
+
+nativeMode = detectNativeMode();
+if (nativeMode) localStorage.setItem(NATIVE_MODE_KEY, nativeMode);
 
 function getThemeModule() {
   themeModulePromise ??= import(THEME_MODULE_PATH).then((module) => {
@@ -108,6 +122,21 @@ async function getStatus() {
   };
 }
 
+async function resetAppearance() {
+  await restorationPromise;
+  if (nativeMode) {
+    const themeModule = await getThemeModule();
+    themeModule.moonseaSetTheme(nativeMode);
+  }
+  localStorage.removeItem(APPEARANCE_STATE_KEY);
+  localStorage.removeItem(NATIVE_MODE_KEY);
+  restoredAppearanceState = null;
+  restoreError = null;
+  const runtime = await ensureProRuntime();
+  runtime.disable();
+  return { active: false, mode: nativeMode };
+}
+
 async function restoreSavedAppearance() {
   const state = readAppearanceState();
   restoredAppearanceState = state;
@@ -127,7 +156,7 @@ Object.defineProperty(window, "moonseaThemeBridge", {
   configurable: false,
   enumerable: false,
   writable: false,
-  value: Object.freeze({ applyRuntimeTheme, getStatus }),
+  value: Object.freeze({ applyRuntimeTheme, getStatus, resetAppearance }),
 });
 
 restorationPromise = restoreSavedAppearance().catch((error) => {

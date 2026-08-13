@@ -422,6 +422,11 @@
     }
   };
 
+  const clearSavedSettings = () => {
+    Object.assign(settings, defaults);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
   const createControls = () => {
     if (document.getElementById("codex-moonsea-controls")) return;
 
@@ -681,14 +686,16 @@
     controls
       .querySelector(".moonsea-controls__reset")
       .addEventListener("click", async () => {
-        Object.assign(settings, defaults);
-        syncControls();
-        applySettings();
         try {
+          const resetAppearance = window.moonseaThemeBridge?.resetAppearance;
+          if (typeof resetAppearance !== "function") {
+            throw new Error("原生外观恢复入口还未就绪，请稍后重试");
+          }
+          await resetAppearance();
           await removeSavedWallpaper();
           savedWallpaperRecord = null;
           wallpaperLoadPromise = Promise.resolve(null);
-          applyWallpaper(null);
+          clearSavedSettings();
         } catch {
           wallpaperState.name = "恢复壁纸失败";
           wallpaperState.error = true;
@@ -825,7 +832,7 @@
     wallpaperLoadPromise = undefined;
     savedWallpaperRecord = null;
     activeRuntime = null;
-    refreshAssistantMode();
+    document.getElementById("codex-moonsea-controls")?.remove();
     return { active: false };
   };
 

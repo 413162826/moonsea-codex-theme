@@ -262,6 +262,7 @@ test("统一壁纸运行时可以启用并完整退出", () => {
   assert.match(runtime, /PALETTE_PROPERTIES/);
   assert.match(runtime, /root\.style\.colorScheme = runtime\.palette\.scheme/);
   assert.match(runtime, /applyRuntimePalette\(null\)/);
+  assert.match(runtime, /codex-moonsea-controls[\\\s\\\S]*remove\(\)/);
   assert.match(runtime, /--moonsea-wallpaper-gradient/);
   assert.match(
     runtime,
@@ -278,6 +279,9 @@ test("统一壁纸运行时可以启用并完整退出", () => {
   assert.match(runtime, /readSavedWallpaper\(themeWallpaperKey/);
   assert.doesNotMatch(bridge, /runtime:\s*theme\.runtime,/);
   assert.match(bridge, /delete runtime\.wallpaperDataUrl/);
+  assert.match(bridge, /resetAppearance/);
+  assert.match(bridge, /app\.appearance\.set_mode/);
+  assert.match(bridge, /NATIVE_MODE_KEY/);
 });
 
 test("普通与 Pro 壁纸共用精简后的完整月海助手", () => {
