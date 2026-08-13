@@ -431,6 +431,15 @@ a.footer-owner-entry:hover, a.footer-owner-entry:focus-visible { color: #dce9e5;
 .admin-header p:last-child { color: var(--muted); }
 .admin-account { display: grid; justify-items: end; gap: 8px; color: var(--muted); font-size: 13px; }
 .admin-account a { color: var(--ink); }
+.admin-pulse { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 1px; margin-top: 34px; overflow: hidden; border: 1px solid rgba(18, 69, 78, .16); border-radius: 18px; background: rgba(18, 69, 78, .16); }
+.admin-pulse article { display: grid; gap: 5px; min-height: 132px; padding: 22px 24px; background: rgba(247, 250, 247, .94); }
+.admin-pulse article strong { color: var(--ink); font-size: clamp(38px, 5vw, 58px); font-weight: 760; letter-spacing: -.065em; line-height: 1; font-variant-numeric: tabular-nums; }
+.admin-pulse article > span:not(.admin-pulse__dot) { color: var(--ink); font-size: 15px; font-weight: 720; }
+.admin-pulse article small { color: var(--muted); font-size: 12px; }
+.admin-pulse__live { position: relative; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; background: #eaf4ef !important; }
+.admin-pulse__live > div { display: grid; gap: 5px; }
+.admin-pulse__live > small { grid-column: 2; }
+.admin-pulse__dot { width: 10px; height: 10px; align-self: start; margin-top: 7px; border-radius: 50%; background: #278b70; box-shadow: 0 0 0 5px rgba(39, 139, 112, .13); }
 .theme-upload-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; max-width: 880px; }
 .theme-upload-form label { display: grid; gap: 8px; }
 .theme-upload-form label > span { color: var(--muted); font-size: 13px; }
@@ -533,6 +542,8 @@ a.footer-owner-entry:hover, a.footer-owner-entry:focus-visible { color: #dce9e5;
   .gallery-toolbar, .gallery-controls, .admin-header, .admin-section__heading { align-items: stretch; flex-direction: column; }
   .gallery-toolbar { gap: 28px; }
   .gallery-controls { margin-top: 32px; }
+  .admin-pulse { grid-template-columns: 1fr; }
+  .admin-pulse article { min-height: 112px; }
   .admin-section__heading p { text-align: left; }
   .connection-status, .theme-search { max-width: none; }
   .filter-list { overflow-x: auto; }

@@ -32,6 +32,7 @@ type DownloadVisitorSummaryRow = {
 
 type SiteVisitorSummaryRow = {
   total: number;
+  online15m: number;
   today: number;
   recent7d: number;
   recent30d: number;
@@ -164,6 +165,7 @@ async function loadStatistics() {
     env.DB.prepare(`
       SELECT
         (SELECT COUNT(*) FROM site_visitors) AS total,
+        COALESCE(SUM(CASE WHEN datetime(last_seen_at) >= datetime('now', '-15 minutes') THEN 1 ELSE 0 END), 0) AS online15m,
         COUNT(DISTINCT CASE WHEN day = date('now') THEN visitor_hash END) AS today,
         COUNT(DISTINCT CASE WHEN day >= date('now', '-6 days') THEN visitor_hash END) AS recent7d,
         COUNT(DISTINCT CASE WHEN day >= date('now', '-29 days') THEN visitor_hash END) AS recent30d
@@ -234,7 +236,7 @@ async function loadStatistics() {
     pageViews,
     trafficDaily: trafficDaily.results,
     trafficPages: trafficPages.results,
-    siteVisitors: siteVisitors ?? { total: 0, today: 0, recent7d: 0, recent30d: 0 },
+    siteVisitors: siteVisitors ?? { total: 0, online15m: 0, today: 0, recent7d: 0, recent30d: 0 },
     trafficSources: trafficSources.results,
     trafficCampaigns: trafficCampaigns.results,
     trafficContents: trafficContents.results,
@@ -354,6 +356,17 @@ export default async function AdminPage() {
           <Link href="/">返回官网</Link>
         </div>
       </header>
+
+      <section className="admin-pulse" aria-labelledby="admin-pulse-title">
+        <h2 id="admin-pulse-title" className="sr-only">站点访客概览</h2>
+        <article className="admin-pulse__live">
+          <span className="admin-pulse__dot" aria-hidden="true" />
+          <div><strong>{data.siteVisitors.online15m}</strong><span>当前在线访客</span></div>
+          <small>近 15 分钟访问过站点</small>
+        </article>
+        <article><strong>{data.siteVisitors.total}</strong><span>历史来客</span><small>累计去重浏览器</small></article>
+        <article><strong>{data.siteVisitors.today}</strong><span>今日来客</span><small>今天去重浏览器</small></article>
+      </section>
 
       <section className="admin-section" aria-labelledby="usage-title">
         <div className="admin-section__heading">
