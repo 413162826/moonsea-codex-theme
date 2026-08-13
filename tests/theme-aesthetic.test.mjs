@@ -143,6 +143,10 @@ test("正文表格回到阅读网格并保留超宽内容滚动", () => {
   assert.match(themeCss, /_TableScroller_[^}]*\{[\s\S]*overflow-x:\s*auto/);
   assert.match(themeCss, /_TableWrapper_[^}]*\{[\s\S]*width:\s*max-content/);
   assert.match(themeCss, /_MarkdownRoot_[\s\S]*table\s*\{[\s\S]*min-width:\s*100%\s*!important/);
+  assert.match(themeCss, /main\s+:where\(\[data-wide-block\][\s\S]*_TableScroller_/);
+  assert.match(themeCss, /_TableWrapper_[\s\S]*table\s*\{[\s\S]*min-width:\s*100%\s*!important/);
+  assert.match(themeCss, /\[data-markdown-table\][\s\S]*--wide-block-width:\s*100%\s*!important/);
+  assert.match(themeCss, /\[data-markdown-table\][\s\S]*--thread-content-margin:\s*0px\s*!important/);
   assert.match(themeCss, /horizontal-scroll-fade-mask[^}]*\{[\s\S]*max-width:\s*100%\s*!important/);
   assert.match(themeCss, /horizontal-scroll-fade-mask\) table[\s\S]*min-width:\s*0\s*!important/);
   assert.match(themeCss, /horizontal-scroll-fade-mask\)[\s\S]*white-space:\s*normal\s*!important/);

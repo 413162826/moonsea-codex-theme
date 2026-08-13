@@ -438,6 +438,67 @@ html.codex-moonsea.moonsea-reading-enabled main
   max-width: none !important;
 }
 
+/*
+ * 新版渲染器的宽表节点有时与 MarkdownRoot 同级，不能把约束限定在正文根节点后代。
+ * 这里仅在月海阅读模式下按语义属性/容器片段全局收口，避免表格把消息操作栏推到正文外。
+ */
+html.codex-moonsea.moonsea-reading-enabled main
+  :where([data-wide-block], [class*="_TableContainer_"], [class*="_tableWideBlock_"], [class*="_TableScroller_"], [class*="_TableWrapper_"], .horizontal-scroll-fade-mask) {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-inline: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/*
+ * 生产版 Codex 的表格容器同时带有 data-markdown-table 属性。直接以这个
+ * 语义属性收口，并重置官方 wide block 变量，避免哈希类名变化或 wide
+ * block 的计算宽度把列表再次拉到对话正文之外。
+ */
+html.codex-moonsea.moonsea-reading-enabled main
+  :where([data-markdown-table]) {
+  --wide-block-width: 100% !important;
+  --wide-block-default-max-width: 100% !important;
+  --thread-content-margin: 0px !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-inline: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  inset-inline: auto !important;
+  transform: none !important;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main
+  :where([data-markdown-table])
+  :where([class*="_TableScroller_"], .horizontal-scroll-fade-mask) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main
+  :where([data-wide-block], [class*="_TableContainer_"], [class*="_TableScroller_"], .horizontal-scroll-fade-mask) {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+html.codex-moonsea.moonsea-reading-enabled main
+  :where([data-wide-block], [class*="_TableContainer_"], [class*="_TableScroller_"], [class*="_TableWrapper_"], .horizontal-scroll-fade-mask)
+  table {
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  table-layout: auto;
+}
+
 html.codex-moonsea.moonsea-reading-enabled main
   :where(hr, [class*="_horizontalRule_"]) {
   border-color: var(--moonsea-border-heavy) !important;
