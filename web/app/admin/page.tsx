@@ -212,8 +212,12 @@ async function loadStatistics() {
         COALESCE((SELECT COUNT(*) FROM site_visitor_days WHERE day = days.day), 0) AS uv,
         COALESCE((SELECT SUM(total) FROM daily_metrics WHERE day = days.day AND metric_type = 'page_view'), 0) AS pv,
         COALESCE((SELECT SUM(total) FROM daily_metrics WHERE day = days.day AND metric_type = 'download'), 0) AS downloads,
-        (SELECT COUNT(*) FROM download_visitor_days WHERE day = days.day) AS downloadVisitors,
-        (SELECT COUNT(*) FROM installation_activity_days WHERE day = days.day) AS activeDevices
+        CASE WHEN EXISTS (SELECT 1 FROM download_visitor_days WHERE day = days.day)
+          THEN (SELECT COUNT(*) FROM download_visitor_days WHERE day = days.day)
+          ELSE NULL END AS downloadVisitors,
+        CASE WHEN EXISTS (SELECT 1 FROM installation_activity_days WHERE day = days.day)
+          THEN (SELECT COUNT(*) FROM installation_activity_days WHERE day = days.day)
+          ELSE NULL END AS activeDevices
       FROM days
       ORDER BY days.day DESC
       LIMIT 14
