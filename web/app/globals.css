@@ -454,6 +454,18 @@ a.footer-owner-entry:hover, a.footer-owner-entry:focus-visible { color: #dce9e5;
 .metric-grid strong { margin: 18px 0 4px; font-size: 46px; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
 .data-card { padding: 28px; }
 .data-card h2 { margin: 0 0 28px; font-size: 20px; }
+.daily-evidence-card { margin-bottom: 18px; padding: 24px 28px 18px; }
+.daily-evidence-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 16px; }
+.daily-evidence-heading h2 { margin: 0 0 7px; }
+.daily-evidence-heading p { max-width: 700px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.daily-evidence-heading > span { flex: 0 0 auto; color: var(--sea); font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; }
+.daily-evidence-scroll { overflow-x: auto; }
+.daily-evidence-table { width: 100%; min-width: 640px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.daily-evidence-table th, .daily-evidence-table td { padding: 12px 10px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.daily-evidence-table thead th { border-top: 0; color: var(--muted); font-size: 12px; font-weight: 650; }
+.daily-evidence-table th:first-child, .daily-evidence-table td:first-child { text-align: left; }
+.daily-evidence-table tbody th { color: var(--ink); font-size: 13px; font-weight: 650; }
+.daily-evidence-table tbody td { color: var(--ink); font-size: 15px; }
 .activity-card { min-height: 260px; }
 .activity-chart { display: flex; height: 160px; align-items: end; gap: 8px; }
 .activity-chart div { display: grid; flex: 1; height: 100%; align-items: end; justify-items: center; gap: 8px; }

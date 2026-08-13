@@ -28,6 +28,23 @@ export const downloadVisitors = sqliteTable("download_visitors", {
   downloadCount: integer("download_count").notNull().default(1),
 });
 
+export const downloadVisitorDays = sqliteTable("download_visitor_days", {
+  day: text("day").notNull(),
+  visitorHash: text("visitor_hash").notNull(),
+  platform: text("platform").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.visitorHash] }),
+]);
+
+export const installationActivityDays = sqliteTable("installation_activity_days", {
+  day: text("day").notNull(),
+  installId: text("install_id").notNull(),
+  platform: text("platform").notNull(),
+  appVersion: text("app_version").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.installId] }),
+]);
+
 export const siteVisitors = sqliteTable("site_visitors", {
   visitorHash: text("visitor_hash").primaryKey(),
   firstSeenAt: text("first_seen_at").notNull(),

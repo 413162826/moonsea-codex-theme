@@ -64,6 +64,7 @@ async function ensureLocalVisitorSchema() {
     "0004_sudden_giant_girl.sql",
     "0005_luxuriant_skin.sql",
     "0006_worthless_madame_hydra.sql",
+    "0007_daily_evidence_tables.sql",
   ];
   const migrations = await Promise.all(
     migrationFiles.map((file) =>
@@ -1020,12 +1021,17 @@ test("数据迁移能建立安装、聚合指标与匿名访客表", async () =>
     new URL("../drizzle/0005_luxuriant_skin.sql", import.meta.url),
     "utf8",
   );
+  const dailyEvidenceMigration = await readFile(
+    new URL("../drizzle/0007_daily_evidence_tables.sql", import.meta.url),
+    "utf8",
+  );
   database.exec(installationMigration);
   database.exec(metricsMigration);
   database.exec(downloadVisitorsMigration);
   database.exec(siteVisitorsMigration);
   database.exec(contentAttributionMigration);
   database.exec(uploadedThemesMigration);
+  database.exec(dailyEvidenceMigration);
   const columns = database.prepare("PRAGMA table_info(installations)").all();
   assert.deepEqual(
     columns.map((column) => column.name),
@@ -1116,5 +1122,13 @@ test("数据迁移能建立安装、聚合指标与匿名访客表", async () =>
       "created_at",
     ],
   );
+  for (const table of ["download_visitor_days", "installation_activity_days"]) {
+    const columns = database.prepare(`PRAGMA table_info(${table})`).all();
+    assert.ok(columns.length > 0, `${table} 表应存在`);
+    assert.deepEqual(
+      columns.filter((column) => column.pk > 0).sort((left, right) => left.pk - right.pk).map((column) => column.name),
+      ["day", table === "download_visitor_days" ? "visitor_hash" : "install_id"],
+    );
+  }
   database.close();
 });
