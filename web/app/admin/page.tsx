@@ -32,6 +32,7 @@ type DownloadVisitorSummaryRow = {
 
 type SiteVisitorSummaryRow = {
   total: number;
+  online15m: number;
   today: number;
   recent7d: number;
   recent30d: number;
@@ -45,6 +46,15 @@ type DistributionRow = {
 type DailyRow = {
   day: string;
   total: number;
+};
+
+type DailyEvidenceRow = {
+  day: string;
+  uv: number;
+  pv: number;
+  downloads: number;
+  downloadVisitors: number | null;
+  activeDevices: number | null;
 };
 
 const METRIC_LABELS: Record<string, string> = {
@@ -100,6 +110,7 @@ async function loadStatistics() {
     trafficCampaigns,
     trafficContents,
     downloadPlatforms,
+    dailyEvidence,
   ] = await Promise.all([
     env.DB.prepare(`
       SELECT
@@ -154,6 +165,7 @@ async function loadStatistics() {
     env.DB.prepare(`
       SELECT
         (SELECT COUNT(*) FROM site_visitors) AS total,
+        COALESCE(SUM(CASE WHEN datetime(last_seen_at) >= datetime('now', '-15 minutes') THEN 1 ELSE 0 END), 0) AS online15m,
         COUNT(DISTINCT CASE WHEN day = date('now') THEN visitor_hash END) AS today,
         COUNT(DISTINCT CASE WHEN day >= date('now', '-6 days') THEN visitor_hash END) AS recent7d,
         COUNT(DISTINCT CASE WHEN day >= date('now', '-29 days') THEN visitor_hash END) AS recent30d
@@ -190,6 +202,28 @@ async function loadStatistics() {
       GROUP BY dimension
       ORDER BY total DESC
     `).all<DistributionRow>(),
+    env.DB.prepare(`
+      WITH days AS (
+        SELECT day FROM daily_metrics WHERE day >= date('now', '-13 days')
+        UNION SELECT day FROM site_visitor_days WHERE day >= date('now', '-13 days')
+        UNION SELECT day FROM download_visitor_days WHERE day >= date('now', '-13 days')
+        UNION SELECT day FROM installation_activity_days WHERE day >= date('now', '-13 days')
+      )
+      SELECT
+        days.day AS day,
+        COALESCE((SELECT COUNT(*) FROM site_visitor_days WHERE day = days.day), 0) AS uv,
+        COALESCE((SELECT SUM(total) FROM daily_metrics WHERE day = days.day AND metric_type = 'page_view'), 0) AS pv,
+        COALESCE((SELECT SUM(total) FROM daily_metrics WHERE day = days.day AND metric_type = 'download'), 0) AS downloads,
+        CASE WHEN EXISTS (SELECT 1 FROM download_visitor_days WHERE day = days.day)
+          THEN (SELECT COUNT(*) FROM download_visitor_days WHERE day = days.day)
+          ELSE NULL END AS downloadVisitors,
+        CASE WHEN EXISTS (SELECT 1 FROM installation_activity_days WHERE day = days.day)
+          THEN (SELECT COUNT(*) FROM installation_activity_days WHERE day = days.day)
+          ELSE NULL END AS activeDevices
+      FROM days
+      ORDER BY days.day DESC
+      LIMIT 14
+    `).all<DailyEvidenceRow>(),
   ]);
 
   return {
@@ -202,11 +236,12 @@ async function loadStatistics() {
     pageViews,
     trafficDaily: trafficDaily.results,
     trafficPages: trafficPages.results,
-    siteVisitors: siteVisitors ?? { total: 0, today: 0, recent7d: 0, recent30d: 0 },
+    siteVisitors: siteVisitors ?? { total: 0, online15m: 0, today: 0, recent7d: 0, recent30d: 0 },
     trafficSources: trafficSources.results,
     trafficCampaigns: trafficCampaigns.results,
     trafficContents: trafficContents.results,
     downloadPlatforms: downloadPlatforms.results,
+    dailyEvidence: dailyEvidence.results,
   };
 }
 
@@ -251,6 +286,48 @@ function Trend({ title, rows, empty }: { title: string; rows: DailyRow[]; empty:
   );
 }
 
+function DailyEvidence({ rows }: { rows: DailyEvidenceRow[] }) {
+  return (
+    <section className="data-card daily-evidence-card" aria-labelledby="daily-evidence-title">
+      <div className="daily-evidence-heading">
+        <div>
+          <h2 id="daily-evidence-title">单日证据</h2>
+          <p>按 UTC 日期落盘；UV 是当天去重浏览器，下载访客是当天去重下载浏览器，活跃设备来自当天心跳。</p>
+        </div>
+        <span>最近 14 天</span>
+      </div>
+      {rows.length === 0 ? <p className="empty-data">还没有可核对的日记录。</p> : (
+        <div className="daily-evidence-scroll">
+          <table className="daily-evidence-table">
+            <thead>
+              <tr>
+                <th scope="col">日期</th>
+                <th scope="col">UV</th>
+                <th scope="col">PV</th>
+                <th scope="col">下载</th>
+                <th scope="col">下载访客</th>
+                <th scope="col">活跃设备</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.day}>
+                  <th scope="row">{row.day}</th>
+                  <td>{row.uv}</td>
+                  <td>{row.pv}</td>
+                  <td>{row.downloads}</td>
+                  <td>{row.downloadVisitors ?? "—"}</td>
+                  <td>{row.activeDevices ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default async function AdminPage() {
   const user = await requireChatGPTUser("/admin");
   if (!allowedAdminEmails().has(user.email.toLowerCase())) {
@@ -279,6 +356,17 @@ export default async function AdminPage() {
           <Link href="/">返回官网</Link>
         </div>
       </header>
+
+      <section className="admin-pulse" aria-labelledby="admin-pulse-title">
+        <h2 id="admin-pulse-title" className="sr-only">站点访客概览</h2>
+        <article className="admin-pulse__live">
+          <span className="admin-pulse__dot" aria-hidden="true" />
+          <div><strong>{data.siteVisitors.online15m}</strong><span>当前在线访客</span></div>
+          <small>近 15 分钟访问过站点</small>
+        </article>
+        <article><strong>{data.siteVisitors.total}</strong><span>历史来客</span><small>累计去重浏览器</small></article>
+        <article><strong>{data.siteVisitors.today}</strong><span>今日来客</span><small>今天去重浏览器</small></article>
+      </section>
 
       <section className="admin-section" aria-labelledby="usage-title">
         <div className="admin-section__heading">
@@ -315,6 +403,7 @@ export default async function AdminPage() {
           <article><span>7 日 PV</span><strong>{data.pageViews.recent7d}</strong></article>
           <article><span>30 日 PV</span><strong>{data.pageViews.recent30d}</strong></article>
         </div>
+        <DailyEvidence rows={data.dailyEvidence} />
         <Trend title="近 30 日页面访问" rows={data.trafficDaily} empty="站点产生访问后，这里会出现趋势。" />
         <div className="data-grid">
           <Distribution title="页面访问分布" rows={data.trafficPages} />

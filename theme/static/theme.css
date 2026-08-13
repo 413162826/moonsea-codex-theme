@@ -45,6 +45,7 @@ html.codex-moonsea {
   --moonsea-wallpaper-floor: linear-gradient(0deg, oklch(9% 0.03 245 / 0.22), transparent 54%);
   --moonsea-text-shadow: 0 1px 12px oklch(7% 0.025 245 / 0.24);
   --moonsea-reading-text-shadow: 0 1px 7px oklch(5% 0.02 245 / 0.52);
+  --moonsea-reading-block-gap: 1.5rem;
   --moonsea-shadow: 0 10px 30px oklch(4% 0.025 245 / 0.26);
   --moonsea-shadow-deep: 0 18px 48px oklch(5% 0.025 245 / 0.46);
 
@@ -342,6 +343,7 @@ html.codex-moonsea.moonsea-reading-enabled main
   width: 100% !important;
   max-width: 100% !important;
   margin-inline: 0 !important;
+  margin-block: var(--moonsea-reading-block-gap) !important;
 }
 
 /*
@@ -449,6 +451,7 @@ html.codex-moonsea.moonsea-reading-enabled main
   max-width: 100% !important;
   min-width: 0 !important;
   margin-inline: 0 !important;
+  margin-block: var(--moonsea-reading-block-gap) !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
 }

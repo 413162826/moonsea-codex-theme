@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { installations } from "../../../db/schema";
+import { installationActivityDays, installations } from "../../../db/schema";
 
 const INSTALL_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
@@ -48,29 +48,38 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString();
   const db = getDb();
-  await db
-    .insert(installations)
-    .values({
-      installId,
-      platform,
-      architecture,
-      appVersion,
-      channel,
-      firstSeenAt: now,
-      lastSeenAt: now,
-      reportCount: 1,
-    })
-    .onConflictDoUpdate({
-      target: installations.installId,
-      set: {
+  await db.batch([
+    db
+      .insert(installations)
+      .values({
+        installId,
         platform,
         architecture,
         appVersion,
         channel,
+        firstSeenAt: now,
         lastSeenAt: now,
-        reportCount: sql`${installations.reportCount} + 1`,
-      },
-    });
+        reportCount: 1,
+      })
+      .onConflictDoUpdate({
+        target: installations.installId,
+        set: {
+          platform,
+          architecture,
+          appVersion,
+          channel,
+          lastSeenAt: now,
+          reportCount: sql`${installations.reportCount} + 1`,
+        },
+      }),
+    db
+      .insert(installationActivityDays)
+      .values({ day: now.slice(0, 10), installId, platform, appVersion })
+      .onConflictDoUpdate({
+        target: [installationActivityDays.day, installationActivityDays.installId],
+        set: { platform, appVersion },
+      }),
+  ]);
 
   return Response.json({ accepted: true }, {
     status: 202,

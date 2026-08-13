@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../db";
-import { downloadVisitors } from "../db/schema";
+import { downloadVisitorDays, downloadVisitors } from "../db/schema";
 
 const VISITOR_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -55,21 +55,30 @@ export async function recordDownloadVisitor(
   const visitorHash = await hashVisitorId(visitorId);
   const timestamp = now.toISOString();
   const db = getDb();
-  await db
-    .insert(downloadVisitors)
-    .values({
-      visitorHash,
-      platform,
-      firstDownloadedAt: timestamp,
-      lastDownloadedAt: timestamp,
-      downloadCount: 1,
-    })
-    .onConflictDoUpdate({
-      target: downloadVisitors.visitorHash,
-      set: {
+  await db.batch([
+    db
+      .insert(downloadVisitors)
+      .values({
+        visitorHash,
         platform,
+        firstDownloadedAt: timestamp,
         lastDownloadedAt: timestamp,
-        downloadCount: sql`${downloadVisitors.downloadCount} + 1`,
-      },
-    });
+        downloadCount: 1,
+      })
+      .onConflictDoUpdate({
+        target: downloadVisitors.visitorHash,
+        set: {
+          platform,
+          lastDownloadedAt: timestamp,
+          downloadCount: sql`${downloadVisitors.downloadCount} + 1`,
+        },
+      }),
+    db
+      .insert(downloadVisitorDays)
+      .values({ day: timestamp.slice(0, 10), visitorHash, platform })
+      .onConflictDoUpdate({
+        target: [downloadVisitorDays.day, downloadVisitorDays.visitorHash],
+        set: { platform },
+      }),
+  ]);
 }
